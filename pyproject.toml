@@ -5,7 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "Robert Muil", email = "robertmuil@gmail.com" }]
 requires-python = ">=3.12"
-dependencies = ["pyyaml>=6.0.3", "rdflib>=7.4.0", "typer>=0.20.0"]
+dependencies = [
+    "owlrl>=7.1.4",
+    "pyyaml>=6.0.3",
+    "rdflib>=7.4.0",
+    "typer>=0.20.0",
+]
 
 [project.scripts]
 pythinfer = "pythinfer.cli:app"

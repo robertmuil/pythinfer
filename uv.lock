@@ -1051,6 +1051,18 @@ wheels = [
 ]
 
 [[package]]
+name = "owlrl"
+version = "7.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rdflib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/fc/ce12482d096d65fff01af58f555a6f25e9dbf416fad5d99f91eaab0e11ca/owlrl-7.1.4.tar.gz", hash = "sha256:60bd4067e346b9111f0a2924565afe97ac6595b98b2bbe953928b5113971daf7", size = 44420 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/78/f857ff1a7207e967dc5e8414bbcc15e0aa5cf45f693b1d2ebe2afb3eb1ce/owlrl-7.1.4-py3-none-any.whl", hash = "sha256:e78b46020169783345636da93a467d318f18700c483184dd15e885850cf64775", size = 51981 },
+]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1242,6 +1254,7 @@ name = "pythinfer"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "owlrl" },
     { name = "pyyaml" },
     { name = "rdflib" },
     { name = "typer" },
@@ -1255,6 +1268,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "owlrl", specifier = ">=7.1.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rdflib", specifier = ">=7.4.0" },
     { name = "typer", specifier = ">=0.20.0" },
