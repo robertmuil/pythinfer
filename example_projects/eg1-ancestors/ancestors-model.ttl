@@ -1,0 +1,27 @@
+@prefix ex: <http://example.org/ancestor/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Classes
+ex:Person a owl:Class ;
+    rdfs:label "Person" .
+
+# Object Properties
+ex:parentOf a owl:ObjectProperty ;
+    rdfs:label "parent of" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Person .
+
+ex:ancestorOf a owl:ObjectProperty ;
+    rdfs:label "ancestor of" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Person ;
+    owl:propertyChainAxiom (ex:parentOf ex:ancestorOf) ;
+    owl:propertyChainAxiom (ex:parentOf) .
+    
+# Inverse property
+ex:childOf owl:inverseOf ex:parentOf ;
+    rdfs:label "child of" .
+
+ex:descendantOf owl:inverseOf ex:ancestorOf ;
+    rdfs:label "descendant of" .

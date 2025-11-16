@@ -1,0 +1,16 @@
+@prefix ex: <http://example.org/ancestor/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+ex:Alice a ex:Person ;
+    ex:parentOf ex:Bob ;
+    ex:parentOf ex:Carol .
+
+ex:Bob a ex:Person ;
+    ex:parentOf ex:David .
+
+ex:Carol a ex:Person ;
+    ex:parentOf ex:Eve .
+
+ex:David a ex:Person .
+
+ex:Eve a ex:Person .
