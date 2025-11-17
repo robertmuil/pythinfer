@@ -12,3 +12,4 @@ wheels/
 # Project-specific ignores
 example_projects/*/_inferred_*.trig
 example_projects/*/_inferred_*.ttl
+example_projects/*/_merged.trig

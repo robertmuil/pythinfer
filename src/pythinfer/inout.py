@@ -39,19 +39,3 @@ class Project:
             paths_vocab_int=[Path(p) for p in cfg.get("internal_vocabs", [])],
             paths_data=[Path(p) for p in cfg["data"]],
         )
-
-
-def export_filtered_triples(
-    graphs: dict[str, Graph],
-    *,
-    exclude_external: bool = True,
-) -> Graph:
-    """Export original triples plus filtered set of useful inferences. Exclude external-only inferences if requested."""
-    # Placeholder: In a real implementation, filter out triples from external-only graphs
-    merged = Graph()
-    for src, g in graphs.items():
-        if exclude_external and "external" in src:
-            continue
-        for triple in g:
-            merged.add(triple)
-    return merged
