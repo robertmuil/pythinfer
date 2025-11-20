@@ -125,10 +125,6 @@ def test_datasetview_different_selection(
     assert len(ds_view2) == 8
 
 
-# Below here are currently going to fail because of missing implementation, so this
-# is Test-Driven Development.
-
-
 def test_quads_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(
         original_ds=ds,
@@ -148,6 +144,8 @@ def test_quads_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     assert quads == expected_quads
 
 
+# Below here are currently going to fail because of missing implementation, so this
+# is Test-Driven Development.
 def test_triples_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(
         original_ds=ds,

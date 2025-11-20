@@ -1,6 +1,9 @@
 """Extensions to rdflib for pythinfer."""
 
+from collections.abc import Generator
+
 from rdflib import Dataset, Graph, IdentifiedNode
+from rdflib.graph import _OptionalIdentifiedQuadType, _TripleOrQuadPatternType
 
 
 # NB: this is *not at all* complete:
@@ -49,3 +52,11 @@ class DatasetView(Dataset):
         for gid in self.included_graph_ids:
             total += len(super().graph(gid))
         return total
+
+    def quads(
+        self, quad: _TripleOrQuadPatternType | None = None
+    ) -> Generator[_OptionalIdentifiedQuadType, None, None]:
+        """Return quads matching the pattern from included graphs only."""
+        for q in super().quads(quad):
+            if q[3] in self.included_graph_ids:
+                yield q
