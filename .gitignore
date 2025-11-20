@@ -5,9 +5,13 @@ build/
 dist/
 wheels/
 *.egg-info
+.coverage
 
 # Virtual environments
 .venv
+
+# IDE settings
+.vscode/settings.json
 
 # Project-specific ignores
 example_projects/*/_inferred_*.trig

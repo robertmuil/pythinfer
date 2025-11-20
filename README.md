@@ -37,6 +37,15 @@ The main function / CLI can then be pointed at the project file to easily switch
 
 Q: What is the default `base_folder`? Is it the src folder or the main pythinfer project folder? The latter makes most sense...
 
+### Project Discovery
+
+If a project file is not explicitly specified, `pytheinfer` should operate like `git` or `uv` - it should search for a `pythinfer.yaml` file in the current directory, and then in parent directories up to a limit.
+
+The limit on ancestors should be:
+1. don't traverse below `$HOME` if that is in the ancestral line
+1. don't go beyond 10 folders
+1. don't traverse across file systems
+
 ## Merging
 
 Merging of multiple graphs should preserve the source, ideally using the named graph of a quad.
@@ -67,3 +76,8 @@ No experience with this yet.
 ### Jena (`riot` etc.)
 
 Because Jena provides a reference implementation, it might be useful to be able to call out to the Jena suite of command line utilities (like `riot`) for manipulation of the graphs (including inference).
+
+## Next Steps
+
+1. implement recursive project discovery
+1. 
