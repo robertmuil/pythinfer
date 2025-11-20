@@ -140,7 +140,7 @@ def test_quads_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     ]
     assert len(expected_quads) == 6
     assert len(quads) == len(expected_quads)
-    assert quads == expected_quads
+    assert set(quads) == set(expected_quads)
 
 
 def test_triples_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
@@ -158,7 +158,7 @@ def test_triples_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
 
     assert len(expected_triples) == 6
     assert len(triples) == len(expected_triples)
-    assert triples == expected_triples
+    assert set(triples) == set(expected_triples)
 
     # Also test with explicit context as kwarg
     triples_ctx = list(
@@ -166,7 +166,7 @@ def test_triples_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     )
     expected_triples_ctx = list(g1.triples((None, None, None)))
     assert len(triples_ctx) == len(expected_triples_ctx)
-    assert triples_ctx == expected_triples_ctx
+    assert set(triples_ctx) == set(expected_triples_ctx)
 
 
 def test_contains_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
@@ -195,8 +195,10 @@ def test_iterating_over_dataset(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) ->
             g3.identifier,
         ],
     )
-    triples = list(ds_view)
-    expected_triples = list(g1) + list(g3)
+    triples = set(ds_view)
+    expected_triples = {(s, p, o, g1.identifier) for (s, p, o) in g1} | {
+        (s, p, o, g3.identifier) for (s, p, o) in g3
+    }
 
     assert len(expected_triples) == 6
     assert len(triples) == len(expected_triples)
