@@ -45,7 +45,6 @@ def g3() -> Graph:
     return graph
 
 
-
 @pytest.fixture
 def ds(g1: Graph, g2: Graph, g3: Graph) -> Dataset:
     """Create a Dataset containing all three graphs."""
@@ -144,8 +143,6 @@ def test_quads_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     assert quads == expected_quads
 
 
-# Below here are currently going to fail because of missing implementation, so this
-# is Test-Driven Development.
 def test_triples_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(
         original_ds=ds,
@@ -162,6 +159,49 @@ def test_triples_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     assert len(expected_triples) == 6
     assert len(triples) == len(expected_triples)
     assert triples == expected_triples
+
+    # Also test with explicit context as kwarg
+    triples_ctx = list(
+        ds_view.triples((None, None, None), context=g1),
+    )
+    expected_triples_ctx = list(g1.triples((None, None, None)))
+    assert len(triples_ctx) == len(expected_triples_ctx)
+    assert triples_ctx == expected_triples_ctx
+
+
+def test_contains_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
+    ds_view = DatasetView(
+        original_ds=ds,
+        included_graph_ids=[
+            g1.identifier,
+            g3.identifier,
+        ],
+    )
+    # Triples in g1 and g3 should be found
+    assert (EX.subject1, EX.predicate1, Literal("object1")) in ds_view
+    assert (EX.subject5, EX.predicate5, Literal("object5")) in ds_view
+
+    # Triples in g2 should not be found
+    assert (EX.subject2, EX.predicate2, Literal("object2")) not in ds_view
+
+
+# Below here are currently going to fail because of missing implementation, so this
+# is Test-Driven Development.
+def test_iterating_over_dataset(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
+    ds_view = DatasetView(
+        original_ds=ds,
+        included_graph_ids=[
+            g1.identifier,
+            g3.identifier,
+        ],
+    )
+    triples = list(ds_view)
+    expected_triples = list(g1) + list(g3)
+
+    assert len(expected_triples) == 6
+    assert len(triples) == len(expected_triples)
+    assert triples == expected_triples
+
 
 def test_add_graph(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(

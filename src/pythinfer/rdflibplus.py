@@ -3,7 +3,12 @@
 from collections.abc import Generator
 
 from rdflib import Dataset, Graph, IdentifiedNode
-from rdflib.graph import _OptionalIdentifiedQuadType, _TripleOrQuadPatternType
+from rdflib.graph import (
+    _ContextType,  # pyright: ignore[reportPrivateUsage]
+    _OptionalIdentifiedQuadType,
+    _TripleOrQuadPatternType,
+    _TripleType,
+)
 
 
 # NB: this is *not at all* complete:
@@ -54,9 +59,26 @@ class DatasetView(Dataset):
         return total
 
     def quads(
-        self, quad: _TripleOrQuadPatternType | None = None
+        self,
+        quad: _TripleOrQuadPatternType | None = None,
     ) -> Generator[_OptionalIdentifiedQuadType, None, None]:
         """Return quads matching the pattern from included graphs only."""
         for q in super().quads(quad):
             if q[3] in self.included_graph_ids:
                 yield q
+
+    def triples(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self,
+        triple_or_quad: _TripleOrQuadPatternType,
+        context: _ContextType | None = None,
+    ) -> Generator[_TripleType, None, None]:
+        """Return triples matching the pattern from included graphs only."""
+        if context is not None:
+            # If context is specified, only return triples from that graph
+            # if it's in the included graphs
+            if context.identifier in self.included_graph_ids:
+                yield from super().triples(triple_or_quad, context=context)
+        else:
+            # If no context specified, return triples from all included graphs
+            for gid in self.included_graph_ids:
+                yield from super().triples(triple_or_quad, context=self.graph(gid))
