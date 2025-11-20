@@ -1,0 +1,5 @@
+name: very basic example
+data:
+  - basic-data.ttl
+internal_vocabs:
+  - basic-model.ttl
