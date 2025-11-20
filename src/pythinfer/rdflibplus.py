@@ -67,7 +67,9 @@ class DatasetView(Dataset):
             if q[3] in self.included_graph_ids:
                 yield q
 
-    def triples(  # pyright: ignore[reportIncompatibleMethodOverride]
+    # The type-checkers don't like that we are not handling the overloads that
+    # exist for the triples method, which handle graph Paths. TODO.
+    def triples(
         self,
         triple_or_quad: _TripleOrQuadPatternType,
         context: _ContextType | None = None,
