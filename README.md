@@ -1,10 +1,12 @@
 # pythinfer - Python Logical Inference
 
-Summary: point this at a selection of RDF files and it will merge them, run inference over them, and output/export the results. The results are the original statements together with the *useful* set of inferences (see below under Inference for what 'useful' means here).
+*Pronounced 'python fur'.*
 
-Package to perform various forms of inference, provided by external packages, to an RDF graph.
+This is a package to perform OWL-based inference, provided by external packages, to an RDF graph.
 
-This can merge multiple graphs (i.e. graphs parsed from multiple files).
+Point this at a selection of RDF files and it will merge them, run inference over them, and export the results. The results are the original statements together with the *useful* set of inferences (see below under `Inference` for what 'useful' means here).
+
+In the inference, a distinction is made between 'external' and 'internal' files. See below.
 
 The backends that should be supported are:
 
@@ -15,11 +17,11 @@ The backends that should be supported are:
 
 ## 'Project'
 
-We define a 'Project' simply as the full collection of RDF input, along with any necessary metadata, that will be processed.
+A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
 
-Because we will likely have several files and of different types, it is likely easiest to specify these in a config file (YAML or similar) instead of requiring everything on the command line.
+Because we will likely have several files and they will be of different types, it is easiest to specify these in a configuration file (YAML or similar) instead of requiring everything on the command line.
 
-The main function / CLI can then be pointed at the project file to easily switch between projects. This also allows the same sets and subsets of inputs to be combined in different ways with configuration.
+The main function or CLI can then be pointed at the project file to easily switch between projects. This also allows the same sets and subsets of inputs to be combined in different ways with configuration.
 
 ### Proposed Project Configuration
 
@@ -35,11 +37,11 @@ The main function / CLI can then be pointed at the project file to easily switch
 - output: a path to the folder in which to put the output (defaults to parent of 1st data file found)
 ```
 
-Q: What is the default `base_folder`? Is it the src folder or the main pythinfer project folder? The latter makes most sense...
+NB: the default `base_folder` is the folder in which the Project configuration file resides.
 
 ### Project Discovery
 
-If a project file is not explicitly specified, `pytheinfer` should operate like `git` or `uv` - it should search for a `pythinfer.yaml` file in the current directory, and then in parent directories up to a limit.
+If a project file is not explicitly specified, `pythinfer` should operate like `git` or `uv` - it should search for a `pythinfer.yaml` file in the current directory, and then in parent directories up to a limit.
 
 The limit on ancestors should be:
 1. don't traverse below `$HOME` if that is in the ancestral line
@@ -79,5 +81,7 @@ Because Jena provides a reference implementation, it might be useful to be able 
 
 ## Next Steps
 
-1. implement recursive project discovery
-1. 
+1. get inference actually working properly into the various named graphs
+1. implement base_folder support - perhaps more generally support for specification of any folder variables...
+1. consider using a proper config language like dhal(?) instead of yaml
+1. consider simplifying categories of input to just be 'external' and 'internal' - do we really need to distinguish between internal vocabs and data?
