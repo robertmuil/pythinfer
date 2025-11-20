@@ -23,6 +23,10 @@ build-backend = "hatchling.build"
 select = ["ALL"]
 ignore = ["COM812"]
 
+[[tool.uv.index]]
+url = "https://artlondon.dev.bloomberg.com/artifactory/api/pypi/bloomberg-pypi/simple"
+default = true
+
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
 
