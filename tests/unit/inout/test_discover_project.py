@@ -8,7 +8,6 @@ import pytest
 from pythinfer.inout import (
     MAX_DISCOVERY_SEARCH_DEPTH,
     PROJECT_FILE_NAME,
-    Project,
     discover_project,
 )
 
@@ -24,18 +23,19 @@ class TestDiscoverProjectSuccess:
     def test_discovers_project_in_start_path(self, tmp_path: Path) -> None:
         """Test that discover_project finds config  immediately in start_path."""
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: test_project\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         result = discover_project(tmp_path)
 
-        assert isinstance(result, Project)
-        assert result.name == "test_project"
+        assert isinstance(result, Path)
+        assert result.name == PROJECT_FILE_NAME
+        assert result.parent == tmp_path
 
     def test_discovers_project_in_parent_directory(self, tmp_path: Path) -> None:
         """Test that discover_project recursively searches parent directories."""
         # Create config in parent directory
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: parent_project\ndata:\n  - data.ttl\n")
+        config_path.touch()
 
         # Create subdirectory and search from there
         subdir = tmp_path / "subdir" / "nested"
@@ -43,14 +43,15 @@ class TestDiscoverProjectSuccess:
 
         result = discover_project(subdir)
 
-        assert isinstance(result, Project)
-        assert result.name == "parent_project"
+        assert isinstance(result, Path)
+        assert result.name == PROJECT_FILE_NAME
+        assert result.parent == tmp_path
 
     def test_discovers_project_multiple_levels_deep(self, tmp_path: Path) -> None:
         """Test discovery across multiple directory levels."""
         # Create config at root of temp directory
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: deep_project\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         # Create deeply nested subdirectory
         deep_subdir = tmp_path / "a" / "b" / "c" / "d" / "e"
@@ -58,20 +59,21 @@ class TestDiscoverProjectSuccess:
 
         result = discover_project(deep_subdir)
 
-        assert isinstance(result, Project)
-        assert result.name == "deep_project"
+        assert isinstance(result, Path)
+        assert result.name == PROJECT_FILE_NAME
+        assert result.parent == tmp_path
 
     def test_prefers_closest_project_config(self, tmp_path: Path) -> None:
         """Test that discovery returns the closest config file."""
         # Create config at root
         root_config = tmp_path / PROJECT_FILE_NAME
-        root_config.write_text("name: root_project\ndata:\n  - file.ttl\n")
+        root_config.touch()
 
         # Create a closer config in subdirectory
         subdir = tmp_path / "subdir"
         subdir.mkdir()
         closer_config = subdir / PROJECT_FILE_NAME
-        closer_config.write_text("name: closer_project\ndata:\n  - file.ttl\n")
+        closer_config.touch()
 
         # Search from deeply nested subdirectory
         deep_subdir = subdir / "nested"
@@ -80,7 +82,7 @@ class TestDiscoverProjectSuccess:
         result = discover_project(deep_subdir)
 
         # Should find the closer config, not the root one
-        assert result.name == "closer_project"
+        assert result == closer_config
 
 
 class TestDiscoverProjectRecursion:
@@ -90,7 +92,7 @@ class TestDiscoverProjectRecursion:
         """Test that recursion depth is properly tracked."""
         # Create a config several levels deep
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: test\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         # Create deeply nested subdirectory
         deep_subdir = tmp_path / "a" / "b" / "c"
@@ -98,7 +100,7 @@ class TestDiscoverProjectRecursion:
 
         # Should still find the config despite depth
         result = discover_project(deep_subdir)
-        assert result.name == "test"
+        assert result == config_path
 
     @patch("pythinfer.inout.Path.home")
     def test_stops_at_home_directory(self, mock_home: Mock, tmp_path: Path) -> None:
@@ -142,14 +144,14 @@ class TestDiscoverProjectMocking:
     def test_with_mocked_resolve(self, tmp_path: Path) -> None:
         """Test discover_project with real paths and verify resolve is called."""
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: mocked_project\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         # Create a path with trailing slashes and relative components
         # to ensure resolve() is properly handling the normalization
         resolve_called = False
         original_resolve = Path.resolve
 
-        def track_resolve(self):
+        def track_resolve(self: Path) -> Path:
             nonlocal resolve_called
             resolve_called = True
             return original_resolve(self)
@@ -157,20 +159,20 @@ class TestDiscoverProjectMocking:
         with patch.object(Path, "resolve", track_resolve):
             result = discover_project(tmp_path)
 
-        assert result.name == "mocked_project"
+        assert result == config_path
         assert resolve_called
 
     def test_with_mocked_path_exists(self, tmp_path: Path) -> None:
         """Test discover_project with mocked exists() method."""
         # Create real project structure
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: test_project\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         # Mock Path.exists to verify it's called
         original_exists = Path.exists
         call_count = 0
 
-        def mock_exists(self):
+        def mock_exists(self: Path) -> bool:
             nonlocal call_count
             call_count += 1
             return original_exists(self)
@@ -178,15 +180,17 @@ class TestDiscoverProjectMocking:
         with patch.object(Path, "exists", mock_exists):
             result = discover_project(tmp_path)
 
-        assert result.name == "test_project"
+        assert result == config_path
         assert call_count >= 1  # exists() was called at least once
 
     def test_discovers_with_relative_path_input(
-        self, tmp_path: Path, monkeypatch
+        self,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """Test that discover_project works with relative paths."""
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: relative_test\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         # Change to the temp directory
         monkeypatch.chdir(tmp_path)
@@ -195,14 +199,16 @@ class TestDiscoverProjectMocking:
         rel_path = Path()
         result = discover_project(rel_path)
 
-        assert result.name == "relative_test"
+        assert result == config_path
 
     def test_discovers_with_relative_path_from_subdir(
-        self, tmp_path: Path, monkeypatch
+        self,
+        tmp_path: Path,
+        monkeypatch,
     ) -> None:
         """Test discovery from relative path in subdirectory."""
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: relative_subdir_test\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         subdir = tmp_path / "subdir"
         subdir.mkdir()
@@ -214,7 +220,7 @@ class TestDiscoverProjectMocking:
         rel_path = Path()
         result = discover_project(rel_path)
 
-        assert result.name == "relative_subdir_test"
+        assert result == config_path
 
 
 class TestDiscoverProjectErrorCases:
@@ -244,22 +250,22 @@ class TestDiscoverProjectErrorCases:
         # We'll test this indirectly by creating a directory structure
         # that requires recursion and verifying the function works
         config_path = tmp_path / PROJECT_FILE_NAME
-        config_path.write_text("name: depth_test\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         nested = tmp_path / "level1" / "level2" / "level3"
         nested.mkdir(parents=True)
 
         # Should succeed even though depth goes > 0
         result = discover_project(nested)
-        assert result.name == "depth_test"
+        assert result == config_path
 
-    def test_symlink_resolution(self, tmp_path):
+    def test_symlink_resolution(self, tmp_path: Path) -> None:
         """Test that symlinks are resolved properly."""
         # Create actual directory with config
         actual_dir = tmp_path / "actual"
         actual_dir.mkdir()
         config_path = actual_dir / PROJECT_FILE_NAME
-        config_path.write_text("name: symlink_test\ndata:\n  - file.ttl\n")
+        config_path.touch()
 
         # Create a symlink
         link_dir = tmp_path / "link"
@@ -267,29 +273,20 @@ class TestDiscoverProjectErrorCases:
 
         # Search from symlink should find config in resolved path
         result = discover_project(link_dir)
-        assert result.name == "symlink_test"
+        assert result == config_path
 
 
 class TestDiscoverProjectIntegration:
     """Integration tests combining multiple aspects."""
 
-    def test_full_discovery_workflow(self, tmp_path):
+    def test_full_discovery_workflow(self, tmp_path: Path) -> None:
         """Test a complete discovery workflow."""
         # Create a realistic project structure
         project_root = tmp_path / "myproject"
         project_root.mkdir()
 
         config_path = project_root / PROJECT_FILE_NAME
-        config_path.write_text(
-            "name: my_project\n"
-            "internal_vocabs:\n"
-            "  - ontology.ttl\n"
-            "external_vocabs:\n"
-            "  - skos.ttl\n"
-            "data:\n"
-            "  - data1.ttl\n"
-            "  - data2.ttl\n",
-        )
+        config_path.touch()
 
         # Create nested search location
         search_location = project_root / "src" / "data" / "input"
@@ -297,24 +294,21 @@ class TestDiscoverProjectIntegration:
 
         result = discover_project(search_location)
 
-        assert result.name == "my_project"
-        assert len(result.paths_data) == 2
-        assert len(result.paths_vocab_int) == 1
-        assert len(result.paths_vocab_ext) == 1
+        assert result == config_path
 
-    def test_discovery_with_multiple_nested_projects(self, tmp_path):
+    def test_discovery_with_multiple_nested_projects(self, tmp_path: Path) -> None:
         """Test that discovery finds the nearest project, not the furthest."""
         # Create outer project
         outer = tmp_path / "outer"
         outer.mkdir()
         outer_config = outer / PROJECT_FILE_NAME
-        outer_config.write_text("name: outer_project\ndata:\n  - file.ttl\n")
+        outer_config.touch()
 
         # Create nested inner project
         inner = outer / "inner" / "project"
         inner.mkdir(parents=True)
         inner_config = inner / PROJECT_FILE_NAME
-        inner_config.write_text("name: inner_project\ndata:\n  - file.ttl\n")
+        inner_config.touch()
 
         # Search from inside inner project
         search_location = inner / "src"
@@ -323,4 +317,4 @@ class TestDiscoverProjectIntegration:
         result = discover_project(search_location)
 
         # Should find inner project, not outer
-        assert result.name == "inner_project"
+        assert result == inner_config

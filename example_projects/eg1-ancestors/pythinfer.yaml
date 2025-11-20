@@ -3,8 +3,8 @@
 # Everything is local to make sure it works without internet access,
 # and can be used for internal testing.
 external_vocabs:
-  - vocabs-external/skos.ttl
+  - ../../vocabs-external/skos.ttl
 internal_vocabs:
-  - example_projects/eg1-ancestors/ancestors-model.ttl
+  - ancestors-model.ttl
 data:
-  - example_projects/eg1-ancestors/ancestors-data.ttl
+  - ancestors-data.ttl

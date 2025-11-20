@@ -4,7 +4,7 @@ from pathlib import Path
 
 import typer
 
-from pythinfer.inout import Project
+from pythinfer.inout import Project, discover_project
 from pythinfer.merge import (
     CategorisedDataset,
     GraphCategory,
@@ -18,16 +18,18 @@ app = typer.Typer()
 
 @app.command()
 def merge(
-    config: Path = Path("example_projects/eg1-ancestors/ancestors.yaml"),
+    config: Path | None = None,
     output: Path | None = None,
     *,
     exclude_external: bool = False,
 ) -> CategorisedDataset:
     """Merge graphs as specified in the config file and export."""
-    typer.echo(f"Merging RDF graphs using config: {config}")
-    cfg = Project.from_yaml(config)
+    config_path = config or discover_project(Path.cwd())
+    typer.echo(f"Merging RDF graphs using config: {config_path}")
+    cfg = Project.from_yaml(config_path)
     if output is None:
-        output = cfg.paths_data[0].parent / "_merged.trig"
+        output = config_path.parent / "derived" / "merged.trig"
+        output.parent.mkdir(parents=True, exist_ok=True)
     typer.secho(f"Project loaded: {cfg}", fg=typer.colors.GREEN)
     cd = merge_graphs(cfg)
 
@@ -68,13 +70,14 @@ def merge(
 
 @app.command()
 def infer(
-    config: Path = Path("example_projects/eg1-ancestors/ancestors.yaml"),
+    config: Path | None = None,
     backend: str = "owlrl",
     output: Path | None = None,
 ) -> CategorisedDataset:
     """Run inference backends on merged graph."""
-    typer.echo(f"Running inference using config: {config} and backend: {backend}")
-    cd = merge(config)
+    config_path = config or discover_project(Path.cwd())
+    typer.echo(f"Running inference using config: {config_path} and backend: {backend}")
+    cd = merge(config_path)
 
     run_inference_backend(cd, backend=backend)
     typer.secho(
@@ -83,7 +86,8 @@ def infer(
     )
 
     if output is None:
-        output = config.parent / f"_inferred_{backend}.trig"
+        output = config_path.parent / "derived" / f"inferred_{backend}.trig"
+        output.parent.mkdir(parents=True, exist_ok=True)
 
     cd.final.serialize(destination=output, format="trig")
     typer.echo(

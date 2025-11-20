@@ -43,7 +43,7 @@ PROJECT_FILE_NAME = "pythinfer.yaml"
 MAX_DISCOVERY_SEARCH_DEPTH = 10
 
 
-def discover_project(start_path: Path, _current_depth: int = 0) -> Project:
+def discover_project(start_path: Path, _current_depth: int = 0) -> Path:
     """Discover a pythinfer project by searching for a config file.
 
     Will recursively search parent directories until a config file is found or:
@@ -56,7 +56,7 @@ def discover_project(start_path: Path, _current_depth: int = 0) -> Project:
         _current_depth: Current search depth (used internally).
 
     Returns:
-        Project instance
+        Path to the discovered project config file
 
     Raises:
         FileNotFoundError if search reaches limit without discovering a project.
@@ -67,7 +67,7 @@ def discover_project(start_path: Path, _current_depth: int = 0) -> Project:
 
     # Positive case: config file found
     if config_path.exists():
-        return Project.from_yaml(config_path)
+        return config_path
 
     # Negative cases: check search limits
     msg = f"Search limit hit before finding project config (`{PROJECT_FILE_NAME}`)"
