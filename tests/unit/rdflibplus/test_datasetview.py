@@ -165,6 +165,37 @@ def test_triples_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:
     assert len(triples) == len(expected_triples)
     assert triples == expected_triples
 
+def test_add_graph(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
+    ds_view = DatasetView(
+        original_ds=ds,
+        included_graph_ids=[
+            g0.identifier,
+            g2.identifier,
+        ],
+    )
+    # Try to add a graph to the view
+    ds_view.add_graph(g1.identifier)
+    assert len(ds_view.graph(g1.identifier)) == 1
+
+    # Check that the original dataset is unaffected
+    assert len(ds.graph(g1.identifier)) == 1
+
+
+def test_remove_graph(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
+    ds_view = DatasetView(
+        original_ds=ds,
+        included_graph_ids=[
+            g0.identifier,
+            g2.identifier,
+        ],
+    )
+    # Try to remove a graph from the view
+    ds_view.remove_graph(g2.identifier)
+    assert len(ds_view.graph(g2.identifier)) == 0
+
+    # Check that the original dataset is unaffected
+    assert len(ds.graph(g2.identifier)) == 3
+
 
 def test_datasetview_immutable(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(
@@ -173,15 +204,16 @@ def test_datasetview_immutable(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> 
             g0.identifier,
             g2.identifier,
         ],
+        immutable=True,
     )
     # Try to add a triple to a graph in the view
     with pytest.raises(NotImplementedError):
         ds_view.graph(g0.identifier).add(
             (EX.subjectX, EX.predicateX, Literal("objectX")),
         )
-    # Try to add a new graph to the view
+
+    # Try to remove a triple from a graph in the view
     with pytest.raises(NotImplementedError):
-        ds_view.add_graph(g1.identifier)
-    # Try to remove a graph from the view
-    with pytest.raises(NotImplementedError):
-        ds_view.remove_graph(g1.identifier)
+        ds_view.graph(g2.identifier).remove(
+            (EX.subject2, EX.predicate2, Literal("object2")),
+        )
