@@ -82,6 +82,11 @@ Because Jena provides a reference implementation, it might be useful to be able 
 ## Next Steps
 
 1. get inference actually working properly into the various named graphs
+1. remove invalid triples after inference (e.g. literals as subjects)
+1. remove unnecessary triples after inference (e.g. `owl:sameAs` reflexive triples)
+1. incorporate external vocabs such as SKOS etc. by first running inference over external, doing inference, and then removing all the TBox full-inferred triples. This will deal with the unwanted inferences also that we're currently manually removing.
+1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
+1. allow SPARQL CONSTRUCTs as rules for inference
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
 1. consider using a proper config language like dhal(?) instead of yaml
 1. consider simplifying categories of input to just be 'external' and 'internal' - do we really need to distinguish between internal vocabs and data?
