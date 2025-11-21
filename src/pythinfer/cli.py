@@ -1,5 +1,6 @@
 """pythinfer CLI entry point."""
 
+import logging
 from pathlib import Path
 
 import typer
@@ -14,6 +15,31 @@ from pythinfer.merge import (
 )
 
 app = typer.Typer()
+logger = logging.getLogger(__name__)
+
+
+def configure_logging(verbose: bool) -> None:
+    """Configure logging level based on verbose flag."""
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-8s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+        force=True,  # Reconfigure if already configured
+    )
+
+
+@app.callback()
+def main_callback(
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose (DEBUG) logging output",
+    ),
+) -> None:
+    """Global options for pythinfer CLI."""
+    configure_logging(verbose)
 
 
 @app.command()
