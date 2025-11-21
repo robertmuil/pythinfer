@@ -4,11 +4,18 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
-from owlrl import DeductiveClosure, OWLRL_Semantics
-from rdflib import Dataset, Graph, IdentifiedNode, URIRef
+from rdflib import Dataset, IdentifiedNode, URIRef
 
-from pythinfer.infer import filter_triples, filterset_all, filterset_invalid_triples
+from pythinfer.infer import (
+    apply_owlrl_inference,
+    filter_triples,
+    filterset_all,
+)
 from pythinfer.inout import Project
+
+IRI_EXTERNAL_MERGED: URIRef = URIRef("merged_external")  # type: ignore[bad-assignment]
+IRI_EXTERNAL_INFERENCES: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
+IRI_FULL_INFERENCES: URIRef = URIRef("inferences_full")  # type: ignore[bad-assignment]
 
 logger = logging.getLogger(__name__)
 info = logger.info
@@ -147,59 +154,50 @@ def run_inference_backend(
         msg = f"Unsupported inference backend: {backend}. Only 'owlrl' is supported."
         raise ValueError(msg)
 
-    closure = DeductiveClosure(OWLRL_Semantics)
+    ###
+    # Step 1: run inference over everything
+    ###
+
+    g_full_inferences = categorised.ds.graph(IRI_FULL_INFERENCES)
+    if GraphCategory.INF_FULL not in categorised.category:
+        categorised.category[GraphCategory.INF_FULL] = []
+    categorised.category[GraphCategory.INF_FULL].append(IRI_FULL_INFERENCES)
+    apply_owlrl_inference(categorised.ds, g_full_inferences)  # pyright: ignore[reportUnknownMemberType]
+
+    nremoved, _filter_count = filter_triples(g_full_inferences, filterset_all)
+    info(
+        "   Removed %d unwanted triples from full inferences:\n %s.",
+        nremoved,
+        _filter_count,
+    )
+
+    ###
+    # Step 2: run inference over just the external vocabularies
+    # Do this to remove external inferences from the full inferences, and do it
+    # *after* full inference just for efficiency, so that full inference does not
+    # have to process the redundant 'merged_external' graph.
+    ###
 
     external_vocab_ids = categorised.category.get(GraphCategory.EXT_VOCAB, [])
-    external_inf_id: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
-    full_inf_id: URIRef = URIRef("inferences_full")  # type: ignore[bad-assignment]
-    # Run OWL-RL deductive closure over just the external vocabularies
-    inf_ext_vocab = categorised.ds.graph(external_inf_id)
 
-    # Create a temporary dataset with just external vocab
-    external_only = Graph()
-
+    # Need to merge into a single graph for owlrl processing
     # TODO: consider using DatasetView with default_union=True instead of copying.
+    g_external = categorised.ds.graph(IRI_EXTERNAL_MERGED)
     for gid in external_vocab_ids:
-        external_only += categorised.ds.graph(gid)
+        g_external += categorised.ds.graph(gid)
 
-    # Run inference and capture inferred triples
-    closure.expand(external_only, destination=inf_ext_vocab)
-
-    nremoved, _filter_count = filter_triples(inf_ext_vocab, filterset_invalid_triples)
-    dbg(f"Removed {nremoved} invalid triples from external inferences.")
+    g_external_inferences = categorised.ds.graph(IRI_EXTERNAL_INFERENCES)
+    apply_owlrl_inference(g_external, g_external_inferences)
 
     # Add inferred external vocab triples to main dataset with category
     if GraphCategory.INF_EXT_VOCAB not in categorised.category:
         categorised.category[GraphCategory.INF_EXT_VOCAB] = []
-    categorised.category[GraphCategory.INF_EXT_VOCAB].append(external_inf_id)
-    # Seems odd there's no more direct way to add a new graph...
-    # Could use the ds.graph in the expand call, but it must share store
-    # with the input - which would mean copying input triples inside the ds.
-    # Really not sure which is superior.
-    g = categorised.ds.graph(external_inf_id)
-    for s, p, o in inf_ext_vocab:
-        g.add((s, p, o))
+    categorised.category[GraphCategory.INF_EXT_VOCAB].append(IRI_EXTERNAL_INFERENCES)
 
-    # Run OWL-RL deductive closure over everything
-    # Here we don't need to copy because we are expanding into a new graph inside
-    # the same Dataset, so same backing store.
-    inf_full = categorised.ds.graph(full_inf_id)  # Graph(store=categorised.ds.store)
-    if GraphCategory.INF_FULL not in categorised.category:
-        categorised.category[GraphCategory.INF_FULL] = []
-    categorised.category[GraphCategory.INF_FULL].append(full_inf_id)
-    closure.expand(categorised.ds, destination=inf_full)
-
-    nremoved, _filter_count = filter_triples(inf_full, filterset_all)
-    dbg(f"Removed {nremoved} invalid and unwanted triples from full inferences.")
-
-    # Now remove all external vocab triples from the full inferences
-    for gid in external_vocab_ids:
-        ext_graph = categorised.ds.graph(gid)
-        for s, p, o in ext_graph:
-            inf_full.remove((s, p, o))
-    # And all triples inferred over external vocab
-    if external_vocab_ids:
-        ext_inf_graph = categorised.ds.graph(external_inf_id)
-        for s, p, o in ext_inf_graph:
-            inf_full.remove((s, p, o))
-
+    ###
+    # Step 3: remove external inferences from full inferences, because they are
+    # not likely useful: they are useful in generating the full inferences, but not
+    # likely in their own right.
+    ###
+    for s, p, o in g_external_inferences:
+        g_full_inferences.remove((s, p, o))
