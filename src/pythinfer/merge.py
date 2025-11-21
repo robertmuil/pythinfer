@@ -42,30 +42,27 @@ class GraphCategory(Enum):
 class CategorisedDataset:
     """A container for a Dataset with an associated category for every graph.
 
+    We could consider making this a subclass of Dataset, and requiring a category
+    mapping for every graph added. For now, this is easier to implement (though
+    harder to use).
+
     Attributes:
         ds: The combined Dataset containing all named graphs.
-        category: Map from graph identifier to GraphCategory.
+        category: Map from GraphCategory to list of graph identifiers in that category.
 
     """
 
     ds: Dataset
-    category: dict[IdentifiedNode, GraphCategory]
+    category: dict[GraphCategory, list[IdentifiedNode]]
 
     @property
     def full(self) -> Dataset:
-        """Get the full inferred graph (original merged graphs plus inferences).
-
-        Inferred triples are expected to be stored with category INF_FULL.
-        """
-        _full = Dataset()
-        for s, p, o, c in self.ds.quads():
-            # Add all quads except external vocab inferences (those are temporary)
-            if c is not None:
-                cat = self.category.get(c)
-                if cat != GraphCategory.INF_EXT_VOCAB:
-                    g = _full.graph(c)
-                    g.add((s, p, o))
-        return _full
+        """Get the full inferred graph (original merged graphs plus inferences)."""
+        inf_gids = self.category.get(GraphCategory.INF_FULL, [])
+        if len(inf_gids) == 0:
+            msg = "Inference has not been run; no INF_FULL category present."
+            raise ValueError(msg)
+        return self.ds
 
     @property
     def final(self) -> Dataset:
@@ -76,12 +73,15 @@ class CategorisedDataset:
         - External vocabulary inferences (INF_EXT_VOCAB)
         """
         _final = Dataset()
+        # Collect graph IDs to exclude
+        exclude_ids = set(
+            self.category.get(GraphCategory.EXT_VOCAB, [])
+            + self.category.get(GraphCategory.INF_EXT_VOCAB, []),
+        )
         for s, p, o, c in self.ds.quads():
-            if c is not None:
-                cat = self.category.get(c)
-                if cat not in (GraphCategory.EXT_VOCAB, GraphCategory.INF_EXT_VOCAB):
-                    g = _final.graph(c)
-                    g.add((s, p, o))
+            if c is not None and c not in exclude_ids:
+                g = _final.graph(c)
+                g.add((s, p, o))
         return _final
 
 
@@ -91,33 +91,36 @@ def merge_graphs(
     """Merge graphs: preserve named graphs for each input and categorise by type.
 
     Loads all input files into a single Dataset with named graphs, and maintains
-    a mapping from each graph identifier to its category (external vocab, internal
-    vocab, or data).
+    a mapping from each GraphCategory to the list of graph identifiers in that category.
 
     Returns:
         CategorisedDataset with all graphs merged and categorised.
 
     """
     merged = Dataset()
-    category: dict[IdentifiedNode, GraphCategory] = {}
+    category: dict[GraphCategory, list[IdentifiedNode]] = {
+        GraphCategory.EXT_VOCAB: [],
+        GraphCategory.INT_VOCAB: [],
+        GraphCategory.DATA: [],
+    }
 
     # Load external vocabulary files
     for src in cfg.paths_vocab_ext:
         g = merged.graph(src.name)
         g.parse(src, format="turtle")
-        category[g.identifier] = GraphCategory.EXT_VOCAB
+        category[GraphCategory.EXT_VOCAB].append(g.identifier)
 
     # Load internal vocabulary files
     for src in cfg.paths_vocab_int:
         g = merged.graph(src.name)
         g.parse(src, format="turtle")
-        category[g.identifier] = GraphCategory.INT_VOCAB
+        category[GraphCategory.INT_VOCAB].append(g.identifier)
 
     # Load data files
     for src in cfg.paths_data:
         g = merged.graph(src.name)
         g.parse(src, format="turtle")
-        category[g.identifier] = GraphCategory.DATA
+        category[GraphCategory.DATA].append(g.identifier)
 
     return CategorisedDataset(ds=merged, category=category)
 
@@ -146,15 +149,12 @@ def run_inference_backend(
 
     closure = DeductiveClosure(OWLRL_Semantics)
 
-    # Run OWL-RL deductive closure just over external vocabulary
-    external_vocab_ids = [
-        gid
-        for gid, cat in categorised.category.items()
-        if cat == GraphCategory.EXT_VOCAB
-    ]
-
+    external_vocab_ids = categorised.category.get(GraphCategory.EXT_VOCAB, [])
     external_inf_id: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
     full_inf_id: URIRef = URIRef("inferences_full")  # type: ignore[bad-assignment]
+    # Run OWL-RL deductive closure over just the external vocabularies
+    inf_ext_vocab = categorised.ds.graph(external_inf_id)
+
     # Create a temporary dataset with just external vocab
     external_only = Graph()
 
@@ -162,17 +162,16 @@ def run_inference_backend(
     for gid in external_vocab_ids:
         external_only += categorised.ds.graph(gid)
 
-    categorised.category[external_inf_id] = GraphCategory.INF_EXT_VOCAB
     # Run inference and capture inferred triples
-    inf_ext_vocab = Graph(store=external_only.store)
     closure.expand(external_only, destination=inf_ext_vocab)
 
-    nremoved, _filter_count = filter_triples(
-        inf_ext_vocab, filterset_invalid_triples
-    )
+    nremoved, _filter_count = filter_triples(inf_ext_vocab, filterset_invalid_triples)
     dbg(f"Removed {nremoved} invalid triples from external inferences.")
 
-
+    # Add inferred external vocab triples to main dataset with category
+    if GraphCategory.INF_EXT_VOCAB not in categorised.category:
+        categorised.category[GraphCategory.INF_EXT_VOCAB] = []
+    categorised.category[GraphCategory.INF_EXT_VOCAB].append(external_inf_id)
     # Seems odd there's no more direct way to add a new graph...
     # Could use the ds.graph in the expand call, but it must share store
     # with the input - which would mean copying input triples inside the ds.
@@ -185,13 +184,13 @@ def run_inference_backend(
     # Here we don't need to copy because we are expanding into a new graph inside
     # the same Dataset, so same backing store.
     inf_full = categorised.ds.graph(full_inf_id)  # Graph(store=categorised.ds.store)
+    if GraphCategory.INF_FULL not in categorised.category:
+        categorised.category[GraphCategory.INF_FULL] = []
+    categorised.category[GraphCategory.INF_FULL].append(full_inf_id)
     closure.expand(categorised.ds, destination=inf_full)
-    categorised.category[full_inf_id] = GraphCategory.INF_FULL
-
 
     nremoved, _filter_count = filter_triples(inf_full, filterset_all)
     dbg(f"Removed {nremoved} invalid and unwanted triples from full inferences.")
-
 
     # Now remove all external vocab triples from the full inferences
     for gid in external_vocab_ids:
