@@ -4,39 +4,55 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
 from rdflib import Dataset
 
 UV_PATH = shutil.which("uv")
 if UV_PATH is None:
-    msg ="uv command not found in PATH"
+    msg = "uv command not found in PATH"
     raise RuntimeError(msg)
 UV_PATH = Path(UV_PATH)
-MERGE_CMD: tuple[Path, str, str, str] = (UV_PATH, "run", "pythinfer", "merge")
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-EG0_DIR = PROJECT_ROOT / "example_projects" / "eg0-basic"
 
-def test_merge_cli_eg0_basic() -> None:
-    """Test that merge CLI produces expected output for eg0-basic example."""
+
+@pytest.mark.parametrize(
+    ("project_name", "command"),
+    [
+        ("eg0-basic", "merge"),
+        ("eg0-basic", "infer"),
+    ],
+)
+def test_cli_command(
+    project_name: str,
+    command: str,
+) -> None:
+    """Test that CLI commands produce expected output for example projects."""
+    project_dir = PROJECT_ROOT / "example_projects" / project_name
+
     # Ensure the example directory exists
-    assert EG0_DIR.exists(), f"Example directory not found: {EG0_DIR}"
+    assert project_dir.exists(), f"Project directory not found: {project_dir}"
+
+    actual_file = "merged.trig" if (command == "merge") else "inferred_owlrl.trig"
+    expected_file = "expected_" + actual_file
 
     # Path to expected and actual output files
-    expected_file = EG0_DIR / "derived" / "expected_merged.trig"
-    actual_file = EG0_DIR / "derived" / "merged.trig"
+    expected_file_path = project_dir / "derived" / expected_file
+    actual_file_path = project_dir / "derived" / actual_file
 
     # Ensure expected file exists
-    assert expected_file.exists(), f"Expected file not found: `{expected_file}`"
+    assert expected_file_path.exists(), (
+        f"Expected file not found: `{expected_file_path}`"
+    )
 
     # Remove actual output if it exists from previous runs
-    if actual_file.exists():
-        actual_file.unlink()
+    if actual_file_path.exists():
+        actual_file_path.unlink()
 
-    # Run the merge command from the eg0-basic directory
-
+    # Run the command from the project directory
     # This is safe as no user-input is passed.
     result = subprocess.run(  # noqa: S603
-        MERGE_CMD,
-        cwd=EG0_DIR,
+        [str(UV_PATH), "run", "pythinfer", command],
+        cwd=project_dir,
         capture_output=True,
         text=True,
         check=False,
@@ -44,22 +60,22 @@ def test_merge_cli_eg0_basic() -> None:
 
     # Check the command succeeded
     assert result.returncode == 0, (
-        f"Merge command failed:\n"
+        f"`{command}` command failed:\n"
         f"STDOUT:\n{result.stdout}\n"
         f"STDERR:\n{result.stderr}"
     )
 
     # Verify the output file was created
-    assert actual_file.exists(), f"Output file not created: {actual_file}"
+    assert actual_file_path.exists(), f"Output file not created: {actual_file_path}"
 
     # Load both graphs and compare them
     expected_ds = Dataset()
-    expected_ds.parse(expected_file, format="trig")
+    expected_ds.parse(expected_file_path, format="trig")
 
     actual_ds = Dataset()
-    actual_ds.parse(actual_file, format="trig")
+    actual_ds.parse(actual_file_path, format="trig")
 
-       # Check that all quads in expected are in actual
+    # Check that all quads in expected are in actual
     expected_quads = set(expected_ds.quads())
     actual_quads = set(actual_ds.quads())
 
