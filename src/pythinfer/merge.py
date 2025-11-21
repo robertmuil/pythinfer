@@ -1,12 +1,18 @@
 """Merge RDF graphs from config, preserving named graph URIs for each input file."""
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
 
 from owlrl import DeductiveClosure, OWLRL_Semantics
 from rdflib import Dataset, Graph, IdentifiedNode, URIRef
 
+from pythinfer.infer import filter_triples, filterset_all, filterset_invalid_triples
 from pythinfer.inout import Project
+
+logger = logging.getLogger(__name__)
+info = logger.info
+dbg = debug = logger.debug
 
 
 def graph_lengths(ds: Dataset) -> dict[IdentifiedNode, int]:
@@ -147,37 +153,54 @@ def run_inference_backend(
         if cat == GraphCategory.EXT_VOCAB
     ]
 
-    if external_vocab_ids:
-        # Create a temporary dataset with just external vocab
-        external_only = Graph()
+    external_inf_id: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
+    full_inf_id: URIRef = URIRef("inferences_full")  # type: ignore[bad-assignment]
+    # Create a temporary dataset with just external vocab
+    external_only = Graph()
 
-        for gid in external_vocab_ids:
-            external_only += categorised.ds.graph(gid)
+    # TODO: consider using DatasetView with default_union=True instead of copying.
+    for gid in external_vocab_ids:
+        external_only += categorised.ds.graph(gid)
 
-        external_inf_id = URIRef("inferences_external")
-        categorised.category[external_inf_id] = GraphCategory.INF_EXT_VOCAB
-        # Run inference and capture inferred triples
-        inf_ext_vocab = Graph(store=external_only.store)
-        closure.expand(external_only, destination=inf_ext_vocab)
+    categorised.category[external_inf_id] = GraphCategory.INF_EXT_VOCAB
+    # Run inference and capture inferred triples
+    inf_ext_vocab = Graph(store=external_only.store)
+    closure.expand(external_only, destination=inf_ext_vocab)
 
-        # Seems odd there's no more direct way to add a new graph...
-        # Could use the ds.graph in the expand call, but it must share store
-        # with the input - which would mean copying input triples inside the ds.
-        # Really not sure which is superior.
-        g = categorised.ds.graph(external_inf_id)
-        for s, p, o in inf_ext_vocab:
-            g.add((s, p, o))
+    nremoved, _filter_count = filter_triples(
+        inf_ext_vocab, filterset_invalid_triples
+    )
+    dbg(f"Removed {nremoved} invalid triples from external inferences.")
+
+
+    # Seems odd there's no more direct way to add a new graph...
+    # Could use the ds.graph in the expand call, but it must share store
+    # with the input - which would mean copying input triples inside the ds.
+    # Really not sure which is superior.
+    g = categorised.ds.graph(external_inf_id)
+    for s, p, o in inf_ext_vocab:
+        g.add((s, p, o))
 
     # Run OWL-RL deductive closure over everything
-    full_inf_id = URIRef("inferences_full")
+    # Here we don't need to copy because we are expanding into a new graph inside
+    # the same Dataset, so same backing store.
     inf_full = categorised.ds.graph(full_inf_id)  # Graph(store=categorised.ds.store)
     closure.expand(categorised.ds, destination=inf_full)
     categorised.category[full_inf_id] = GraphCategory.INF_FULL
 
-    # Add inferred full triples to main dataset
-    # for s, p, o, c in inf_full.quads():
-    #     if c is not None:
-    #         g = categorised.ds.graph(c)
-    #         g.add((s, p, o))
-    #         if c not in categorised.category:
-    #             categorised.category[c] = GraphCategory.INF_FULL
+
+    nremoved, _filter_count = filter_triples(inf_full, filterset_all)
+    dbg(f"Removed {nremoved} invalid and unwanted triples from full inferences.")
+
+
+    # Now remove all external vocab triples from the full inferences
+    for gid in external_vocab_ids:
+        ext_graph = categorised.ds.graph(gid)
+        for s, p, o in ext_graph:
+            inf_full.remove((s, p, o))
+    # And all triples inferred over external vocab
+    if external_vocab_ids:
+        ext_inf_graph = categorised.ds.graph(external_inf_id)
+        for s, p, o in ext_inf_graph:
+            inf_full.remove((s, p, o))
+
