@@ -1,5 +1,6 @@
 """pythinfer CLI entry point."""
 
+import logging
 from pathlib import Path
 
 import typer
@@ -14,6 +15,31 @@ from pythinfer.merge import (
 )
 
 app = typer.Typer()
+logger = logging.getLogger(__name__)
+
+
+def configure_logging(verbose: bool) -> None:
+    """Configure logging level based on verbose flag."""
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-8s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+        force=True,  # Reconfigure if already configured
+    )
+
+
+@app.callback()
+def main_callback(
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose (DEBUG) logging output",
+    ),
+) -> None:
+    """Global options for pythinfer CLI."""
+    configure_logging(verbose)
 
 
 @app.command()
@@ -35,19 +61,13 @@ def merge(
 
     # Calculate lengths by category
     ext_len = sum(
-        len(cd.ds.graph(gid))
-        for gid, cat in cd.category.items()
-        if cat == GraphCategory.EXT_VOCAB
+        len(cd.ds.graph(gid)) for gid in cd.category.get(GraphCategory.EXT_VOCAB, [])
     )
     int_len = sum(
-        len(cd.ds.graph(gid))
-        for gid, cat in cd.category.items()
-        if cat == GraphCategory.INT_VOCAB
+        len(cd.ds.graph(gid)) for gid in cd.category.get(GraphCategory.INT_VOCAB, [])
     )
     data_len = sum(
-        len(cd.ds.graph(gid))
-        for gid, cat in cd.category.items()
-        if cat == GraphCategory.DATA
+        len(cd.ds.graph(gid)) for gid in cd.category.get(GraphCategory.DATA, [])
     )
 
     typer.secho(
@@ -96,27 +116,20 @@ def infer(
 
     # Calculate lengths by category
     ext_len = sum(
-        len(cd.ds.graph(gid))
-        for gid, cat in cd.category.items()
-        if cat.value == "external_vocab"
+        len(cd.ds.graph(gid)) for gid in cd.category.get(GraphCategory.EXT_VOCAB, [])
     )
     int_len = sum(
-        len(cd.ds.graph(gid))
-        for gid, cat in cd.category.items()
-        if cat.value == "internal_vocab"
+        len(cd.ds.graph(gid)) for gid in cd.category.get(GraphCategory.INT_VOCAB, [])
     )
     data_len = sum(
-        len(cd.ds.graph(gid)) for gid, cat in cd.category.items() if cat.value == "data"
+        len(cd.ds.graph(gid)) for gid in cd.category.get(GraphCategory.DATA, [])
     )
     ext_inf_len = sum(
         len(cd.ds.graph(gid))
-        for gid, cat in cd.category.items()
-        if cat.value == "external_inferences"
+        for gid in cd.category.get(GraphCategory.INF_EXT_VOCAB, [])
     )
     full_inf_len = sum(
-        len(cd.ds.graph(gid))
-        for gid, cat in cd.category.items()
-        if cat.value == "full_inferences"
+        len(cd.ds.graph(gid)) for gid in cd.category.get(GraphCategory.INF_FULL, [])
     )
 
     typer.secho(
@@ -129,7 +142,6 @@ def infer(
         fg=typer.colors.GREEN,
     )
     typer.secho("Named graph categories:", fg=typer.colors.YELLOW)
-    # table_data = [[gid, length] for gid, length in graph_lengths(cd.ds).items()]
     typer.secho(f"{'Graph':60s} Length", fg=typer.colors.YELLOW, bold=True)
     for gid, length in graph_lengths(cd.ds).items():
         typer.secho(f"{gid.n3():60s} {length: 4d}", fg=typer.colors.YELLOW)

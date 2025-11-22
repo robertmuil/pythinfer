@@ -6,17 +6,19 @@ from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 
-import owlrl
+from owlrl import DeductiveClosure
+from owlrl.OWLRL import OWLRL_Semantics
 from rdflib import OWL, RDF, RDFS, Graph, Literal, Node
 from rdflib.query import ResultRow
 
-from pythinfer.data import Query, load_sparql_inference_queries
+from pythinfer.data import Query
 
 DEF_MAX_REASONING_ROUNDS = 5
 SCRIPT_DIR = Path(__file__).parent
 logger = logging.getLogger(__name__)
 info = logger.info
 dbg = debug = logger.debug
+
 
 def apply_manual_sparql_inference(g: Graph, queries: list[Query]) -> Graph:
     """Apply manual SPARQL-based inference rules to the graph.
@@ -47,10 +49,11 @@ def apply_manual_sparql_inference(g: Graph, queries: list[Query]) -> Graph:
     return g_infer
 
 
-def apply_owl_inference(graph: Graph) -> Graph:
+def apply_owlrl_inference(graph: Graph, destination_graph: Graph) -> None:
     """Apply OWL2 RL inference rules using the Owlrl library.
 
-    TODO: can we bring anything useful from here into our merge.py inference?
+    NB: The destination graph must have the *same store* as the input graph. This
+    is required by the `owlrl` library for some reason.
 
     This function performs complete OWL 2 RL reasoning, which includes:
     - RDFS inference (subclass, subproperty, domain, range)
@@ -59,37 +62,38 @@ def apply_owl_inference(graph: Graph) -> Graph:
 
     Args:
         graph: RDF graph to apply reasoning to
+        destination_graph: Optional graph to store the inferred triples
 
     Returns:
-        Graph: new graph including only the inferred triples
+        None
+            (inferred triples are added to destination_graph)
 
     """
     ntriples_orig = len(graph)
-    info("  Starting OWL reasoning on graph with %d triples", ntriples_orig)
+    info(
+        "  Applying OWL inference from `%s` into `%s`",
+        graph.identifier,
+        destination_graph.identifier,
+    )
+    # Apply OWL 2 RL reasoning - this will add inferred triples to destination_graph
+    DeductiveClosure(OWLRL_Semantics).expand(graph, destination_graph)  # pyright: ignore[reportUnknownMemberType]
+    ntriples_inferred = len(destination_graph)
 
-    # Create a copy of the graph to avoid modifying the input
-    # Add and remove a triple to force different backing store... is there a better way?
-    inferred_graph = Graph(store=graph.store)
+    nremoved, _ = filter_triples(destination_graph, filterset_invalid_triples)
 
-    # Apply OWL 2 RL reasoning - this will add inferred triples to inferred_graph
-    owlrl.DeductiveClosure(owlrl.OWLRL_Semantics).expand(graph, inferred_graph)
-    ntriples_inferred = len(inferred_graph)
-
-    # Add the two together and count because they may overlap... but this is
-    # not efficient...
-    g_combined = graph + inferred_graph
-    ntriples_final = len(g_combined)
     info("  Original triples:       %d", ntriples_orig)
-    info("  Inferred triples:       %d", ntriples_inferred)
-    info("  Final triples:          %d", ntriples_final)
+    info("  Inferences, raw:        %d", ntriples_inferred)
+    info("  Invalid inferences:     %d", nremoved)
 
-    return inferred_graph
 
 ###
 # The following are triple-based filter functions.
 # All must except Node,Node,Node because that is what rdflib provides when iterating
 # over a graph. The package does not prevent use of types that are invalid in RDF.
 ###
+_FilterFunction = Callable[[Node, Node, Node], bool]
+
+
 def _subject_is_literal(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
     """Identify when the subject is a Literal, which is invalid in RDF.
 
@@ -97,17 +101,11 @@ def _subject_is_literal(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
     """
     return isinstance(s, Literal)
 
+
 def _object_is_empty_string(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
     """Empty strings would usually be better represented as missing values."""
-    return (isinstance(o, Literal) and str(o) == "")
+    return isinstance(o, Literal) and str(o) == ""
 
-def _reflexive_sameas(s: Node, p: Node, o: Node) -> bool:
-    """Reflexive owl:sameAs statements are redundant and useless."""
-    return ((p == OWL.sameAs) and (s == o))
-
-def _reflexive_equivalentclass(s: Node, p: Node, o: Node) -> bool:
-    """Reflexive owl:equivalentClass statements are redundant and useless."""
-    return ((p == OWL.equivalentClass) and (s == o))
 
 def _redundant_reflexives(s: Node, p: Node, o: Node) -> bool:
     """Reflexive statements that are redundant and useless, such as sameAs."""
@@ -121,7 +119,9 @@ def _redundant_reflexives(s: Node, p: Node, o: Node) -> bool:
             RDFS.subPropertyOf,
         }
     )
-def _redundant_thing_declarations(s: Node, p: Node, o: Node) -> bool:
+
+
+def _redundant_thing_declarations(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
     """Identify useless declarations that `s` is a owl:Thing or a subclass of it."""
     return (o == OWL.Thing) and (p in {RDF.type, RDFS.subClassOf})
 
@@ -129,23 +129,22 @@ def _redundant_thing_declarations(s: Node, p: Node, o: Node) -> bool:
 # Filterset for invalid RDF triples, which are logically but not syntactically valid.
 # This can occur when the reasoner encounters malformed data or makes invalid
 # inferences.
-filterset_invalid_triples: list[Callable[[Node, Node, Node], bool]] = [
-    _subject_is_literal
-]
+filterset_invalid_triples: list[_FilterFunction] = [_subject_is_literal]
 # Filterset for unwanted triples that bloat the graph but are not invalid.
-filterset_unwanted_triples: list[Callable[[Node, Node, Node], bool]] = [
+filterset_unwanted_triples: list[_FilterFunction] = [
     _object_is_empty_string,
     _redundant_reflexives,
     _redundant_thing_declarations,
 ]
 # Combined filterset
-filterset_all: list[Callable[[Node, Node, Node], bool]] = (
+filterset_all: list[_FilterFunction] = (
     filterset_invalid_triples + filterset_unwanted_triples
 )
 
+
 def filter_triples(
-    graph: Graph, filter_functions: list[Callable[[Node, Node, Node], bool]]
-) -> tuple[int, dict[Callable[[Node, Node, Node], bool], int]]:
+    graph: Graph, filter_functions: list[_FilterFunction]
+) -> tuple[int, dict[_FilterFunction, int]]:
     """Filter triples from the graph using the provided filter functions.
 
     ***NB: graph is modified in place.***
@@ -169,29 +168,30 @@ def filter_triples(
     """
     norig = len(graph)
     # Make a list of triples to remove - do not remove while iterating
-    to_remove = []
-    removal_counts: defaultdict[Callable, int] = defaultdict(int)
+    to_remove: list[tuple[Node, Node, Node]] = []
+    removal_counts: defaultdict[_FilterFunction, int] = defaultdict(int)
     for s, p, o in graph:
         for filter_func in filter_functions:
             if filter_func(s, p, o):
                 to_remove.append((s, p, o))
                 removal_counts[filter_func] += 1
 
-    logger.info(
+    info(
         "%d filters identified %d triples for removal:",
         len(filter_functions),
         sum(removal_counts.values()),
     )
     if to_remove:
         for func, count in removal_counts.items():
-            logger.info("  - %d triples identified by %s", count, func.__name__)
+            info("  - %d triples identified by %s", count, func.__name__)
         for triple in to_remove:
             graph.remove(triple)
 
     nremoved = norig - len(graph)
     if nremoved > 0:
-        logger.info("%d triples removed from graph", nremoved)
+        info("%d triples removed from graph", nremoved)
     return nremoved, removal_counts
+
 
 def apply_all_inference(
     original_graph: Graph,
@@ -215,7 +215,7 @@ def apply_all_inference(
     """
     nrounds = 0
     info("Applying OWL inference, round %d...", nrounds)
-    inferences = apply_owl_inference(original_graph)
+    inferences = apply_owlrl_inference(original_graph)
     info("OWL inference added %d triples", len(inferences))
     g_new = original_graph + inferences
 
@@ -228,12 +228,12 @@ def apply_all_inference(
         info(
             "SPARQL inference added %d new triples (generated %d)",
             nadded_sparql,
-            len(inferences)
+            len(inferences),
         )
         nrounds += 1
 
         info("Applying OWL inference, round %d...", nrounds)
-        inferences = apply_owl_inference(g_new)
+        inferences = apply_owlrl_inference(g_new)
         info("OWL inference added %d new triples", len(inferences))
         g_new = g_new + inferences
 
@@ -266,9 +266,6 @@ def apply_all_inference(
     # for triple in datatype_triples:
     #     g_new.remove(triple)
 
-
     info("Graph now contains %d triples", len(g_new))
 
     return g_new
-
-

@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 .coverage
+typings/**/*.pyi
 
 # Virtual environments
 .venv

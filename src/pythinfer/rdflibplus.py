@@ -21,10 +21,12 @@ class DatasetView(Dataset):
     same underlying store is used, so changes to the graphs in the view are reflected
     in the original Dataset, and vice versa.
 
-    Removing a graph from the view does *not* remove it from the original Dataset, it
-    just makes it invisible in the view. This is a slight deviation Dataset's API, which
-    allows graphs to be removed entirely. To do that, simply remove the graph from the
-    original Dataset.
+    Adding and removing graphs from the view abides by the original Dataset API, except
+    that only graphs in the included set can be accessed. Trying to add or remove a
+    graph not in the included set will raise a PermissionError.
+
+    To include or exclude graphs from the view after creation, use the `include_graph`
+    and `exclude_graph` methods.
     """
 
     def __init__(
