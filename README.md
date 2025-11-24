@@ -48,6 +48,10 @@ The limit on ancestors should be:
 1. don't go beyond 10 folders
 1. don't traverse across file systems
 
+If no project file found, it should do a search for RDF files in current directory.
+
+There should also be a command to generate a new project file, based on the above search. An option should be available to automatically output a project file with the above search, best likely default-true.
+
 ## Merging
 
 Merging of multiple graphs should preserve the source, ideally using the named graph of a quad.
@@ -79,14 +83,37 @@ No experience with this yet.
 
 Because Jena provides a reference implementation, it might be useful to be able to call out to the Jena suite of command line utilities (like `riot`) for manipulation of the graphs (including inference).
 
+## Querying
+
+A simple helper command should allow easily specifying a query, or queries, and these should be executed against the latest full inferred graph.
+
+In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
+
+## Data Structures
+
+### DatasetView
+
+Intended to give a restricted (filtered) view on a Dataset by only providing access to explicitly selected graphs, enabling easy handling of a subset of graphs without copying data to new graphs.
+
+Specifications:
+1. A DatasetView may be read/write or readonly.
+1. Graphs MUST be explicitly included to be visible, otherwise they are excluded (and invisible).
+1. Attempted access to excluded graphs MUST raise a PermissionError.
+1. Default graph MUST therefore be excluded if the underlying Dataset has `default_union` set (because otherwise this would counterintuitively render triples from excluded graphs visible to the view).
+
+
 ## Next Steps
 
-1. get inference actually working properly into the various named graphs
-1. remove invalid triples after inference (e.g. literals as subjects)
-1. remove unnecessary triples after inference (e.g. `owl:sameAs` reflexive triples)
-1. incorporate external vocabs such as SKOS etc. by first running inference over external, doing inference, and then removing all the TBox full-inferred triples. This will deal with the unwanted inferences also that we're currently manually removing.
+1. implement pattern support for input files
+1. implement categoriseddataset as a subclass not a container
+1. implement search for input if no project files found
+1. implement project creation command
 1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
 1. allow SPARQL CONSTRUCTs as rules for inference
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
 1. consider using a proper config language like dhal(?) instead of yaml
 1. consider simplifying categories of input to just be 'external' and 'internal' - do we really need to distinguish between internal vocabs and data?
+1. add query command
+
+
+
