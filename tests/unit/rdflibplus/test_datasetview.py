@@ -207,7 +207,7 @@ def test_iterating_over_dataset(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) ->
 # is Test-Driven Development.
 
 
-def test_include_graph(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
+def test_graph_method(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(
         original_ds=ds,
         included_graph_ids=[
@@ -215,40 +215,29 @@ def test_include_graph(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
             g2.identifier,
         ],
     )
-    # Try to include a graph in the view
-    ds_view.include_graph(g1.identifier)
-    assert len(ds_view.graph(g1.identifier)) == 1
+    # Accessing included graphs should work
+    graph0 = ds_view.graph(g0.identifier)
+    assert isinstance(graph0, Graph)
+    assert len(graph0) == 0
+    assert graph0 == g0
 
-    # Check that the original dataset is unaffected
-    assert len(ds.graph(g1.identifier)) == 1
+    graph2 = ds_view.graph(g2.identifier)
+    assert isinstance(graph2, Graph)
+    assert len(graph2) == 3
+    assert graph2 == g2
 
-    # Now the view should have 4 triples total
-    assert len(ds_view) == 4
-
-    # Now try including a graph that was already present
-    ds_view.include_graph(g2.identifier)
-    # The number of triples should remain the same
-    assert len(ds_view) == 4
-
-    # Now try adding a totally new graph
-    g4 = Graph(identifier=EX.graph4)
-    g4.add((EX.subject10, EX.predicate10, Literal("object10")))
-
-    # Should first fail because g4 is not in the include list
+    # Accessing excluded graphs should raise an error
     with pytest.raises(PermissionError):
-        ds_view.graph(g4.identifier)
+        ds_view.graph(g1.identifier)
 
-    # But if we include first, it should work
-    ds_view.include_graph(g4.identifier)
-    ds_view.graph(g4.identifier)
+    # Accessing the default graph should raise an error because it is not
+    # explicitly included
+    with pytest.raises(PermissionError):
+        ds_view.graph(ds.default_graph.identifier)
 
-    # Test that it has worked:
-    assert len(ds_view.graph(g4.identifier)) == 1
-    assert len(ds_view) == 5
-
-    # Test it has also been added to the original dataset
-    assert len(ds.graph(g4.identifier)) == 1
-    assert len(ds) == 10
+    # Make sure that the deprecated add_graph method behaves the same way
+    with pytest.raises(PermissionError):
+        ds_view.add_graph(g1.identifier)
 
 
 def test_remove_graph(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
