@@ -110,6 +110,18 @@ For the View, we want to adopt as little difference to APIs and expectations as 
 
 So, there are *no* methods for including or excluding a graph once a view is created, because the behaviour of such methods would be very difficult to define. If the included graphs needs to be changed, a new DatasetView should simply be created, which is light-weight because no copying is involved.
 
+#### Adding and removing content
+
+Adding a new graph is not possible through the View unless it was in the list of included graphs at construction, because it only allows accessing included graphs. If an identifier is in the original included list, but has no corresponding triples in the underlying triplestore, this is allowed, and subsequent addition of a triple against that graph identifier would defacto essentially be the 'addition' of a graph to the store.
+
+Removing a graph likewise performs exactly as if performed on the underlying Dataset, unless the graph's identifier is not in the inclusion list, in which case it generates a `PermissionError`. In either case, the graph remains in the inclusion list.
+
+Adding and removing triples is possible (unless the View is set to read-only, which may not be implemented) as long as the triples are added to a graph in the inclusion list.
+
+Adding or removing a triple without specifying the graph would go to the default graph and the same check applies: if the default graph is in the inclusion list, this is allowed, otherwise it will raise a `PermissionError`.
+
+This is all following the principle of altering the API of `Dataset` as little as possible.
+
 ## Next Steps
 
 1. implement pattern support for input files
@@ -121,6 +133,7 @@ So, there are *no* methods for including or excluding a graph once a view is cre
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
 1. consider using a proper config language like dhal(?) instead of yaml
 1. consider simplifying categories of input to just be 'external' and 'internal' - do we really need to distinguish between internal vocabs and data?
+1. remove CategorisedDataset - use-case is solved with multiple DatasetViews.
 1. add query command
 
 

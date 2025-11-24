@@ -279,12 +279,26 @@ def test_add_triple(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     # Check that the original dataset reflects the change
     assert len(ds.graph(g0.identifier)) == 1
 
-    # Adding a triple to a graph not included in the view should fail, because
-    # it would be counter-intuitive to allow this.
+    # Adding a triple to a graph not included in the view should fail
     with pytest.raises(PermissionError):
         ds_view.graph(g1.identifier).add(
             (EX.subjectY, EX.predicateY, Literal("objectY")),
         )
+
+    # This holds for the default graph as well
+    with pytest.raises(PermissionError):
+        ds_view.graph(ds_view.default_graph.identifier).add(
+            (EX.subjectY, EX.predicateY, Literal("objectY")),
+        )
+
+    # Adding directly to included graphs should work
+    ds_view.add((EX.subjectY, EX.predicateY, Literal("objectY"), g0.identifier))
+
+    # But adding directly to the View also fails for excluded graphs
+    with pytest.raises(PermissionError):
+        ds_view.add((EX.subjectY, EX.predicateY, Literal("objectY"), g1.identifier))
+    with pytest.raises(PermissionError):
+        ds_view.add((EX.subjectY, EX.predicateY, Literal("objectY")))
 
 
 def test_remove_triple(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
