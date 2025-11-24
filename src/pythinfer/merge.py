@@ -81,40 +81,6 @@ def merge_graphs(
     return merged, external_graph_ids
 
 
-def create_final_dataset(
-    ds: Dataset,
-    external_graph_ids: list[IdentifiedNode],
-) -> DatasetView:
-    """Create a final dataset view excluding external graphs.
-
-    Returns a DatasetView containing only internal graphs:
-    - Internal vocabularies
-    - Data files
-    - Full inferences
-
-    Excludes:
-    - External vocabulary graphs
-    - External inferences
-
-    The returned view shares the same underlying store as the input Dataset,
-    so no triples are copied. The view's serialize() method will only output
-    the included graphs.
-
-    Args:
-        ds: The full Dataset including all graphs.
-        external_graph_ids: List of graph identifiers to exclude.
-
-    Returns:
-        DatasetView with only internal (non-external) graphs.
-
-    """
-    exclude_ids = set(external_graph_ids)
-    internal_graph_ids = [
-        g.identifier for g in ds.graphs() if g.identifier not in exclude_ids
-    ]
-    return DatasetView(ds, internal_graph_ids)
-
-
 def run_inference_backend(
     ds: Dataset,
     external_graph_ids: list[IdentifiedNode],

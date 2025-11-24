@@ -60,6 +60,33 @@ class DatasetView(Dataset):
             total += len(super().graph(gid))
         return total
 
+    def invert(self) -> "DatasetView":
+        """Return a new DatasetView with all graphs excluded from this view.
+
+        Creates a new view that includes only the graphs that are NOT in this
+        view's included set. This is useful for separating internal and external
+        graphs, or for creating complementary views of a dataset.
+
+        Returns:
+            DatasetView with all graphs from the store except those in this view.
+
+        Example:
+            >>> ds = Dataset()
+            >>> g1 = ds.graph(URIRef("http://example.org/g1"))
+            >>> g2 = ds.graph(URIRef("http://example.org/g2"))
+            >>> view = DatasetView(ds, [URIRef("http://example.org/g1")])
+            >>> inverted = view.invert()
+            >>> # inverted now contains only g2
+
+        """
+        all_graph_ids = [ctx.identifier for ctx in self.store.contexts()]
+        excluded_ids = [
+            gid for gid in all_graph_ids if gid not in self.included_graph_ids
+        ]
+        # Create new DatasetView from a temporary Dataset wrapper with same store
+        temp_ds = Dataset(store=self.store, default_union=self.default_union)
+        return DatasetView(temp_ds, excluded_ids)
+
     def graphs(
         self,
         triple: _TripleOrQuadPatternType | None = None,

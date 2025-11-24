@@ -8,11 +8,11 @@ from rdflib import Dataset, IdentifiedNode
 
 from pythinfer.inout import Project, discover_project
 from pythinfer.merge import (
-    create_final_dataset,
     graph_lengths,
     merge_graphs,
     run_inference_backend,
 )
+from pythinfer.rdflibplus import DatasetView
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
@@ -73,7 +73,8 @@ def merge(
 
     output_ds = ds
     if exclude_external:
-        output_ds = create_final_dataset(ds, external_graph_ids)
+        external_view = DatasetView(ds, external_graph_ids)
+        output_ds = external_view.invert()
     output_ds.serialize(destination=output, format="trig", canon=True)
     typer.echo(f"Exported {len(output_ds)} triples to '{output}'")
 
@@ -102,7 +103,8 @@ def infer(
         output = config_path.parent / "derived" / f"inferred_{backend}.trig"
         output.parent.mkdir(parents=True, exist_ok=True)
 
-    final_ds = create_final_dataset(ds, all_external_ids)
+    external_view = DatasetView(ds, all_external_ids)
+    final_ds = external_view.invert()
     final_ds.serialize(destination=output, format="trig")
     typer.echo(
         f"Exported {len(final_ds)} inferred triples to '{output}'",
