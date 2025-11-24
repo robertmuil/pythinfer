@@ -60,6 +60,16 @@ class DatasetView(Dataset):
             total += len(super().graph(gid))
         return total
 
+    def graphs(
+        self,
+        triple: _TripleOrQuadPatternType | None = None,
+    ) -> Generator[Graph, None, None]:
+        """Return graphs in this view, optionally filtered by triple pattern."""
+        # Get all graphs from parent, but only yield those in our included list
+        for g in super().graphs(triple):
+            if g.identifier in self.included_graph_ids:
+                yield g
+
     def quads(
         self,
         quad: _TripleOrQuadPatternType | None = None,
@@ -81,11 +91,27 @@ class DatasetView(Dataset):
             # If context is specified, only return triples from that graph
             # if it's in the included graphs
             if context.identifier in self.included_graph_ids:
-                yield from super().triples(triple_or_quad, context=context)
+                yield from context.triples(triple_or_quad[0:3])
         else:
-            # If no context specified, return triples from all included graphs
-            for gid in self.included_graph_ids:
-                yield from super().triples(triple_or_quad, context=self.graph(gid))
+            # Check if a quad pattern was passed (4 elements with graph ID)
+            if len(triple_or_quad) == 4 and triple_or_quad[3] is not None:
+                # Quad pattern with specific graph - only query that graph
+                graph_id = triple_or_quad[3]
+                if hasattr(graph_id, "identifier"):
+                    graph_id = graph_id.identifier  # type: ignore[union-attr]
+                if graph_id in self.included_graph_ids:
+                    g = super().graph(graph_id)
+                    yield from g.triples(triple_or_quad[:3])  # type: ignore[arg-type]
+            else:
+                # No context and no graph specified in pattern - return from all
+                # Call triples() on each graph directly to avoid triggering rdflib's
+                # internal contexts() enumeration which tries to access default graph.
+                triple_pattern = (
+                    triple_or_quad[:3] if len(triple_or_quad) == 4 else triple_or_quad
+                )  # type: ignore[misc]
+                for gid in self.included_graph_ids:
+                    g = super().graph(gid)
+                    yield from g.triples(triple_pattern)  # type: ignore[arg-type]
 
     def add(
         self: "DatasetView",
@@ -142,3 +168,35 @@ class DatasetView(Dataset):
             msg = f"Cannot remove graph {graph_id}: not visible in this view."
             raise PermissionError(msg)
         return super().remove_graph(g)
+
+    def serialize(
+        self,
+        destination: str | None = None,
+        format: str = "xml",  # noqa: A002
+        base: str | None = None,
+        encoding: str | None = None,
+        **args: object,
+    ) -> str:
+        """Serialize the DatasetView to a destination.
+
+        Only graphs in the included_graph_ids will be serialized. This requires
+        creating a temporary Dataset to work around rdflib's serializers accessing
+        the store directly instead of using our overridden quads() method.
+
+        The signature matches rdflib.Dataset.serialize().
+        """
+        # Create a temporary dataset with only the included graphs.
+        # This is necessary because rdflib serializers bypass our quads() override
+        # and access the store directly.
+        temp_ds = Dataset()
+        for s, p, o, c in self.quads():
+            temp_ds.add((s, p, o, c))  # type: ignore[arg-type]
+
+        # Serialize the temporary dataset
+        return temp_ds.serialize(  # type: ignore[return-value]
+            destination=destination,
+            format=format,
+            base=base,
+            encoding=encoding,
+            **args,
+        )
