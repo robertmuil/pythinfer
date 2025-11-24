@@ -99,9 +99,18 @@ def test_datasetview_basic_usage(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -
     )
 
     assert len(ds_view.graph(g1.identifier)) == 1
-    assert len(ds_view.graph(g2.identifier)) == 0
     assert len(ds_view.graph(g3.identifier)) == 5
     assert len(ds_view) == 6
+
+    # Check that excluded graph is indeed excluded
+    with pytest.raises(PermissionError):
+        ds_view.graph(g2.identifier)
+
+    # Also check that works when providing full Graph object
+    assert len(ds_view.graph(g1)) == 1
+    assert len(ds_view.graph(g3)) == 5
+    with pytest.raises(PermissionError):
+        ds_view.graph(g2)
 
 
 def test_datasetview_different_selection(
@@ -118,10 +127,12 @@ def test_datasetview_different_selection(
         ],
     )
 
-    assert len(ds_view2.graph(g1.identifier)) == 0
     assert len(ds_view2.graph(g2.identifier)) == 3
     assert len(ds_view2.graph(g3.identifier)) == 5
     assert len(ds_view2) == 8
+
+    with pytest.raises(PermissionError):
+        ds_view2.graph(g1.identifier)
 
 
 def test_quads_method(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) -> None:

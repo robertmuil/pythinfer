@@ -11,8 +11,6 @@ from rdflib.graph import (
 )
 
 
-# NB: this is *not at all* complete:
-# TODO: override more Dataset methods to ensure correct behaviour.
 class DatasetView(Dataset):
     """A Dataset subclass that acts as a restricted view on selected named graphs.
 
@@ -47,11 +45,11 @@ class DatasetView(Dataset):
         base: str | None = None,
     ) -> Graph:
         """Get a named graph from the view."""
-        if identifier in self.included_graph_ids:
+        _id = identifier.identifier if isinstance(identifier, Graph) else identifier
+        if _id in self.included_graph_ids:
             return super().graph(identifier, base=base)
-
-        _id = identifier if not isinstance(identifier, Graph) else identifier.identifier
-        return Graph(identifier=_id, base=base)  # empty graph
+        msg = f"Graph {_id} is not visible in this view."
+        raise PermissionError(msg)
 
     def __len__(self) -> int:
         """Get the total number of triples in the view."""
