@@ -4,10 +4,12 @@ from collections.abc import Generator
 
 from rdflib import Dataset, Graph, IdentifiedNode
 from rdflib.graph import (
+    _ContextIdentifierType,  # pyright: ignore[reportPrivateUsage]
     _ContextType,  # pyright: ignore[reportPrivateUsage]
-    _OptionalIdentifiedQuadType,
-    _TripleOrQuadPatternType,
-    _TripleType,
+    _OptionalIdentifiedQuadType,  # pyright: ignore[reportPrivateUsage]
+    _TripleOrOptionalQuadType,  # pyright: ignore[reportPrivateUsage]
+    _TripleOrQuadPatternType,  # pyright: ignore[reportPrivateUsage]
+    _TripleType,  # pyright: ignore[reportPrivateUsage]
 )
 
 
@@ -84,3 +86,59 @@ class DatasetView(Dataset):
             # If no context specified, return triples from all included graphs
             for gid in self.included_graph_ids:
                 yield from super().triples(triple_or_quad, context=self.graph(gid))
+
+    def add(
+        self: "DatasetView",
+        triple_or_quad: _TripleOrOptionalQuadType,
+    ) -> "DatasetView":
+        """Add a triple or quad to the store.
+
+        if a triple is given it is added to the default context
+
+        If the graph is not in the included set, raise PermissionError.
+        """
+        graph_id = self.default_graph.identifier
+        if len(triple_or_quad) == 4:  # noqa: PLR2004
+            graph_id = triple_or_quad[3]
+        if graph_id not in self.included_graph_ids:
+            msg = f"Cannot add to graph {graph_id}: not visible in this view."
+            raise PermissionError(msg)
+        return super().add(triple_or_quad)
+
+    def remove(
+        self: "DatasetView",
+        triple_or_quad: _TripleOrQuadPatternType,
+    ) -> "DatasetView":
+        """Remove a triple or quads.
+
+        If the graph is not in the included set, raise PermissionError.
+        The graph is either that specified explicitly in the quad, or the default graph
+
+        Otherwise, behaviour is as per Dataset.remove():
+        If a triple is given it is removed from all named graphs.
+        If a quad is given it is removed from the specified named graph.
+
+        """
+        graph_id = self.default_graph.identifier
+        if len(triple_or_quad) == 4:  # noqa: PLR2004
+            graph_id = triple_or_quad[3]
+        if graph_id not in self.included_graph_ids:
+            msg = f"Cannot add to graph {graph_id}: not visible in this view."
+            raise PermissionError(msg)
+        return super().remove(triple_or_quad)
+
+    def remove_graph(
+        self,
+        g: _ContextIdentifierType | _ContextType | str | None,
+    ) -> "DatasetView":
+        """Remove a graph from the store, if visible in this view."""
+        graph_id = g
+        if isinstance(g, Graph):
+            graph_id = g.identifier
+        elif g is None:
+            graph_id = self.default_graph.identifier
+
+        if graph_id not in self.included_graph_ids:
+            msg = f"Cannot remove graph {graph_id}: not visible in this view."
+            raise PermissionError(msg)
+        return super().remove_graph(g)

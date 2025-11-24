@@ -214,10 +214,6 @@ def test_iterating_over_dataset(g1: Graph, g2: Graph, g3: Graph, ds: Dataset) ->
     assert triples == expected_triples
 
 
-# Below here are currently going to fail because of missing implementation, so this
-# is Test-Driven Development.
-
-
 def test_graph_method(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(
         original_ds=ds,
@@ -331,5 +327,16 @@ def test_remove_triple(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     # Removing a triple from a graph not included in the view should fail
     with pytest.raises(PermissionError):
         ds_view.graph(g1.identifier).remove(
+            (EX.subject1, EX.predicate1, Literal("object1")),
+        )
+
+    # Also check that removing directly from the view fails for excluded graphs
+    with pytest.raises(PermissionError):
+        ds_view.remove(
+            (EX.subject1, EX.predicate1, Literal("object1"), g1.identifier),
+        )
+    # This holds for the default graph as well
+    with pytest.raises(PermissionError):
+        ds_view.remove(
             (EX.subject1, EX.predicate1, Literal("object1")),
         )
