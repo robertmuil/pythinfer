@@ -251,20 +251,37 @@ def test_remove_graph(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     ds_view = DatasetView(
         original_ds=ds,
         included_graph_ids=[
-            g0.identifier,
+            g1.identifier,
             g2.identifier,
         ],
     )
-    # Try to remove a graph from the view
-    ds_view.remove_graph(g2.identifier)
-    assert len(ds_view.graph(g2.identifier)) == 0
+    n_orig_ds = len(ds)
+    assert len(ds_view) == 4
+    # Try to remove a graph from the view by identifier
+    ds_view.remove_graph(g1.identifier)
+    assert len(ds_view.graph(g1.identifier)) == 0
+    assert len(ds_view) == 3
 
     # Check that the original dataset is also affected
+    assert len(ds.graph(g1.identifier)) == 0
+    assert len(ds) == n_orig_ds - 1
+
+    # Try to remove a graph from the view by Graph object
+    ds_view.remove_graph(g2)
+    assert len(ds_view.graph(g2.identifier)) == 0
+    assert len(ds_view) == 0
     assert len(ds.graph(g2.identifier)) == 0
+    assert len(ds) == n_orig_ds - 4
 
     # Now check that attempting to remove a graph not in the view raises an error
     with pytest.raises(PermissionError):
-        ds_view.remove_graph(g1.identifier)
+        ds_view.remove_graph(g0.identifier)
+
+    # Now check that None or default graph raises an error
+    with pytest.raises(PermissionError):
+        ds_view.remove_graph(None)
+    with pytest.raises(PermissionError):
+        ds_view.remove_graph(ds_view.default_graph)
 
 
 def test_add_triple(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
@@ -323,6 +340,7 @@ def test_remove_triple(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     assert len(ds_view.graph(g2.identifier)) == 2
     # Check that the original dataset reflects the change
     assert len(ds.graph(g2.identifier)) == 2
+    assert len(ds_view) == 2
 
     # Removing a triple from a graph not included in the view should fail
     with pytest.raises(PermissionError):
@@ -340,3 +358,12 @@ def test_remove_triple(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
         ds_view.remove(
             (EX.subject1, EX.predicate1, Literal("object1")),
         )
+
+    # Now check removing directly from included graphs works
+    assert len(ds_view.graph(g2.identifier)) == 2
+    ds_view.remove(
+        (EX.subject3, EX.predicate3, Literal("object3"), g2.identifier),
+    )
+    assert len(ds_view.graph(g2.identifier)) == 1
+    assert len(ds.graph(g2.identifier)) == 1
+    assert len(ds_view) == 1
