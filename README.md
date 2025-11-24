@@ -100,7 +100,15 @@ Specifications:
 1. Graphs MUST be explicitly included to be visible, otherwise they are excluded (and invisible).
 1. Attempted access to excluded graphs MUST raise a PermissionError.
 1. Default graph MUST therefore be excluded if the underlying Dataset has `default_union` set (because otherwise this would counterintuitively render triples from excluded graphs visible to the view).
+1. A DatasetView SHOULD otherwise operate in exactly the same way as the underlying Dataset.
 
+#### Inclusion and Exclusion of Graphs
+
+`rdflib`'s handling of access, addition, and deletion of named graphs has some unintuitive nuance. See [this issue](https://github.com/robertmuil/rdflib/issues/18) for the most relevant example.
+
+For the View, we want to adopt as little difference to APIs and expectations as possible, which unfortunately means taking on the unintuitive behaviours.
+
+So, there are *no* methods for including or excluding a graph once a view is created, because the behaviour of such methods would be very difficult to define. If the included graphs needs to be changed, a new DatasetView should simply be created, which is light-weight because no copying is involved.
 
 ## Next Steps
 
