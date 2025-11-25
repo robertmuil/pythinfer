@@ -125,7 +125,9 @@ def _redundant_reflexives(s: Node, p: Node, o: Node) -> bool:
 
 def _redundant_thing_declarations(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
     """Identify useless declarations that `s` is a owl:Thing or a subclass of it."""
-    return (o == OWL.Thing) and (p in {RDF.type, RDFS.subClassOf})
+    return (o == OWL.Thing) and (
+        p in {RDF.type, RDFS.subClassOf, RDFS.domain, RDFS.range}
+    )
 
 
 # Filterset for invalid RDF triples, which are logically but not syntactically valid.
