@@ -8,10 +8,12 @@ from pathlib import Path
 
 from owlrl import DeductiveClosure
 from owlrl.OWLRL import OWLRL_Semantics
-from rdflib import OWL, RDF, RDFS, Graph, Literal, Node
+from rdflib import OWL, RDF, RDFS, Dataset, Graph, IdentifiedNode, Literal, Node
 from rdflib.query import ResultRow
 
 from pythinfer.data import Query
+from pythinfer.merge import IRI_EXTERNAL_INFERENCES, IRI_FULL_INFERENCES
+from pythinfer.rdflibplus import DatasetView
 
 DEF_MAX_REASONING_ROUNDS = 5
 SCRIPT_DIR = Path(__file__).parent
@@ -193,79 +195,190 @@ def filter_triples(
     return nremoved, removal_counts
 
 
-def apply_all_inference(
-    original_graph: Graph,
-    sparql_queries: list[Query],
-    max_rounds: int = DEF_MAX_REASONING_ROUNDS,
+def _generate_external_inferences(
+    ds: Dataset, external_graph_ids: list[IdentifiedNode]
 ) -> Graph:
-    """Apply all inference methods to the graph.
+    """Generate inferences from external vocabularies only (step 2).
 
-    This includes SPARQL-based inference, and OWL reasoning.
-    Will continue to apply rounds of inference until no new triples are inferred, or
-    the maximum number of rounds is reached.
+    This creates the "noise floor" of inferences that come from external
+    vocabularies like OWL, RDFS, SKOS, etc. These will be subtracted later.
 
     Args:
-        original_graph: RDF graph to apply reasoning to
-        sparql_queries: The set of queries to execute
-        max_rounds: Maximum number of reasoning rounds to perform
+        ds: Dataset containing all graphs.
+        external_graph_ids: List of graph identifiers that are external.
 
     Returns:
-        Graph: New graph with all inferred triples
+        Graph containing external inferences.
 
     """
-    nrounds = 0
-    info("Applying OWL inference, round %d...", nrounds)
-    inferences = apply_owlrl_inference(original_graph)
-    info("OWL inference added %d triples", len(inferences))
-    g_new = original_graph + inferences
+    info("Step 2: Generating external inferences (baseline from external vocabs)...")
 
-    while nrounds < max_rounds:
-        info("Applying manual SPARQL inference, round %d...", nrounds)
-        inferences = apply_manual_sparql_inference(g_new, sparql_queries)
-        nprior = len(g_new)
-        g_new = g_new + inferences
-        nadded_sparql = len(g_new) - nprior
-        info(
-            "SPARQL inference added %d new triples (generated %d)",
-            nadded_sparql,
-            len(inferences),
+    # Create a DatasetView containing only external vocabularies (or empty if none).
+    external_view = DatasetView(ds, external_graph_ids)
+
+    g_external_inferences = ds.graph(IRI_EXTERNAL_INFERENCES)
+    apply_owlrl_inference(external_view, g_external_inferences)
+
+    info("  External inferences generated: %d triples", len(g_external_inferences))
+    return g_external_inferences
+
+
+def _run_inference_iteration(
+    ds: Dataset,
+    g_full_inferences: Graph,
+    sparql_queries: list[Query],
+    iteration: int,
+) -> tuple[int, int]:
+    """Run one iteration of inference (steps 3-4).
+
+    Args:
+        ds: Dataset containing all graphs.
+        g_full_inferences: Graph to accumulate inferences into.
+        sparql_queries: List of SPARQL CONSTRUCT queries for heuristics.
+        iteration: Current iteration number (for logging).
+
+    Returns:
+        Tuple of (triples_added_owl, triples_added_sparql).
+
+    """
+    info("--- Iteration %d ---", iteration)
+
+    # Step 3: Generate full inferences over current state
+    info("  Step 3: Running OWL-RL inference over current state...")
+    triples_before_owl = len(g_full_inferences)
+    apply_owlrl_inference(ds, g_full_inferences)
+    triples_added_owl = len(g_full_inferences) - triples_before_owl
+    info("    OWL-RL added %d new inferences", triples_added_owl)
+
+    # Step 4: Run heuristics (SPARQL CONSTRUCT queries)
+    if sparql_queries:
+        info("  Step 4: Running %d SPARQL heuristics...", len(sparql_queries))
+        triples_before_sparql = len(g_full_inferences)
+
+        # Apply SPARQL constructs over the entire dataset (which now includes
+        # the full inferences from step 3)
+        heuristic_results = apply_manual_sparql_inference(ds, sparql_queries)
+
+        # Add heuristic results to full inferences
+        for s, p, o in heuristic_results:
+            g_full_inferences.add((s, p, o))
+
+        triples_added_sparql = len(g_full_inferences) - triples_before_sparql
+        info("    SPARQL heuristics added %d new inferences", triples_added_sparql)
+    else:
+        triples_added_sparql = 0
+        info("  Step 4: No SPARQL heuristics to run")
+
+    return triples_added_owl, triples_added_sparql
+
+
+def run_inference_backend(
+    ds: Dataset,
+    external_graph_ids: list[IdentifiedNode],
+    backend: str = "owlrl",
+    max_iterations: int = DEF_MAX_REASONING_ROUNDS,
+    sparql_queries: list[Query] | None = None,
+) -> list[IdentifiedNode]:
+    """Run inference backend on merged graph using OWL-RL semantics.
+
+    Implements the inference process described in README.md:
+    1. Load and merge (already done - ds contains merged data)
+    2. Generate external inferences (once - baseline noise from external vocabs)
+    3. Generate full inferences over current state
+    4. Run heuristics (SPARQL CONSTRUCT queries)
+    5. Repeat steps 3-4 until convergence or max iterations
+    6. Subtract external data and inferences
+    7. Subtract unwanted inferences
+
+    Dataset is updated in-place with inferred triples:
+        - Graph IRI_FULL_INFERENCES: inferred triples over all data and vocabs
+        - Graph IRI_EXTERNAL_INFERENCES: inferred triples over external vocab only
+
+    Args:
+        ds: Dataset containing data and vocabulary graphs.
+        external_graph_ids: List of graph identifiers that are external (ephemeral).
+        backend: The inference backend to use (currently only 'owlrl' is supported).
+        max_iterations: Maximum number of inference iterations (default 5).
+        sparql_queries: Optional list of SPARQL CONSTRUCT queries for heuristics.
+
+    Returns:
+        List of all external graph identifiers (input external_graph_ids plus
+        IRI_EXTERNAL_INFERENCES).
+
+    Raises:
+        ValueError: If backend is not 'owlrl'.
+
+    """
+    if backend != "owlrl":
+        msg = f"Unsupported inference backend: {backend}. Only 'owlrl' is supported."
+        raise ValueError(msg)
+
+    if sparql_queries is None:
+        sparql_queries = []
+
+    # Step 2: Generate external inferences (once - this is the "noise floor")
+    g_external_inferences = _generate_external_inferences(ds, external_graph_ids)
+
+    # Steps 3-5: Iterate full inferences + heuristics until convergence
+    info(
+        "Steps 3-5: Iterating full inferences + heuristics (max %d iterations)...",
+        max_iterations,
+    )
+
+    g_full_inferences = ds.graph(IRI_FULL_INFERENCES)
+    iteration = 0
+    previous_triple_count = len(ds)  # Count triples in entire dataset
+
+    while iteration < max_iterations:
+        iteration += 1
+
+        triples_added_owl, triples_added_sparql = _run_inference_iteration(
+            ds, g_full_inferences, sparql_queries, iteration
         )
-        nrounds += 1
 
-        info("Applying OWL inference, round %d...", nrounds)
-        inferences = apply_owlrl_inference(g_new)
-        info("OWL inference added %d new triples", len(inferences))
-        g_new = g_new + inferences
+        # Check for convergence
+        current_triple_count = len(ds)
+        new_triples_this_iteration = current_triple_count - previous_triple_count
 
-        if len(g_new) - nprior == 0:
-            info("No new triples inferred in this round. Stopping inference.")
+        info(
+            "  Total new triples this iteration: %d (OWL: %d, SPARQL: %d)",
+            new_triples_this_iteration,
+            triples_added_owl,
+            triples_added_sparql,
+        )
+
+        if new_triples_this_iteration == 0:
+            info("  Convergence reached - no new triples generated")
             break
 
-    # Now we remove a bunch of declarations that owlrl adds that bloat the graph, like
-    # stating that rdf:HTML is a Datatype.
-    # The following are not necessary if we remove external model triples later.
-    # info("Discovering unnecessary declarations...")
-    # known_unnecessary = load_unnecessary_inferences()
-    # assert len(known_unnecessary) > 0, "No known unnecessary inferences loaded!"
-    # datatype_triples = []
-    # for s, p, o in g_new:
-    #     if not isinstance(s, URIRef):
-    #         continue
-    #     ns, _local = split_uri(s)
-    #     if (ns in {OWL._NS, RDFS._NS, RDF._NS, XSD._NS}) and (p == RDF.type) and o in {
-    #         RDFS.Datatype, OWL.AnnotationProperty
-    #     }:
-    #         datatype_triples.append((s, p, o))
-    #     if (s, p, o) in known_unnecessary:
-    #         datatype_triples.append((s, p, o))
+        previous_triple_count = current_triple_count
 
-    # info(
-    #     "  Removing %d unnecessary datatype/property declarations...",
-    #     len(datatype_triples),
-    # )
-    # for triple in datatype_triples:
-    #     g_new.remove(triple)
+    if iteration >= max_iterations:
+        info("  Maximum iterations (%d) reached", max_iterations)
 
-    info("Graph now contains %d triples", len(g_new))
+    info("Total inferences after iteration: %d triples", len(g_full_inferences))
 
-    return g_new
+    # Step 6: Subtract external inferences from full inferences
+    info("Step 6: Subtracting external inferences from full inferences...")
+    triples_before_subtraction = len(g_full_inferences)
+
+    for s, p, o in g_external_inferences:
+        g_full_inferences.remove((s, p, o))
+
+    triples_removed = triples_before_subtraction - len(g_full_inferences)
+    info("  Removed %d external inferences", triples_removed)
+
+    # Step 7: Subtract unwanted inferences
+    info("Step 7: Filtering unwanted inferences...")
+    nremoved, filter_counts = filter_triples(g_full_inferences, filterset_all)
+    info("  Removed %d unwanted inferences:", nremoved)
+    for filter_func, count in filter_counts.items():
+        info("    - %s: %d triples", filter_func.__name__, count)
+
+    info("Final inference graph: %d triples", len(g_full_inferences))
+
+    # Return all external graph IDs (originals plus external inferences)
+    return [
+        *external_graph_ids,
+        IRI_EXTERNAL_INFERENCES,
+    ]

@@ -6,10 +6,10 @@ from rdflib import Dataset, Graph, IdentifiedNode
 from rdflib.graph import (
     _ContextIdentifierType,  # pyright: ignore[reportPrivateUsage]
     _ContextType,  # pyright: ignore[reportPrivateUsage]
-    _OptionalIdentifiedQuadType,  # pyright: ignore[reportPrivateUsage]
-    _TripleOrOptionalQuadType,  # pyright: ignore[reportPrivateUsage]
-    _TripleOrQuadPatternType,  # pyright: ignore[reportPrivateUsage]
-    _TripleType,  # pyright: ignore[reportPrivateUsage]
+    _OptionalIdentifiedQuadType,
+    _TripleOrOptionalQuadType,
+    _TripleOrQuadPatternType,
+    _TripleType,
 )
 
 
@@ -89,7 +89,7 @@ class DatasetView(Dataset):
 
     def graphs(
         self,
-        triple: _TripleOrQuadPatternType | None = None,
+        triple: _TripleType | None = None,
     ) -> Generator[Graph, None, None]:
         """Return graphs in this view, optionally filtered by triple pattern."""
         # Get all graphs from parent, but only yield those in our included list
@@ -106,8 +106,8 @@ class DatasetView(Dataset):
             if q[3] in self.included_graph_ids:
                 yield q
 
-    # The type-checkers don't like that we are not handling the overloads that
-    # exist for the triples method, which handle graph Paths. TODO.
+    # The type-checkers don't like that we are not handling the overloads in the
+    # superclass method that handle graph Paths. TODO.
     def triples(
         self,
         triple_or_quad: _TripleOrQuadPatternType,
@@ -119,26 +119,23 @@ class DatasetView(Dataset):
             # if it's in the included graphs
             if context.identifier in self.included_graph_ids:
                 yield from context.triples(triple_or_quad[0:3])
+        elif len(triple_or_quad) == 4 and triple_or_quad[3] is not None:  # noqa: PLR2004
+            # Quad pattern with specific graph - only query that graph
+            graph_id = triple_or_quad[3]
+            # According to rdflib typing, graph_id can only be Graph here, but I do not
+            # trust rdflib's typing...
+            if isinstance(graph_id, Graph):  # pyright: ignore[reportUnnecessaryIsInstance]
+                graph_id = graph_id.identifier
+            if graph_id in self.included_graph_ids:
+                g = super().graph(graph_id)
+                yield from g.triples(triple_or_quad[:3])
         else:
-            # Check if a quad pattern was passed (4 elements with graph ID)
-            if len(triple_or_quad) == 4 and triple_or_quad[3] is not None:
-                # Quad pattern with specific graph - only query that graph
-                graph_id = triple_or_quad[3]
-                if hasattr(graph_id, "identifier"):
-                    graph_id = graph_id.identifier  # type: ignore[union-attr]
-                if graph_id in self.included_graph_ids:
-                    g = super().graph(graph_id)
-                    yield from g.triples(triple_or_quad[:3])  # type: ignore[arg-type]
-            else:
-                # No context and no graph specified in pattern - return from all
-                # Call triples() on each graph directly to avoid triggering rdflib's
-                # internal contexts() enumeration which tries to access default graph.
-                triple_pattern = (
-                    triple_or_quad[:3] if len(triple_or_quad) == 4 else triple_or_quad
-                )  # type: ignore[misc]
-                for gid in self.included_graph_ids:
-                    g = super().graph(gid)
-                    yield from g.triples(triple_pattern)  # type: ignore[arg-type]
+            # No context and no graph specified in pattern - return from all
+            # Call triples() on each graph directly to avoid triggering rdflib's
+            # internal contexts() enumeration which tries to access default graph.
+            for gid in self.included_graph_ids:
+                g = super().graph(gid)
+                yield from g.triples(triple_or_quad[:3])
 
     def add(
         self: "DatasetView",
@@ -178,7 +175,10 @@ class DatasetView(Dataset):
         if graph_id not in self.included_graph_ids:
             msg = f"Cannot add to graph {graph_id}: not visible in this view."
             raise PermissionError(msg)
-        return super().remove(triple_or_quad)
+        # For some bizarre reason, rdflib's Dataset.remove() is typed with
+        # _TripleOrOptionalQuadType, but actually accepts _TripleOrQuadPatternType which
+        # is what the superclass (Graph) remove() method uses.
+        return super().remove(triple_or_quad)  # pyright: ignore[reportArgumentType]
 
     def remove_graph(
         self,
@@ -196,14 +196,16 @@ class DatasetView(Dataset):
             raise PermissionError(msg)
         return super().remove_graph(g)
 
-    def serialize(
+    # I think pyright is incorrectly seeing only a specific overload of
+    # `Dataset.serialize` and thus incorrectly reporting an incompatible override.
+    def serialize(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         destination: str | None = None,
         format: str = "xml",  # noqa: A002
         base: str | None = None,
         encoding: str | None = None,
         **args: object,
-    ) -> str:
+    ) -> bytes | str | Graph:
         """Serialize the DatasetView to a destination.
 
         Only graphs in the included_graph_ids will be serialized. This requires
@@ -220,7 +222,7 @@ class DatasetView(Dataset):
             temp_ds.add((s, p, o, c))  # type: ignore[arg-type]
 
         # Serialize the temporary dataset
-        return temp_ds.serialize(  # type: ignore[return-value]
+        return temp_ds.serialize(
             destination=destination,
             format=format,
             base=base,

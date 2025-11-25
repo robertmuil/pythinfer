@@ -6,6 +6,8 @@ from rdflib import RDF, RDFS, Dataset, Namespace
 
 from pythinfer.rdflibplus import DatasetView
 
+EX = Namespace("http://example.org/")
+
 
 def test_owlrl_inference_with_datasetview() -> None:
     """Test that OWL-RL reasoner can run inference on a DatasetView.
@@ -17,7 +19,6 @@ def test_owlrl_inference_with_datasetview() -> None:
     """
     # Create a dataset with two graphs
     ds = Dataset()
-    EX = Namespace("http://example.org/")
 
     # Graph 1: Class hierarchy
     g1 = ds.graph(EX.graph1)
@@ -53,7 +54,6 @@ def test_owlrl_inference_with_datasetview() -> None:
 def test_owlrl_with_empty_datasetview() -> None:
     """Test that OWL-RL reasoner handles empty DatasetView correctly."""
     ds = Dataset()
-    EX = Namespace("http://example.org/")
 
     # Create an empty DatasetView
     view = DatasetView(ds, [])
@@ -64,4 +64,4 @@ def test_owlrl_with_empty_datasetview() -> None:
 
     # Should produce minimal or no inferences from empty input
     # (OWL-RL adds some axiom triples even for empty graphs)
-    assert len(g_inferences) >= 0
+    assert len(g_inferences) > 0

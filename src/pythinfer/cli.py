@@ -6,11 +6,11 @@ from pathlib import Path
 import typer
 from rdflib import Dataset, IdentifiedNode
 
+from pythinfer.infer import run_inference_backend
 from pythinfer.inout import Project, discover_project
 from pythinfer.merge import (
     graph_lengths,
     merge_graphs,
-    run_inference_backend,
 )
 from pythinfer.rdflibplus import DatasetView
 
