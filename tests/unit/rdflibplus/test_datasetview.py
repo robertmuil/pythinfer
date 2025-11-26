@@ -367,3 +367,38 @@ def test_remove_triple(g0: Graph, g1: Graph, g2: Graph, ds: Dataset) -> None:
     assert len(ds_view.graph(g2.identifier)) == 1
     assert len(ds.graph(g2.identifier)) == 1
     assert len(ds_view) == 1
+
+
+def test_datasetview_preserves_namespace_bindings(
+    g1: Graph,
+    g2: Graph,
+    ds: Dataset,
+) -> None:
+    """Test that namespace bindings are preserved when serializing a DatasetView."""
+    # Bind custom namespaces to the dataset
+    CUSTOM1 = Namespace("http://custom1.example.org/")
+    CUSTOM2 = Namespace("http://custom2.example.org/")
+    ds.bind("custom1", CUSTOM1)
+    ds.bind("custom2", CUSTOM2)
+
+    # Add triples using these custom namespaces via the dataset's graphs
+    # (not the original graph objects, which have separate stores)
+    ds.graph(g1.identifier).add(
+        (CUSTOM1.subject_custom1, CUSTOM1.predicate_custom1, Literal("value1"))
+    )
+    ds.graph(g2.identifier).add(
+        (CUSTOM2.subject_custom2, CUSTOM2.predicate_custom2, Literal("value2"))
+    )
+
+    # Create a DatasetView that excludes one graph (g3)
+    ds_view = DatasetView(
+        original_ds=ds,
+        included_graph_ids=[g1.identifier, g2.identifier],
+    )
+
+    # Serialize the view
+    serialized = str(ds_view.serialize(format="trig"))
+
+    # Check that namespace bindings are preserved in serialization
+    assert "@prefix custom1: <http://custom1.example.org/>" in serialized
+    assert "@prefix custom2: <http://custom2.example.org/>" in serialized

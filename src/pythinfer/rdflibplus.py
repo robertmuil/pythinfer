@@ -221,6 +221,10 @@ class DatasetView(Dataset):
         for s, p, o, c in self.quads():
             temp_ds.add((s, p, o, c))  # type: ignore[arg-type]
 
+        # Copy namespace bindings from the source dataset to preserve prefixes
+        for prefix, namespace in self.namespaces():
+            temp_ds.bind(prefix, namespace)
+
         # Serialize the temporary dataset
         return temp_ds.serialize(
             destination=destination,
