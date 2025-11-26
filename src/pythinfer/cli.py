@@ -45,6 +45,8 @@ def main_callback(
 def create(
     directory: Path | None = None,
     output: Path | None = None,
+    *,
+    force: bool = False,
 ) -> None:
     """Create a new pythinfer project file by scanning for RDF files.
 
@@ -54,18 +56,15 @@ def create(
     Args:
         directory: Directory to scan for RDF files (default: current directory).
         output: Path to create the project file (default: pythinfer.yaml).
+        force: Overwrite existing project file if it exists.
 
     """
-    _output = output or Path("pythinfer.yaml")
-
-    config_path = create_project(scan_directory=directory, output_path=_output)
-
+    project = create_project(scan_directory=directory, output_path=output, force=force)
     typer.secho(
-        f"✓ Created project file at: {config_path}",
+        f"✓ Created project file at: `{project.path_self}`",
         fg=typer.colors.GREEN,
     )
-    typer.echo(f"Project name: {config_path.parent.name}")
-
+    typer.echo(f"Project name: {project.path_self.parent.name}")
 
 @app.command()
 def merge(
