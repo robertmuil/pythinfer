@@ -5,7 +5,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from rdflib import Dataset
+from rdflib import Dataset, IdentifiedNode
+from rdflib.compare import graph_diff, isomorphic
 
 UV_PATH = shutil.which("uv")
 if UV_PATH is None:
@@ -20,6 +21,8 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
     [
         ("eg0-basic", "merge"),
         ("eg0-basic", "infer"),
+        ("eg1-ancestors", "merge"),
+        ("eg1-ancestors", "infer"),
     ],
 )
 def test_cli_command(
@@ -75,18 +78,37 @@ def test_cli_command(
     actual_ds = Dataset()
     actual_ds.parse(actual_file_path, format="trig")
 
-    # Check that all quads in expected are in actual
-    expected_quads = set(expected_ds.quads())
-    actual_quads = set(actual_ds.quads())
-
-    missing_quads = expected_quads - actual_quads
-    extra_quads = actual_quads - expected_quads
-
-    assert not missing_quads, f"Missing quads:\n{missing_quads}"
-    assert not extra_quads, f"Extra quads:\n{extra_quads}"
-
-    # Check they have the same number of quads - redundant but explicit
-    assert len(expected_ds) == len(actual_ds), (
-        f"Dataset length mismatch: expected {len(expected_ds)}, "
-        f"got {len(actual_ds)}"
+    # Compare datasets by checking each named graph individually (handles blank nodes)
+    # First check we have the same graph identifiers
+    expected_graphs = {g.identifier for g in expected_ds.graphs()}
+    actual_graphs = {g.identifier for g in actual_ds.graphs()}
+    assert expected_graphs == actual_graphs, (
+        f"Graph identifiers don't match:\n"
+        f"Expected: {expected_graphs}\n"
+        f"Actual: {actual_graphs}"
     )
+
+    # Then check each named graph is isomorphic
+    for graph_id in expected_graphs:
+        expected_graph = expected_ds.graph(graph_id)
+        actual_graph = actual_ds.graph(graph_id)
+
+        if not isomorphic(expected_graph, actual_graph):
+            # Compute the difference to show what's missing/extra
+            in_both, in_expected_only, in_actual_only = graph_diff(
+                expected_graph, actual_graph
+            )
+
+            error_msg = [
+                f"Graphs with identifier {graph_id} are not isomorphic:",
+                f"\nTriples in both graphs: {len(in_both)}",
+                f"\nTriples only in expected ({len(in_expected_only)}):",
+            ]
+            if len(in_expected_only) > 0:
+                error_msg.append(in_expected_only.serialize(format="turtle"))
+
+            error_msg.append(f"\nTriples only in actual ({len(in_actual_only)}):")
+            if len(in_actual_only) > 0:
+                error_msg.append(in_actual_only.serialize(format="turtle"))
+
+            pytest.fail("\n".join(error_msg))

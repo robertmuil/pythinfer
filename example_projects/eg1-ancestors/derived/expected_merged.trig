@@ -1,0 +1,50 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix ex: <http://example.org/ancestor/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<ancestors-model.ttl> {
+    ex:childOf rdfs:label "child of" ;
+        owl:inverseOf ex:parentOf .
+
+    ex:descendantOf rdfs:label "descendant of" ;
+        owl:inverseOf ex:ancestorOf .
+
+    ex:ancestorOf a owl:ObjectProperty ;
+        rdfs:label "ancestor of" ;
+        rdfs:domain ex:Person ;
+        rdfs:range ex:Person ;
+        owl:propertyChainAxiom (ex:parentOf ex:ancestorOf), (ex:parentOf) .
+
+    ex:grandparentOf a owl:ObjectProperty ;
+        rdfs:label "grandparent of" ;
+        rdfs:domain ex:Person ;
+        rdfs:range ex:Person ;
+        owl:propertyChainAxiom (ex:parentOf ex:parentOf) .
+
+    ex:parentOf a owl:ObjectProperty ;
+        rdfs:label "parent of" ;
+        rdfs:domain ex:Person ;
+        rdfs:range ex:Person .
+
+    ex:Person a owl:Class ;
+        rdfs:label "Person" .
+}
+
+<ancestors-data.ttl> {
+    ex:Alice a ex:Person ;
+        ex:parentOf ex:Bob,
+            ex:Carol .
+
+    ex:Bob a ex:Person ;
+        ex:parentOf ex:David .
+
+    ex:Carol a ex:Person ;
+        ex:parentOf ex:Eve .
+
+    ex:David a ex:Person .
+
+    ex:Eve a ex:Person .
+}
