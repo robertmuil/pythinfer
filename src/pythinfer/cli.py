@@ -89,6 +89,7 @@ def infer(
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
+    include_external: bool = False,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Run inference backends on merged graph."""
     ds, external_graph_ids, project = merge(config)
@@ -113,8 +114,10 @@ def infer(
         output = project.path_self.parent / "derived" / f"inferred_{backend}.trig"
         output.parent.mkdir(parents=True, exist_ok=True)
 
-    external_view = DatasetView(ds, all_external_ids)
-    final_ds = external_view.invert()
+    final_ds = ds
+    if not include_external:
+        external_view = DatasetView(ds, all_external_ids)
+        final_ds = external_view.invert()
     final_ds.serialize(destination=output, format="trig")
     typer.echo(
         f"Exported {len(final_ds)} inferred triples to '{output}'",
