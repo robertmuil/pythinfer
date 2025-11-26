@@ -55,7 +55,7 @@ output:
 
 #### External vs Internal
 
-External files are those that are not maintained by the user of the library, and whose axioms can generally be assumed to hold true for any application. They are used to provide inference rules, but are not part of the data being modelled, and they are not generally needed in the output.
+External files are treated as ephemeral sources used for inference and then discarded. They are those that are not maintained by the user of the library, and whose axioms can generally be assumed to hold true for any application. They are used to provide inference rules, but are not part of the data being modelled, and they are not generally needed in the output.
 
 Examples are OWL, RDFS, SKOS, and other standard vocabularies.
 
@@ -90,9 +90,34 @@ Merging should also distinguish 3 different types of input:
 
 By default an efficient OWL rule subset should be used, like OWL-RL.
 
-### 'Useful' inferences
+### Invalid inferences
 
-Many inferences are so obvious and/or banal that they are not useful. For instance, every instance could be considered to be the `owl:sameAs` itself. This is semantically valid but useless to express as an explicit triple.
+Some inferences, at least in `owlrl`, may be invalid in RDF - for instance, a triple with a literal as subject. These should be removed during the inference process.
+
+### Unwanted inferences
+
+In addition to the actually invalid inferences, many inferences are banal. For instance, every instance could be considered to be the `owl:sameAs` itself. This is semantically valid but useless to express as an explicit triple.
+
+Several classes of these unwanted inferences can be removed by this package. Some can be removed per-triple during inference, others need to be removed by considering the whole graph.
+
+#### Per-triple unwanted inferences
+
+These are unwanted inferences that can be identified by looking at each triple in isolation. Examples:
+
+1. triples with an empty string as object
+2. redundant reflexives, such as `ex:thing owl:sameAs ex:thing`
+3. many declarations relating to `owl:Thing`, e.g. `ex:thing rdf:type owl:Thing`
+4. declarations that `owl:Nothing` is a subclass of another class (NB: the inverse is *not* unwanted as it indicates a contradiction)
+
+#### Whole-graph unwanted inferences
+
+These are unwanted inferences that can only be identified by considering the whole graph. Examples:
+
+1. Undeclared blank nodes
+   - blank nodes are often used for complex subClass or range or domain expressions
+   - where this occurs but the declaration of the blank node is not included in the final output, the blank node is useless and we are better off removing any triples that refer to it
+   - a good example of this is `skos:member` which uses blank nodes to express that the domain and range are the *union* of `skos:Concept` and `skos:Collection`
+   - for now, blank node 'declaration' is defined as any triple where the blank node is the subject
 
 ### Inference Process
 
@@ -112,7 +137,7 @@ Steps:
     - output:        `heuristic_results`
     - consequence:   `current += heuristic_results`
 5. **Repeat steps 3 through 4** until no new triples are generated, or limit reached
-6. **Subtract external data and inferences** from the current graph
+6. **Subtract external data and inferences** from the current graph[^4]
     - consequence:   `current -= external_data + external_owl_inferences`
 7. Subtract all 'unwanted' inferences from result[^3]
     - consequence:   `final = current - unwanted_inferences`
@@ -120,6 +145,7 @@ Steps:
 [^1]: inference is backend dependent, and will include the removal of *invalid* triples that may result, e.g. from `owlrl`
 [^2]: See below for heuristics.
 [^3]: unwanted inferences are those that are semantically valid but not useful, see below
+[^4]: this step logically applies, but in the `owlrl` implementation we can simply avoid including the external_owl_inferences graph in the output, since `owlrl` will not generate inferences that already exist.
 
 ### Backends
 
@@ -166,6 +192,7 @@ Specifications:
 1. A DatasetView may be read/write or readonly.
 1. Graphs MUST be explicitly included to be visible, otherwise they are excluded (and invisible).
 1. Attempted access to excluded graphs MUST raise a PermissionError.
+1. Any mechanism to retrieve triples (e.g.: iterating the view itself, or using `triples()` or using `quads()`) that does not explicitly specify a named graph (e.g. `triples()` called without a `context` argument) MUST return triples from all included graphs, not just the default graph.
 1. Default graph MUST therefore be excluded if the underlying Dataset has `default_union` set (because otherwise this would counterintuitively render triples from excluded graphs visible to the view).
 1. A DatasetView SHOULD otherwise operate in exactly the same way as the underlying Dataset.
 
@@ -199,3 +226,4 @@ This is all following the principle of altering the API of `Dataset` as little a
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
 1. consider using a proper config language like dhal(?) instead of yaml
 1. add query command
+1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
