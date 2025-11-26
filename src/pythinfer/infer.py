@@ -11,7 +11,7 @@ from owlrl.OWLRL import OWLRL_Semantics
 from rdflib import OWL, RDF, RDFS, Dataset, Graph, IdentifiedNode, Literal, Node
 from rdflib.query import ResultRow
 
-from pythinfer.data import Query
+from pythinfer.inout import Project, Query, load_sparql_inference_queries
 from pythinfer.merge import IRI_EXTERNAL_INFERENCES, IRI_FULL_INFERENCES
 from pythinfer.rdflibplus import DatasetView
 
@@ -283,15 +283,16 @@ def _run_inference_iteration(
 def run_inference_backend(
     ds: Dataset,
     external_graph_ids: list[IdentifiedNode],
-    backend: str = "owlrl",
+    project: Project,
     max_iterations: int = DEF_MAX_REASONING_ROUNDS,
-    sparql_queries: list[Query] | None = None,
+    *,
+    include_unwanted_triples: bool = False,
 ) -> list[IdentifiedNode]:
     """Run inference backend on merged graph using OWL-RL semantics.
 
     Implements the inference process described in README.md:
     1. Load and merge (already done - ds contains merged data)
-    2. Generate external inferences (once - baseline noise from external vocabs)
+    2. Generate external inferences (do once - baseline noise from external vocabs)
     3. Generate full inferences over current state
     4. Run heuristics (SPARQL CONSTRUCT queries)
     5. Repeat steps 3-4 until convergence or max iterations
@@ -305,9 +306,9 @@ def run_inference_backend(
     Args:
         ds: Dataset containing data and vocabulary graphs.
         external_graph_ids: List of graph identifiers that are external (ephemeral).
-        backend: The inference backend to use (currently only 'owlrl' is supported).
+        project: The project configuration to use (includes backend and other settings).
         max_iterations: Maximum number of inference iterations (default 5).
-        sparql_queries: Optional list of SPARQL CONSTRUCT queries for heuristics.
+        include_unwanted_triples: If True, do not filter unwanted triples.
 
     Returns:
         List of all external graph identifiers (input external_graph_ids plus
@@ -317,12 +318,11 @@ def run_inference_backend(
         ValueError: If backend is not 'owlrl'.
 
     """
-    if backend != "owlrl":
-        msg = f"Unsupported inference backend: {backend}. Only 'owlrl' is supported."
-        raise ValueError(msg)
+    if project.owl_backend != "owlrl":
+        msg = f"Unsupported inference backend: {project.owl_backend}. Only 'owlrl' is currently supported."
+        raise NotImplementedError(msg)
 
-    if sparql_queries is None:
-        sparql_queries = []
+    sparql_queries = load_sparql_inference_queries(project.paths_sparql_inference or [])
 
     # Step 2: Generate external inferences (once - this is the "noise floor")
     g_external_inferences = _generate_external_inferences(ds, external_graph_ids)
@@ -376,12 +376,13 @@ def run_inference_backend(
     triples_removed = triples_before_subtraction - len(g_full_inferences)
     info("  Removed %d external inferences", triples_removed)
 
-    # Step 7: Subtract unwanted inferences
-    info("Step 7: Filtering unwanted inferences...")
-    nremoved, filter_counts = filter_triples(g_full_inferences, filterset_all)
-    info("  Removed %d unwanted inferences:", nremoved)
-    for filter_func, count in filter_counts.items():
-        info("    - %s: %d triples", filter_func.__name__, count)
+    if not include_unwanted_triples:
+        # Step 7: Subtract unwanted inferences
+        info("Step 7: Filtering unwanted inferences...")
+        nremoved, filter_counts = filter_triples(g_full_inferences, filterset_all)
+        info("  Removed %d unwanted inferences:", nremoved)
+        for filter_func, count in filter_counts.items():
+            info("    - %s: %d triples", filter_func.__name__, count)
 
     info("Final inference graph: %d triples", len(g_full_inferences))
 

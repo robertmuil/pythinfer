@@ -7,7 +7,7 @@ import typer
 from rdflib import Dataset, IdentifiedNode
 
 from pythinfer.infer import run_inference_backend
-from pythinfer.inout import Project, discover_project
+from pythinfer.inout import Project, discover_project, load_project
 from pythinfer.merge import (
     graph_lengths,
     merge_graphs,
@@ -48,16 +48,17 @@ def merge(
     output: Path | None = None,
     *,
     exclude_external: bool = True,
-) -> tuple[Dataset, list[IdentifiedNode]]:
+) -> tuple[Dataset, list[IdentifiedNode], Project]:
     """Merge graphs as specified in the config file and export."""
-    config_path = config or discover_project(Path.cwd())
-    typer.echo(f"Merging RDF graphs using config: {config_path}")
-    cfg = Project.from_yaml(config_path)
+    project = load_project(config)
+
     if output is None:
-        output = config_path.parent / "derived" / "merged.trig"
+        output = project.path_self.parent / "derived" / "merged.trig"
         output.parent.mkdir(parents=True, exist_ok=True)
-    typer.secho(f"Project loaded: {cfg}", fg=typer.colors.GREEN)
-    ds, external_graph_ids = merge_graphs(cfg)
+
+    typer.echo(f"Merging RDF graphs using project at `{project.path_self}`")
+    typer.secho(f"Project loaded: {project}", fg=typer.colors.GREEN)
+    ds, external_graph_ids = merge_graphs(project)
 
     # Calculate lengths by category
     ext_len = sum(len(ds.graph(gid)) for gid in external_graph_ids)
@@ -78,7 +79,7 @@ def merge(
     output_ds.serialize(destination=output, format="trig", canon=True)
     typer.echo(f"Exported {len(output_ds)} triples to '{output}'")
 
-    return ds, external_graph_ids
+    return ds, external_graph_ids, project
 
 
 @app.command()
@@ -86,21 +87,30 @@ def infer(
     config: Path | None = None,
     backend: str = "owlrl",
     output: Path | None = None,
+    *,
+    include_unwanted_triples: bool = False,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Run inference backends on merged graph."""
-    config_path = config or discover_project(Path.cwd())
-    typer.echo(f"Running inference using config: {config_path} and backend: {backend}")
-    ds, external_graph_ids = merge(config_path)
+    ds, external_graph_ids, project = merge(config)
+    project.owl_backend = backend
+    typer.echo(
+        f"Running inference using config: {project.path_self} and backend: {backend}"
+    )
 
     # Run inference and get updated external graph IDs (includes inference graphs)
-    all_external_ids = run_inference_backend(ds, external_graph_ids, backend=backend)
+    all_external_ids = run_inference_backend(
+        ds,
+        external_graph_ids,
+        project,
+        include_unwanted_triples=include_unwanted_triples,
+    )
     typer.secho(
         f"Inference complete. {len(ds)} total triples in dataset",
         fg=typer.colors.GREEN,
     )
 
     if output is None:
-        output = config_path.parent / "derived" / f"inferred_{backend}.trig"
+        output = project.path_self.parent / "derived" / f"inferred_{backend}.trig"
         output.parent.mkdir(parents=True, exist_ok=True)
 
     external_view = DatasetView(ds, all_external_ids)
