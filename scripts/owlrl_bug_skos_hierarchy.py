@@ -7,6 +7,8 @@ We want to verify that reasoning over both the default graph and a named graph
 correctly infers the domain/range for both skos:broader and skos:broaderTransitive.
 
 It fails to infer these when reasoning over a named graph.
+
+** Submitted as https://github.com/RDFLib/OWL-RL/issues/76 **
 """
 # ruff: noqa: T201, T203
 
@@ -16,12 +18,10 @@ from owlrl import DeductiveClosure
 from owlrl.OWLRL import OWLRL_Semantics
 from rdflib import OWL, RDF, RDFS, Dataset, Graph, Namespace, URIRef
 
-from pythinfer.rdflibplus import graph_lengths
-
 EX = Namespace("http://example.org/")
 
 
-def create_skos_like_ontology():
+def create_skos_like_ontology() -> Graph:
     """Create SKOS-like multi-level property hierarchy."""
     g = Graph()
     g.bind("ex", EX)
@@ -46,10 +46,18 @@ def create_skos_like_ontology():
     return g
 
 
+def graph_lengths(ds: Dataset) -> dict[str, int]:
+    """Get lengths of all named graphs in a Dataset."""
+    lengths: dict[str, int] = {}
+    for g in ds.graphs():
+        lengths[g.identifier.n3()] = len(g)
+    return lengths
+
+
 def print_ds(title: str, ds: Dataset) -> None:
     """Print dataset summary and selected inferences."""
     print(f"\n{title}: {len(ds)} triples in total:")
-    pprint({g.n3(): ln for g, ln in graph_lengths(ds).items()}, indent=4, width=20)
+    pprint(graph_lengths(ds), indent=4, width=20)
 
     domain_assertions = list(ds.quads((EX.broader, RDFS.domain, None))) + list(
         ds.quads((EX.broaderTransitive, RDFS.domain, None))
