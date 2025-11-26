@@ -1,77 +1,76 @@
-@prefix ns1: <http://example.org/ancestor/> .
+@prefix ex: <http://example.org/ancestor/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
 <inferences_full> {
-    ns1:David ns1:childOf ns1:Bob ;
-        ns1:descendantOf ns1:Alice,
-            ns1:Bob .
+    ex:David ex:childOf ex:Bob ;
+        ex:descendantOf ex:Alice,
+            ex:Bob .
 
-    ns1:Eve ns1:childOf ns1:Carol ;
-        ns1:descendantOf ns1:Alice,
-            ns1:Carol .
+    ex:Eve ex:childOf ex:Carol ;
+        ex:descendantOf ex:Alice,
+            ex:Carol .
 
-    ns1:Bob ns1:ancestorOf ns1:David ;
-        ns1:childOf ns1:Alice ;
-        ns1:descendantOf ns1:Alice .
+    ex:Bob ex:ancestorOf ex:David ;
+        ex:childOf ex:Alice ;
+        ex:descendantOf ex:Alice .
 
-    ns1:Carol ns1:ancestorOf ns1:Eve ;
-        ns1:childOf ns1:Alice ;
-        ns1:descendantOf ns1:Alice .
+    ex:Carol ex:ancestorOf ex:Eve ;
+        ex:childOf ex:Alice ;
+        ex:descendantOf ex:Alice .
 
-    ns1:Alice ns1:ancestorOf ns1:Bob,
-            ns1:Carol,
-            ns1:David,
-            ns1:Eve .
+    ex:Alice ex:ancestorOf ex:Bob,
+            ex:Carol,
+            ex:David,
+            ex:Eve .
+
+    ex:Alice ex:grandparentOf ex:David,
+            ex:Eve .
 }
 
 <ancestors-data.ttl> {
-    ns1:David a ns1:Person .
+    ex:David a ex:Person .
 
-    ns1:Eve a ns1:Person .
+    ex:Eve a ex:Person .
 
-    ns1:Bob a ns1:Person ;
-        ns1:parentOf ns1:David .
+    ex:Bob a ex:Person ;
+        ex:parentOf ex:David .
 
-    ns1:Carol a ns1:Person ;
-        ns1:parentOf ns1:Eve .
+    ex:Carol a ex:Person ;
+        ex:parentOf ex:Eve .
 
-    ns1:Alice a ns1:Person ;
-        ns1:parentOf ns1:Bob,
-            ns1:Carol .
+    ex:Alice a ex:Person ;
+        ex:parentOf ex:Bob,
+            ex:Carol .
 }
 
 <ancestors-model.ttl> {
-    ns1:childOf rdfs:label "child of" ;
-        owl:inverseOf ns1:parentOf .
+    ex:childOf rdfs:label "child of" ;
+        owl:inverseOf ex:parentOf .
 
-    ns1:descendantOf rdfs:label "descendant of" ;
-        owl:inverseOf ns1:ancestorOf .
+    ex:descendantOf rdfs:label "descendant of" ;
+        owl:inverseOf ex:ancestorOf .
 
-    ns1:ancestorOf a owl:ObjectProperty ;
+    ex:ancestorOf a owl:ObjectProperty ;
         rdfs:label "ancestor of" ;
-        rdfs:domain ns1:Person ;
-        rdfs:range ns1:Person ;
-        owl:propertyChainAxiom _:ne6711e1f4fde4e3da6282b51d3a9dc68b1,
-            _:ne6711e1f4fde4e3da6282b51d3a9dc68b3 .
+        rdfs:domain ex:Person ;
+        rdfs:range ex:Person ;
+        owl:propertyChainAxiom (ex:parentOf ex:ancestorOf) , (ex:parentOf) .
+    
+    ex:grandparentOf a owl:ObjectProperty ;
+        rdfs:label "grandparent of" ;
+        rdfs:domain ex:Person ;
+        rdfs:range ex:Person ;
+        owl:propertyChainAxiom (ex:parentOf ex:parentOf) .
 
-    ns1:parentOf a owl:ObjectProperty ;
+    ex:parentOf a owl:ObjectProperty ;
         rdfs:label "parent of" ;
-        rdfs:domain ns1:Person ;
-        rdfs:range ns1:Person .
+        rdfs:domain ex:Person ;
+        rdfs:range ex:Person .
 
-    ns1:Person a owl:Class ;
+    ex:Person a owl:Class ;
         rdfs:label "Person" .
 
-    _:ne6711e1f4fde4e3da6282b51d3a9dc68b1 rdf:first ns1:parentOf ;
-        rdf:rest _:ne6711e1f4fde4e3da6282b51d3a9dc68b2 .
-
-    _:ne6711e1f4fde4e3da6282b51d3a9dc68b2 rdf:first ns1:ancestorOf ;
-        rdf:rest () .
-
-    _:ne6711e1f4fde4e3da6282b51d3a9dc68b3 rdf:first ns1:parentOf ;
-        rdf:rest () .
 }
-

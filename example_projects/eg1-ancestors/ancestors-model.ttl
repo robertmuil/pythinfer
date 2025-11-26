@@ -12,6 +12,12 @@ ex:parentOf a owl:ObjectProperty ;
     rdfs:domain ex:Person ;
     rdfs:range ex:Person .
 
+ex:grandparentOf a owl:ObjectProperty ;
+    rdfs:label "grandparent of" ;
+    rdfs:domain ex:Person ;
+    rdfs:range ex:Person ;
+    owl:propertyChainAxiom (ex:parentOf ex:parentOf) .
+
 ex:ancestorOf a owl:ObjectProperty ;
     rdfs:label "ancestor of" ;
     rdfs:domain ex:Person ;

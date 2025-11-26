@@ -16,8 +16,13 @@
         rdfs:label "ancestor of" ;
         rdfs:domain ex:Person ;
         rdfs:range ex:Person ;
-        owl:propertyChainAxiom _:n2c888b224c514488a2212d4355996f09b1,
-            _:n2c888b224c514488a2212d4355996f09b3 .
+        owl:propertyChainAxiom (ex:parentOf ex:ancestorOf), (ex:parentOf) .
+
+    ex:grandparentOf a owl:ObjectProperty ;
+        rdfs:label "grandparent of" ;
+        rdfs:domain ex:Person ;
+        rdfs:range ex:Person ;
+        owl:propertyChainAxiom (ex:parentOf ex:parentOf) .
 
     ex:parentOf a owl:ObjectProperty ;
         rdfs:label "parent of" ;
@@ -26,15 +31,6 @@
 
     ex:Person a owl:Class ;
         rdfs:label "Person" .
-
-    _:n2c888b224c514488a2212d4355996f09b1 rdf:first ex:parentOf ;
-        rdf:rest _:n2c888b224c514488a2212d4355996f09b2 .
-
-    _:n2c888b224c514488a2212d4355996f09b2 rdf:first ex:ancestorOf ;
-        rdf:rest () .
-
-    _:n2c888b224c514488a2212d4355996f09b3 rdf:first ex:parentOf ;
-        rdf:rest () .
 }
 
 <ancestors-data.ttl> {
