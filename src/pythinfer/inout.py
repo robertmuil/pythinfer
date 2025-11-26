@@ -139,3 +139,55 @@ def load_sparql_inference_queries(query_files: Sequence[Path]) -> list[Query]:
             q = Query(source=query_file, content=f.read())
             queries.append(q)
     return queries
+
+
+def create_project(
+    scan_directory: Path | None = None,
+    output_path: Path | str = PROJECT_FILE_NAME,
+) -> Path:
+    """Create a new pythinfer.yaml project file by scanning directory for RDF files.
+
+    Scans the specified directory (or current working directory) for RDF files
+    (with .ttl or .rdf extensions) and creates a pythinfer.yaml configuration
+    file listing them.
+
+    Args:
+        scan_directory: Directory to scan for RDF files. If None, uses current working directory.
+        output_path: Path where the project file should be created.
+
+    Returns:
+        Path to the created project configuration file.
+
+    """
+    _scan_dir = (scan_directory or Path.cwd()).resolve()
+    _output_path = Path(output_path)
+
+    # Ensure output directory exists
+    _output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Find all RDF files, excluding the 'derived' directory
+    rdf_files: list[Path] = []
+    for rdf_ext in ("*.ttl", "*.rdf"):
+        # Search recursively but exclude 'derived' directory
+        for rdf_file in _scan_dir.rglob(rdf_ext):
+            # Skip files in 'derived' directory
+            if "derived" in rdf_file.parts:
+                continue
+            # Store relative paths from scan directory
+            rel_path = rdf_file.relative_to(_scan_dir)
+            rdf_files.append(rel_path)
+
+    # Sort for consistent output
+    rdf_files.sort()
+
+    # Create project configuration
+    project_config = {
+        "name": _scan_dir.name,
+        "data": [str(f) for f in rdf_files],
+    }
+
+    # Write to YAML file
+    with _output_path.open("w") as f:
+        yaml.dump(project_config, f, default_flow_style=False)
+
+    return _output_path

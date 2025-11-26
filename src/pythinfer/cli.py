@@ -7,7 +7,7 @@ import typer
 from rdflib import Dataset, IdentifiedNode
 
 from pythinfer.infer import run_inference_backend
-from pythinfer.inout import Project, discover_project, load_project
+from pythinfer.inout import Project, create_project, discover_project, load_project
 from pythinfer.merge import (
     merge_graphs,
 )
@@ -39,6 +39,32 @@ def main_callback(
 ) -> None:
     """Global options for pythinfer CLI."""
     configure_logging(verbose)
+
+
+@app.command()
+def create(
+    directory: Path | None = None,
+    output: Path | None = None,
+) -> None:
+    """Create a new pythinfer project file by scanning for RDF files.
+
+    Scans the specified directory (or current directory) for RDF files
+    and generates a pythinfer.yaml configuration file.
+
+    Args:
+        directory: Directory to scan for RDF files (default: current directory).
+        output: Path to create the project file (default: pythinfer.yaml).
+
+    """
+    _output = output or Path("pythinfer.yaml")
+
+    config_path = create_project(scan_directory=directory, output_path=_output)
+
+    typer.secho(
+        f"✓ Created project file at: {config_path}",
+        fg=typer.colors.GREEN,
+    )
+    typer.echo(f"Project name: {config_path.parent.name}")
 
 
 @app.command()
