@@ -5,7 +5,6 @@ from tempfile import TemporaryDirectory
 
 import pytest
 import yaml
-from _pytest.monkeypatch import MonkeyPatch
 
 from pythinfer.inout import PROJECT_FILE_NAME, create_project
 
@@ -15,7 +14,6 @@ class TestCreateProjectCommand:
 
     def test_create_project_scans_current_directory_for_rdf_files(
         self,
-        monkeypatch: MonkeyPatch,
     ) -> None:
         """Test that create_project scans directory and detects RDF files."""
         with TemporaryDirectory() as tmpdir:
@@ -35,11 +33,11 @@ class TestCreateProjectCommand:
             txt_file = tmp_path / "readme.txt"
             txt_file.touch()
 
-            # Change to the temp directory
-            monkeypatch.chdir(tmp_path)
-
-            # Call create_project without specifying files
-            config_path = create_project(output_path=tmp_path / PROJECT_FILE_NAME)
+            # Call create_project with explicit scan_directory
+            config_path = create_project(
+                scan_directory=tmp_path,
+                output_path=tmp_path / PROJECT_FILE_NAME,
+            )
 
             # Verify config file was created
             assert config_path.exists()
@@ -119,7 +117,10 @@ class TestCreateProjectCommand:
             (tmp_path / "vocab.rdf").touch()
 
             # Create project
-            config_path = create_project(output_path=tmp_path / PROJECT_FILE_NAME)
+            config_path = create_project(
+                scan_directory=tmp_path,
+                output_path=tmp_path / PROJECT_FILE_NAME,
+            )
 
             # Verify YAML is valid by loading it
             with config_path.open() as f:

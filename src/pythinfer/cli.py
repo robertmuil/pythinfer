@@ -7,7 +7,7 @@ import typer
 from rdflib import Dataset, IdentifiedNode
 
 from pythinfer.infer import run_inference_backend
-from pythinfer.inout import Project, create_project, discover_project, load_project
+from pythinfer.inout import Project, create_project, load_project
 from pythinfer.merge import (
     merge_graphs,
 )
