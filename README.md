@@ -1,7 +1,7 @@
 # pythinfer - Python Logical Inference
 
 [![Tests](https://github.com/robertmuil/pythinfer/actions/workflows/test.yml/badge.svg)](https://github.com/robertmuil/pythinfer/actions)
-[![codecov](https://codecov.io/gh/robertmuil/pythinfer/graph/badge.svg?token=)](https://codecov.io/gh/robertmuil/pythinfer)
+[![codecov](https://codecov.io/github/robertmuil/pythinfer/graph/badge.svg?token=VYLBQK488J)](https://codecov.io/github/robertmuil/pythinfer)
 
 *Pronounced 'python fur'.*
 
