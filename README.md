@@ -1,5 +1,8 @@
 # pythinfer - Python Logical Inference
 
+[![Tests](https://github.com/robertmuil/pythinfer/actions/workflows/test.yml/badge.svg)](https://github.com/robertmuil/pythinfer/actions)
+[![codecov](https://codecov.io/gh/robertmuil/pythinfer/graph/badge.svg?token=)](https://codecov.io/gh/robertmuil/pythinfer)
+
 *Pronounced 'python fur'.*
 
 This is a package to perform OWL-based inference, provided by external packages, to an RDF graph.
