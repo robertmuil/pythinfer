@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 import pytest
 import yaml
 
-from pythinfer.inout import PROJECT_FILE_NAME, create_project
+from pythinfer.inout import PROJECT_FILE_NAME, Project, create_project
 
 
 class TestCreateProjectCommand:
@@ -34,21 +34,17 @@ class TestCreateProjectCommand:
             txt_file.touch()
 
             # Call create_project with explicit scan_directory
-            config_path = create_project(
+            project = create_project(
                 scan_directory=tmp_path,
                 output_path=tmp_path / PROJECT_FILE_NAME,
             )
 
             # Verify config file was created
-            assert config_path.exists()
-            assert config_path.name == PROJECT_FILE_NAME
-
-            # Load and verify contents
-            with config_path.open() as f:
-                config = yaml.safe_load(f)
+            assert project.path_self.exists()
+            assert project.path_self.name == PROJECT_FILE_NAME
 
             # Should find all RDF files
-            found_files = set(config.get("data", []))
+            found_files = {str(p) for p in project.paths_data}
             assert (
                 "model.ttl" in found_files
                 or str(ttl_file1.relative_to(tmp_path)) in found_files
@@ -72,9 +68,6 @@ class TestCreateProjectCommand:
             Path(__file__).parent.parent.parent / "example_projects" / "eg2-projects"
         )
 
-        if not eg2_path.exists():
-            pytest.skip("eg2-projects example directory not found")
-
         # Path to expected output
         expected_config_path = eg2_path / "expected_pythinfer.yaml"
         if not expected_config_path.exists():
@@ -88,24 +81,20 @@ class TestCreateProjectCommand:
             output_dir.mkdir()
 
             # Call create_project to scan eg2-projects
-            config_path = create_project(
+            project_generated = create_project(
                 scan_directory=eg2_path,
                 output_path=output_dir / PROJECT_FILE_NAME,
             )
 
             # Verify config file was created
-            assert config_path.exists()
-            assert config_path.name == PROJECT_FILE_NAME
+            assert project_generated.path_self.exists()
+            assert project_generated.path_self.name == PROJECT_FILE_NAME
 
-            # Load both the generated and expected configs
-            with config_path.open() as f:
-                generated_config = yaml.safe_load(f)
-
-            with expected_config_path.open() as f:
-                expected_config = yaml.safe_load(f)
+            # Load the expected project specification
+            project_expected = Project.from_yaml(expected_config_path)
 
             # Compare the configurations
-            assert generated_config == expected_config
+            assert project_generated.to_yaml() == project_expected.to_yaml()
 
     def test_create_project_generates_valid_yaml(self) -> None:
         """Test that create_project generates valid YAML that can be loaded."""
@@ -117,18 +106,10 @@ class TestCreateProjectCommand:
             (tmp_path / "vocab.rdf").touch()
 
             # Create project
-            config_path = create_project(
+            create_project(
                 scan_directory=tmp_path,
                 output_path=tmp_path / PROJECT_FILE_NAME,
             )
-
-            # Verify YAML is valid by loading it
-            with config_path.open() as f:
-                config = yaml.safe_load(f)
-
-            # Verify required fields exist
-            assert "data" in config or "internal_vocabs" in config
-            assert isinstance(config, dict)
 
     def test_create_project_respects_output_path(self) -> None:
         """Test that create_project creates file at specified output path."""
@@ -144,14 +125,14 @@ class TestCreateProjectCommand:
 
             # Specify custom output path
             custom_config_path = output_dir / "custom.yaml"
-            config_path = create_project(
+            project = create_project(
                 scan_directory=tmp_path,
                 output_path=custom_config_path,
             )
 
             # Should create file at custom location
-            assert config_path == custom_config_path
-            assert config_path.exists()
+            assert project.path_self == custom_config_path
+            assert project.path_self.exists()
 
     def test_create_project_handles_nested_directories(self) -> None:
         """Test that create_project scans nested directories for RDF files."""
@@ -168,17 +149,12 @@ class TestCreateProjectCommand:
             (subdir2 / "data1.rdf").touch()
 
             # Create project
-            config_path = create_project(
+            project = create_project(
                 scan_directory=tmp_path,
                 output_path=tmp_path / PROJECT_FILE_NAME,
             )
 
-            # Load and check for nested files
-            with config_path.open() as f:
-                config = yaml.safe_load(f)
-
-            data_files = config.get("data", [])
-            file_names = [str(f).lower() for f in data_files]
+            file_names = [f.stem for f in project.paths_data]
 
             # Should find files in subdirectories
             assert any("model1" in f for f in file_names) or any(
@@ -194,19 +170,12 @@ class TestCreateProjectCommand:
             (tmp_path / "readme.txt").touch()
             (tmp_path / "notes.md").touch()
 
-            # Should still create a config file, but with empty or minimal data
-            config_path = create_project(
-                scan_directory=tmp_path,
-                output_path=tmp_path / PROJECT_FILE_NAME,
-            )
-
-            assert config_path.exists()
-
-            with config_path.open() as f:
-                config = yaml.safe_load(f)
-
-            # Should have empty or missing data field
-            assert config.get("data", []) == [] or "data" not in config
+            # Should fail with FileNotFoundError
+            with pytest.raises(FileNotFoundError):
+                create_project(
+                    scan_directory=tmp_path,
+                    output_path=tmp_path / PROJECT_FILE_NAME,
+                )
 
     def test_create_project_excludes_derived_output(self) -> None:
         """Test that create_project excludes the 'derived' directory."""
@@ -222,12 +191,7 @@ class TestCreateProjectCommand:
             (derived_dir / "inference_output.ttl").touch()
 
             # Create project
-            config_path = create_project(output_path=tmp_path / PROJECT_FILE_NAME)
+            project = create_project(output_path=tmp_path / PROJECT_FILE_NAME)
 
-            # Load config
-            with config_path.open() as f:
-                config = yaml.safe_load(f)
-
-            data_files = config.get("data", [])
             # Should not include files from 'derived' directory
-            assert not any("derived" in str(f) for f in data_files)
+            assert not any("derived" in str(f) for f in project.paths_data)

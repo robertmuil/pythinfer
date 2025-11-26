@@ -18,7 +18,7 @@ The backends that should be supported are:
 1. jena
 1. rdf4j?
 
-## 'Project'
+## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
 
@@ -26,7 +26,7 @@ Because we will likely have several files and they will be of different types, i
 
 The main function or CLI can then be pointed at the project file to easily switch between projects. This also allows the same sets and subsets of inputs to be combined in different ways with configuration.
 
-### Project Configuration
+### Project Specification Components
 
 OLD:
 
@@ -66,6 +66,17 @@ Synonyms for 'external' here could be 'transient' or 'reference' or 'catalyst'.
 
 Need better term than 'internal' because it can be data (incl. vocabs and models) that are maintained outside of the project folder itself, but are desired to be part of the output. Perhaps 'local'.
 
+### Project Selection
+
+The project selection process is:
+1. **User provided**: path to project file provided directly by user on command line, and if this file is not found, exit
+    1. if no user-provided file, proceed to next step
+1. **Discovery**: search in current folder and parent folders for project file, returning first found
+    1. if no project file discovered, proceed to next step
+1. **Creation**: generate a new project specification by searching in current folder for RDF files
+    1. if no RDF files found, fail
+    1. otherwise, create new project file and use immediately
+
 ### Project Discovery
 
 If a project file is not explicitly specified, `pythinfer` should operate like `git` or `uv` - it should search for a `pythinfer.yaml` file in the current directory, and then in parent directories up to a limit.
@@ -76,9 +87,11 @@ The limit on ancestors should be:
 1. don't go beyond 10 folders
 1. don't traverse across file systems
 
-If no project file found, it should do a search for RDF files in current directory.
+### Project Creation
 
-There should also be a command to generate a new project file, based on the above search. An option should be available to automatically output a project file with the above search, best likely default-true.
+If a project is not provided by the user or discovered from the folder structure, a new project sepecification will be created automatically by scanning the current folder for RDF files. If some RDF files are found, subsidiary files such as SPARQL queries for inference are also sought and a new project specification is created. This new spec will be saved to the current folder.
+
+The user can also specifically request the creation of a new project file with the `create` command.
 
 ## Merging
 
@@ -222,8 +235,6 @@ This is all following the principle of altering the API of `Dataset` as little a
 ## Next Steps
 
 1. implement pattern support for input files
-1. implement search for input if no project files found
-1. implement project creation command
 1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
 1. allow SPARQL CONSTRUCTs as rules for inference
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...

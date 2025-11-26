@@ -1,11 +1,13 @@
 """Input/output utilities for pythinfer package."""
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Project:
@@ -45,6 +47,23 @@ class Project:
             paths_data=[Path(p) for p in cfg["data"]],
         )
 
+    def to_yaml(self) -> str:
+        """Serialize project configuration to a YAML string."""
+        cfg_dict: dict[str, object] = {
+            "name": self.name,
+            "data": [str(p) for p in self.paths_data],
+        }
+        if self.paths_vocab_int:
+            cfg_dict["internal_vocabs"] = [str(p) for p in self.paths_vocab_int]
+        if self.paths_vocab_ext:
+            cfg_dict["external_vocabs"] = [str(p) for p in self.paths_vocab_ext]
+        return yaml.dump(cfg_dict)
+
+    def to_yaml_file(self, output_path: Path) -> None:
+        """Write project configuration to a YAML file."""
+        with output_path.open("w") as f:
+            f.write(self.to_yaml())
+
 
 PROJECT_FILE_NAME = "pythinfer.yaml"
 MAX_DISCOVERY_SEARCH_DEPTH = 10
@@ -82,7 +101,7 @@ def discover_project(start_path: Path, _current_depth: int = 0) -> Path:
         raise FileNotFoundError(msg + ": reached root directory")
     if _current_depth >= MAX_DISCOVERY_SEARCH_DEPTH:
         raise FileNotFoundError(
-            msg + f": reached maximum search depth ({_current_depth})"
+            msg + f": reached maximum search depth ({_current_depth})",
         )
     home_path = Path.home().resolve()
     if current_path == home_path:
@@ -96,13 +115,21 @@ def load_project(config_path: Path | None) -> Project:
     """Load a pythinfer project specification from a YAML file.
 
     The config file can either be specified directly, or discovered by searching.
+    If neither yield a result, a new project will be created.
 
     Args:
         config_path: Path to the config file, or None to trigger discovery.
 
     """
-    _config_path = config_path or discover_project(Path.cwd())
-    return Project.from_yaml(_config_path)
+    try:
+        _config_path = config_path or discover_project(Path.cwd())
+        project = Project.from_yaml(_config_path)
+    except FileNotFoundError:
+        logger.info(
+            "⚠  No existing project found, creating new project in current directory"
+        )
+        project = create_project(Path.cwd())
+    return project
 
 
 @dataclass
@@ -143,24 +170,58 @@ def load_sparql_inference_queries(query_files: Sequence[Path]) -> list[Query]:
 
 def create_project(
     scan_directory: Path | None = None,
-    output_path: Path | str = PROJECT_FILE_NAME,
-) -> Path:
-    """Create a new pythinfer.yaml project file by scanning directory for RDF files.
+    output_path: Path | None = None,
+    *,
+    force: bool = False,
+) -> Project:
+    """Create a new Project specification by scanning directory for RDF files.
 
     Scans the specified directory (or current working directory) for RDF files
-    (with .ttl or .rdf extensions) and creates a pythinfer.yaml configuration
-    file listing them.
+    (with .ttl or .rdf extensions) and creates a new Project specification listing them.
+
+    This Project specification will be saved as `output_path` which defaults to
+    `pythinfer.yaml` in the scan_directory.
+
+    Subsidiary files such as SPARQL inference scripts are also sought and added to the
+    Project specification.
 
     Args:
-        scan_directory: Directory to scan for RDF files. If None, uses current working directory.
+        scan_directory: Directory to scan for RDF files. If None, uses current working
+            directory.
         output_path: Path where the project file should be created.
+        force: Overwrite existing project file if it exists.
 
     Returns:
-        Path to the created project configuration file.
+        Project specification object.
+
+    Side Effects:
+        Creates a new project configuration file at the specified output path.
+        May also create backup files if overwriting existing files.
+
+    Raises:
+        FileExistsError: If the output_path already exists.
+        FileNotFoundError: If no RDF files are found in the scan_directory or any of
+            its subdirectories.
 
     """
-    _scan_dir = (scan_directory or Path.cwd()).resolve()
-    _output_path = Path(output_path)
+    _scan_dir = scan_directory or Path.cwd()
+    _output_path = Path(output_path or _scan_dir / PROJECT_FILE_NAME)
+
+    # Cowardly refuse to overwrite existing project file
+    if _output_path.exists():
+        if not force:
+            msg = f"Refusing to overwrite existing project file at `{_output_path}`"
+            raise FileExistsError(msg)
+        # Store backup of existing file with incrementing .bak suffix
+        for i in range(100):
+            backup_path = _output_path.with_suffix(f".bak{i}.yaml")
+            if not backup_path.exists():
+                break
+        else:
+            msg = "Too many backup files exist, cannot create new backup."
+            raise FileExistsError(msg)
+        _output_path.rename(backup_path)
+        logger.warning("⚠ Existing project file exists, backed up to `%s`", backup_path)
 
     # Ensure output directory exists
     _output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -177,17 +238,24 @@ def create_project(
             rel_path = rdf_file.relative_to(_scan_dir)
             rdf_files.append(rel_path)
 
+    if not rdf_files:
+        msg = f"No RDF files found in directory `{_scan_dir}` to create project."
+        raise FileNotFoundError(msg)
+
     # Sort for consistent output
     rdf_files.sort()
 
     # Create project configuration
-    project_config = {
-        "name": _scan_dir.name,
-        "data": [str(f) for f in rdf_files],
-    }
+    project_config = Project(
+        name=_scan_dir.name,
+        path_self=_output_path,
+        paths_data=rdf_files,
+        paths_vocab_ext=[],
+        paths_vocab_int=[],
+    )
 
-    # Write to YAML file
-    with _output_path.open("w") as f:
-        yaml.dump(project_config, f, default_flow_style=False)
+    project_config.to_yaml_file(_output_path)
 
-    return _output_path
+    logger.info("✅ Created new project file at `%s`", _output_path)
+
+    return project_config

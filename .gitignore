@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 .coverage
+coverage.xml
 typings/**/*.pyi
 
 # Virtual environments
@@ -17,3 +18,4 @@ typings/**/*.pyi
 # Project-specific ignores
 example_projects/*/derived/*
 !example_projects/*/derived/expected*
+example_projects/eg2-projects/pythinfer.yaml
