@@ -33,3 +33,11 @@ dev = [
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["src/pythinfer"]
+branch = true

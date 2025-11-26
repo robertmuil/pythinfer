@@ -1,18 +1,15 @@
-"""End-to-end tests for the merge command."""
+"""End-to-end tests for the merge and infer commands."""
 
-import shutil
-import subprocess
+import os
 from pathlib import Path
 
 import pytest
-from rdflib import Dataset, IdentifiedNode
+from rdflib import Dataset
 from rdflib.compare import graph_diff, isomorphic
+from typer.testing import CliRunner
 
-UV_PATH = shutil.which("uv")
-if UV_PATH is None:
-    msg = "uv command not found in PATH"
-    raise RuntimeError(msg)
-UV_PATH = Path(UV_PATH)
+from pythinfer.cli import app
+
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
@@ -51,21 +48,23 @@ def test_cli_command(
     if actual_file_path.exists():
         actual_file_path.unlink()
 
-    # Run the command from the project directory
-    # This is safe as no user-input is passed.
-    result = subprocess.run(  # noqa: S603
-        [str(UV_PATH), "run", "pythinfer", command],
-        cwd=project_dir,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    # Run the command using CliRunner but with proper working directory
+    # Save current working directory and change to project directory
+    original_cwd = Path.cwd()
+    try:
+        os.chdir(project_dir)
+        runner = CliRunner()
+        result = runner.invoke(
+            app,
+            [command, "--output", str(actual_file_path)],
+        )
+    finally:
+        os.chdir(original_cwd)
 
     # Check the command succeeded
-    assert result.returncode == 0, (
-        f"`{command}` command failed:\n"
-        f"STDOUT:\n{result.stdout}\n"
-        f"STDERR:\n{result.stderr}"
+    assert result.exit_code == 0, (
+        f"`{command}` command failed with exit code {result.exit_code}:\n"
+        f"Output:\n{result.stdout}"
     )
 
     # Verify the output file was created
@@ -96,7 +95,8 @@ def test_cli_command(
         if not isomorphic(expected_graph, actual_graph):
             # Compute the difference to show what's missing/extra
             in_both, in_expected_only, in_actual_only = graph_diff(
-                expected_graph, actual_graph
+                expected_graph,
+                actual_graph,
             )
 
             error_msg = [
