@@ -8,7 +8,7 @@ from pathlib import Path
 
 from owlrl import DeductiveClosure
 from owlrl.OWLRL import OWLRL_Semantics
-from rdflib import OWL, RDF, RDFS, Dataset, Graph, IdentifiedNode, Literal, Node
+from rdflib import OWL, RDF, RDFS, BNode, Dataset, Graph, IdentifiedNode, Literal, Node
 from rdflib.query import ResultRow
 
 from pythinfer.inout import Project, Query, load_sparql_inference_queries
@@ -89,14 +89,20 @@ def apply_owlrl_inference(graph: Graph, destination_graph: Graph) -> None:
 
 
 ###
-# The following are triple-based filter functions.
-# All must except Node,Node,Node because that is what rdflib provides when iterating
-# over a graph. The package does not prevent use of types that are invalid in RDF.
+# The following are triple filter functions. Some are per-triple (they ignore the graph)
+# and some are graph-based (they use the full graph to determine whether to remove a
+# triple).
+# All must except Node,Node,Node as the first 3 arguments because that is what rdflib
+# provides when iterating over a graph.
+# The package does not prevent use of types that are invalid in RDF.
+# The 4th argument is the full Graph.
+# All must return True if the triple is to be removed.
 ###
-_FilterFunction = Callable[[Node, Node, Node], bool]
+_FilterFunction = Callable[[Node, Node, Node, Graph], bool]
 
 
-def _subject_is_literal(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
+# Per-triple filter functions (4th argument is ignored)
+def _subject_is_literal(s: Node, p: Node, o: Node, g: Graph) -> bool:  # noqa: ARG001
     """Identify when the subject is a Literal, which is invalid in RDF.
 
     Likely related to at least this: https://github.com/RDFLib/OWL-RL/issues/50
@@ -104,12 +110,12 @@ def _subject_is_literal(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
     return isinstance(s, Literal)
 
 
-def _object_is_empty_string(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
+def _object_is_empty_string(s: Node, p: Node, o: Node, g: Graph) -> bool:  # noqa: ARG001
     """Empty strings would usually be better represented as missing values."""
     return isinstance(o, Literal) and str(o) == ""
 
 
-def _redundant_reflexives(s: Node, p: Node, o: Node) -> bool:
+def _redundant_reflexives(s: Node, p: Node, o: Node, g: Graph) -> bool:
     """Reflexive statements that are redundant and useless, such as sameAs."""
     return (s == o) and (
         p
@@ -123,16 +129,38 @@ def _redundant_reflexives(s: Node, p: Node, o: Node) -> bool:
     )
 
 
-def _redundant_thing_declarations(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
+def _redundant_thing_declarations(s: Node, p: Node, o: Node, g: Graph) -> bool:  # noqa: ARG001
     """Identify useless declarations that `s` is a owl:Thing or a subclass of it."""
     return (o == OWL.Thing) and (
         p in {RDF.type, RDFS.subClassOf, RDFS.domain, RDFS.range}
     )
 
 
-def _redundant_nothing_subclass(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
+def _redundant_nothing_subclass(s: Node, p: Node, o: Node, g: Graph) -> bool:  # noqa: ARG001
     """Identify useless declarations owl:Nothing is a subclass of something."""
     return (s == OWL.Nothing) and (p == RDFS.subClassOf)
+
+
+###
+# The following are Graph-based filter functions.
+# They must accept the full graph as well in order to determine whether to
+# remove a given triple.
+# As above, must return True if the triple is to be removed.
+###
+
+
+def _undeclared_blank_nodes(s: Node, p: Node, o: Node, g: Graph) -> bool:
+    """Identify triples with blank nodes that are not declared in the graph."""
+    if isinstance(o, BNode) and p in (
+        RDF.type,
+        RDFS.subClassOf,
+        RDFS.subPropertyOf,
+        RDFS.domain,
+        RDFS.range,
+    ):
+        # Check if there is any usage of this blank node as a subject in the graph
+        return not any(g.triples((o, None, None)))
+    return False
 
 
 # Filterset for invalid RDF triples, which are logically but not syntactically valid.
@@ -145,6 +173,7 @@ filterset_unwanted_triples: list[_FilterFunction] = [
     _redundant_reflexives,
     _redundant_thing_declarations,
     _redundant_nothing_subclass,
+    _undeclared_blank_nodes,
 ]
 # Combined filterset
 filterset_all: list[_FilterFunction] = (
@@ -168,8 +197,8 @@ def filter_triples(
 
     Args:
         graph (Graph): The RDF graph to validate and clean.
-        filter_functions (list[Callable[[Triple], bool]]): List of functions that
-            take a triple and return True if the triple should be removed.
+        filter_functions (list[Callable[[Triple, Graph], bool]]): List of functions that
+            take a triple and a Graph and return True if the triple should be removed.
 
     Returns: tuple of:
         int: number of triples actually removed
@@ -182,14 +211,14 @@ def filter_triples(
     removal_counts: defaultdict[_FilterFunction, int] = defaultdict(int)
     for s, p, o in graph:
         for filter_func in filter_functions:
-            if filter_func(s, p, o):
+            if filter_func(s, p, o, graph):
                 to_remove.append((s, p, o))
                 removal_counts[filter_func] += 1
 
     info(
-        "%d filters identified %d triples for removal:",
-        len(filter_functions),
+        "%d triples identified for removal by %d filters:",
         sum(removal_counts.values()),
+        len(filter_functions),
     )
     if to_remove:
         for func, count in removal_counts.items():
@@ -367,22 +396,28 @@ def run_inference_backend(
     info("Total inferences after iteration: %d triples", len(g_full_inferences))
 
     # Step 6: Subtract external inferences from full inferences
-    info("Step 6: Subtracting external inferences from full inferences...")
-    triples_before_subtraction = len(g_full_inferences)
+    # This is actually unnecessary if we are only exporting internal graphs later,
+    # because the inference engine is expected not to add inferences that already exist.
+    # This has been verified with `owlrl`, but not other backends yet.
 
-    for s, p, o in g_external_inferences:
-        g_full_inferences.remove((s, p, o))
+    # As a matter of diagnostic, if we are in DEBUG mode, we check how many triples
+    # would be removed here.
+    info("Step 6: external inference subtraction implicit because of named graphs.")
+    if logger.isEnabledFor(logging.DEBUG):
+        dbg("%d external inferences", len(g_external_inferences))
 
-    triples_removed = triples_before_subtraction - len(g_full_inferences)
-    info("  Removed %d external inferences", triples_removed)
+        triples_overlapping = sum(
+            1 for s, p, o in g_external_inferences if (s, p, o) in g_full_inferences
+        )
+
+        dbg("  %d of these exist in full", triples_overlapping)
+
+        assert triples_overlapping == 0  # noqa: S101
 
     if not include_unwanted_triples:
         # Step 7: Subtract unwanted inferences
         info("Step 7: Filtering unwanted inferences...")
-        nremoved, filter_counts = filter_triples(g_full_inferences, filterset_all)
-        info("  Removed %d unwanted inferences:", nremoved)
-        for filter_func, count in filter_counts.items():
-            info("    - %s: %d triples", filter_func.__name__, count)
+        filter_triples(g_full_inferences, filterset_all)
 
     info("Final inference graph: %d triples", len(g_full_inferences))
 
