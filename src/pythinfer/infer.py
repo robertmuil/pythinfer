@@ -253,9 +253,20 @@ def _generate_external_inferences(
     # Create a DatasetView containing only external vocabularies (or empty if none).
     external_view = DatasetView(ds, external_graph_ids)
 
-    g_external_inferences = ds.graph(IRI_EXTERNAL_INFERENCES)
-    apply_owlrl_inference(external_view, g_external_inferences)
+    # Workaround for owlrl bug #76: copy to temp dataset with triples in default graph
+    # https://github.com/RDFLib/OWL-RL/issues/76
+    info("  Creating temporary dataset to work around owlrl named graph bug...")
+    temp_ds = external_view.collapse()
+    info("  Temporary dataset created with %d triples in default graph", len(temp_ds))
 
+    # Create inferences graph in temp dataset (must share same store)
+    temp_inferences = temp_ds.graph(IRI_EXTERNAL_INFERENCES)
+
+    apply_owlrl_inference(temp_ds, temp_inferences)
+
+    g_external_inferences = ds.graph(IRI_EXTERNAL_INFERENCES)
+    for s, p, o in temp_inferences:
+        g_external_inferences.add((s, p, o))
     info("  External inferences generated: %d triples", len(g_external_inferences))
     return g_external_inferences
 

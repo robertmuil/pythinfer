@@ -110,7 +110,7 @@ class DatasetView(Dataset):
     # superclass method that handle graph Paths. TODO.
     def triples(
         self,
-        triple_or_quad: _TripleOrQuadPatternType,
+        triple_or_quad: _TripleOrQuadPatternType = (None, None, None),
         context: _ContextType | None = None,
     ) -> Generator[_TripleType, None, None]:
         """Return triples matching the pattern from included graphs only."""
@@ -229,6 +229,23 @@ class DatasetView(Dataset):
             encoding=encoding,
             **args,
         )
+
+    def collapse(self) -> Dataset:
+        """Create a new Dataset with this view's triples in the default graph.
+
+        This is useful for working around bugs in reasoning libraries that behave
+        differently when reasoning over named graphs vs the default graph.
+        See: https://github.com/RDFLib/OWL-RL/issues/76
+
+        Returns:
+            A new Dataset containing all triples from this view in its default graph.
+
+        """
+        temp_ds = Dataset()
+        # Copy all triples from this view into the default graph
+        for s, p, o in self.triples():
+            temp_ds.add((s, p, o))
+        return temp_ds
 
 
 def graph_lengths(ds: Dataset) -> dict[IdentifiedNode, int]:
