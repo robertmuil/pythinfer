@@ -1,0 +1,49 @@
+PREFIX ptp: <http://example.org/pythinfer/project/>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+# ===== SPARQL CONSTRUCT: Project Relationships =====
+# 
+# This query infers that two projects are related if they share external
+# data sources (reference vocabularies). This type of graph traversal and
+# aggregation is difficult to express in OWL-RL and benefits from
+# procedural query logic.
+#
+# It demonstrates:
+# 1. Complex path traversal (project -> external data -> other projects)
+# 2. Aggregation and filtering logic (finding common vocabularies)
+# 3. Conditional inference based on graph patterns
+#
+
+CONSTRUCT {
+    ?project1 ptp:relatedProject ?project2 ;
+        ptp:sharesExternalSources ?count ;
+        ptp:relationshipType "shared-vocabularies" .
+}
+WHERE {
+    # Find projects that share external data sources
+    ?project1 a ptp:Project ;
+        ptp:hasExternalData ?externalData1 .
+    
+    ?project2 a ptp:Project ;
+        ptp:hasExternalData ?externalData1 .
+    
+    # Ensure we don't relate a project to itself
+    FILTER (?project1 != ?project2)
+    
+    # Count how many external sources are shared (optional enrichment)
+    {
+        SELECT ?project1 ?project2 (COUNT(DISTINCT ?externalData1) as ?count)
+        WHERE {
+            ?project1 a ptp:Project ;
+                ptp:hasExternalData ?externalData1 .
+            
+            ?project2 a ptp:Project ;
+                ptp:hasExternalData ?externalData1 .
+            
+            FILTER (?project1 != ?project2)
+        }
+        GROUP BY ?project1 ?project2
+        HAVING (?count >= 1)
+    }
+}

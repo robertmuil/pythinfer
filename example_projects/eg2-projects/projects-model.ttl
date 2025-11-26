@@ -1,0 +1,292 @@
+@prefix ptp: <http://example.org/pythinfer/project/> .
+@prefix ptf: <http://example.org/pythinfer/> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Import external vocabularies
+<http://example.org/pythinfer/project/ontology> owl:imports 
+    <http://purl.org/dc/terms/> ,
+    <http://www.w3.org/ns/dcat> ,
+    <http://xmlns.com/foaf/0.1/> ,
+    <http://www.w3.org/ns/prov> ,
+    <http://purl.org/vocab/vann/> ,
+    <http://www.w3.org/2004/02/skos/core> .
+
+# ===== ONTOLOGY DEFINITION =====
+
+<http://example.org/pythinfer/project/ontology> a owl:Ontology ;
+    dct:title "Pythinfer Project Ontology"@en ;
+    dct:description "An ontology describing Pythinfer projects, their configuration, data sources, and processing workflows."@en ;
+    dct:created "2025-11-26"^^xsd:date ;
+    vann:preferredNamespaceUri "http://example.org/pythinfer/project/" ;
+    vann:preferredNamespacePrefix "ptp" ;
+    dct:issued "2025-11-26"^^xsd:date ;
+    owl:versionInfo "1.0.0" ;
+    rdfs:comment "This ontology describes Pythinfer projects which combine RDF data sources, external vocabularies, and inference rules to produce derived knowledge graphs."@en ;
+    dct:license <http://creativecommons.org/licenses/by/4.0/> .
+
+# ===== CLASSES =====
+
+ptp:Project a owl:Class ;
+    rdfs:label "Project"@en ;
+    rdfs:comment "A Pythinfer project specification that combines RDF data sources and configuration for logical inference."@en ;
+    skos:definition "A collection of RDF files, external vocabularies, inference rules, and metadata describing how to process and derive knowledge from the data."@en ;
+    rdfs:subClassOf dcat:Catalog ;
+    owl:equivalentClass prov:Activity .
+
+ptp:DataSource a owl:Class ;
+    rdfs:label "Data Source"@en ;
+    rdfs:comment "A source of RDF data within a project, which may be internal or external."@en ;
+    rdfs:subClassOf dcat:Dataset .
+
+ptp:InternalDataSource a owl:Class ;
+    rdfs:label "Internal Data Source"@en ;
+    rdfs:comment "A data source that is maintained by the user and forms part of the project's primary content."@en ;
+    rdfs:subClassOf ptp:DataSource ;
+    skos:definition "Data that is owned, maintained, and part of the core intellectual property of the project."@en .
+
+ptp:ExternalDataSource a owl:Class ;
+    rdfs:label "External Data Source"@en ;
+    rdfs:comment "A reference vocabulary or ontology used for inference purposes but not maintained by the project user."@en ;
+    rdfs:subClassOf ptp:DataSource ;
+    skos:definition "Standardized vocabularies, ontologies, and reference data used as axioms or inference catalysts, but not part of the project's core output."@en .
+
+ptp:VocabularyFile a owl:Class ;
+    rdfs:label "Vocabulary File"@en ;
+    rdfs:comment "An RDF file containing ontological definitions or controlled vocabularies."@en ;
+    rdfs:subClassOf ptp:DataSource ;
+    skos:definition "A structured RDF/Turtle file defining classes, properties, and axioms."@en .
+
+ptp:DataFile a owl:Class ;
+    rdfs:label "Data File"@en ;
+    rdfs:comment "An RDF file containing instance data and assertions."@en ;
+    rdfs:subClassOf ptp:DataSource ;
+    skos:definition "A structured RDF/Turtle file containing facts and instances about concepts defined in vocabularies."@en .
+
+ptp:InferenceRule a owl:Class ;
+    rdfs:label "Inference Rule"@en ;
+    rdfs:comment "A specification for deriving new triples from existing data."@en ;
+    skos:definition "A declarative or procedural specification used to generate inferences, such as OWL-RL rules, SPARQL CONSTRUCT queries, or Python functions."@en ;
+    rdfs:subClassOf prov:Entity .
+
+ptp:OwlRuleSet a owl:Class ;
+    rdfs:label "OWL Rule Set"@en ;
+    rdfs:comment "A set of OWL and RDFS inference rules applied to the data."@en ;
+    rdfs:subClassOf ptp:InferenceRule ;
+    skos:definition "A backend-specific application of OWL inference rules, such as OWL-RL, for deriving class hierarchies and property relationships."@en .
+
+ptp:SparqlRule a owl:Class ;
+    rdfs:label "SPARQL Rule"@en ;
+    rdfs:comment "A SPARQL CONSTRUCT query used for inference."@en ;
+    rdfs:subClassOf ptp:InferenceRule ;
+    skos:definition "A SPARQL CONSTRUCT query that generates new triples based on patterns in existing data."@en .
+
+ptp:PythonRule a owl:Class ;
+    rdfs:label "Python Rule"@en ;
+    rdfs:comment "A Python function used for procedural inference."@en ;
+    rdfs:subClassOf ptp:InferenceRule ;
+    skos:definition "Custom Python code for generating inferences where OWL or SPARQL rules are insufficient."@en .
+
+ptp:OutputConfiguration a owl:Class ;
+    rdfs:label "Output Configuration"@en ;
+    rdfs:comment "Configuration specifying how the project's derived data should be exported."@en ;
+    rdfs:subClassOf prov:Entity .
+
+ptp:ProcessingBackend a owl:Class ;
+    rdfs:label "Processing Backend"@en ;
+    rdfs:comment "The RDF library or engine used to process the project."@en ;
+    skos:definition "The underlying technology stack for loading, merging, and inferencing over RDF data (e.g., rdflib, Jena, PyOxigraph, rdf4j)."@en ;
+    rdfs:subClassOf prov:Entity .
+
+ptp:NamedGraph a owl:Class ;
+    rdfs:label "Named Graph"@en ;
+    rdfs:comment "A named graph within the project's dataset, used for tracking provenance."@en ;
+    rdfs:subClassOf prov:Entity ;
+    skos:definition "An RDF named graph that preserves the provenance of triples by tracking their source file."@en .
+
+ptp:DerivedData a owl:Class ;
+    rdfs:label "Derived Data"@en ;
+    rdfs:comment "The final result of applying inference rules to a project's data."@en ;
+    rdfs:subClassOf dcat:Dataset ;
+    owl:equivalentClass prov:wasGeneratedBy ;
+    skos:definition "The merged original statements combined with inferred triples, excluding unwanted inferences and external data."@en .
+
+# ===== PROPERTIES =====
+
+ptp:hasDataSource a owl:ObjectProperty ;
+    rdfs:label "has data source"@en ;
+    rdfs:comment "Relates a project to its data sources."@en ;
+    rdfs:domain ptp:Project ;
+    rdfs:range ptp:DataSource ;
+    skos:definition "A relationship indicating that a project includes or depends on a specific data source."@en .
+
+ptp:hasInternalData a owl:ObjectProperty ;
+    rdfs:label "has internal data"@en ;
+    rdfs:comment "Relates a project to its internal data sources."@en ;
+    rdfs:domain ptp:Project ;
+    rdfs:range ptp:InternalDataSource ;
+    rdfs:subPropertyOf ptp:hasDataSource ;
+    skos:definition "A project-specific data source that forms part of the project's primary deliverable."@en .
+
+ptp:hasExternalData a owl:ObjectProperty ;
+    rdfs:label "has external data"@en ;
+    rdfs:comment "Relates a project to its external vocabulary or ontology sources."@en ;
+    rdfs:domain ptp:Project ;
+    rdfs:range ptp:ExternalDataSource ;
+    rdfs:subPropertyOf ptp:hasDataSource ;
+    skos:definition "A reference vocabulary or standard ontology used for inference but not included in the final output."@en .
+
+ptp:hasInferenceRule a owl:ObjectProperty ;
+    rdfs:label "has inference rule"@en ;
+    rdfs:comment "Relates a project to its inference rules."@en ;
+    rdfs:domain ptp:Project ;
+    rdfs:range ptp:InferenceRule ;
+    skos:definition "A specification for how the project derives new triples from its data."@en .
+
+ptp:hasOutputConfiguration a owl:ObjectProperty ;
+    rdfs:label "has output configuration"@en ;
+    rdfs:comment "Relates a project to its output configuration."@en ;
+    rdfs:domain ptp:Project ;
+    rdfs:range ptp:OutputConfiguration ;
+    owl:cardinality 1 ;
+    skos:definition "The specification of how the project exports its results."@en .
+
+ptp:usesBackend a owl:ObjectProperty ;
+    rdfs:label "uses backend"@en ;
+    rdfs:comment "Relates a project to the processing backend it uses."@en ;
+    rdfs:domain ptp:Project ;
+    rdfs:range ptp:ProcessingBackend ;
+    skos:definition "The RDF processing technology employed by the project."@en .
+
+ptp:generatedFrom a owl:ObjectProperty ;
+    rdfs:label "generated from"@en ;
+    rdfs:comment "Relates a named graph to its source data source."@en ;
+    rdfs:domain ptp:NamedGraph ;
+    rdfs:range ptp:DataSource ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    skos:definition "Tracks which data source produced the contents of a named graph."@en .
+
+ptp:generates a owl:ObjectProperty ;
+    rdfs:label "generates"@en ;
+    rdfs:comment "Relates an inference rule to the derived data it produces."@en ;
+    rdfs:domain ptp:InferenceRule ;
+    rdfs:range ptp:DerivedData ;
+    rdfs:subPropertyOf prov:wasGeneratedBy ;
+    skos:definition "The output data produced by applying an inference rule to source data."@en .
+
+ptp:inputPattern a owl:DatatypeProperty ;
+    rdfs:label "input pattern"@en ;
+    rdfs:comment "A glob pattern specifying which files match this data source."@en ;
+    rdfs:domain ptp:DataSource ;
+    rdfs:range xsd:string ;
+    skos:definition "A file glob pattern (e.g., *.ttl, models/*.rdf) that selects files belonging to this data source."@en .
+
+ptp:filePath a owl:DatatypeProperty ;
+    rdfs:label "file path"@en ;
+    rdfs:comment "The path to an RDF data file."@en ;
+    rdfs:domain [ owl:unionOf ( ptp:VocabularyFile ptp:DataFile ) ] ;
+    rdfs:range xsd:string ;
+    skos:definition "Absolute or relative (to base folder) path to the RDF file."@en .
+
+ptp:ruleContent a owl:DatatypeProperty ;
+    rdfs:label "rule content"@en ;
+    rdfs:comment "The text content of an inference rule."@en ;
+    rdfs:domain ptp:InferenceRule ;
+    rdfs:range xsd:string ;
+    skos:definition "The source code or query text that defines the inference rule."@en .
+
+ptp:ruleType a owl:ObjectProperty ;
+    rdfs:label "rule type"@en ;
+    rdfs:comment "The type of inference rule (e.g., OWL-RL, SPARQL, Python)."@en ;
+    rdfs:domain ptp:InferenceRule ;
+    rdfs:range owl:Class ;
+    skos:definition "Classifies the inference rule into categories like OwlRuleSet, SparqlRule, or PythonRule."@en .
+
+ptp:outputFolder a owl:DatatypeProperty ;
+    rdfs:label "output folder"@en ;
+    rdfs:comment "The folder where derived data should be exported."@en ;
+    rdfs:domain ptp:OutputConfiguration ;
+    rdfs:range xsd:string ;
+    skos:definition "The directory path where the project's derived data files are written."@en .
+
+ptp:basePath a owl:DatatypeProperty ;
+    rdfs:label "base path"@en ;
+    rdfs:comment "The base directory against which relative paths in the project are resolved."@en ;
+    rdfs:domain ptp:Project ;
+    rdfs:range xsd:string ;
+    skos:definition "The directory that serves as the root for resolving relative file paths in the project configuration."@en .
+
+ptp:inferenceOrder a owl:DatatypeProperty ;
+    rdfs:label "inference order"@en ;
+    rdfs:comment "The order in which inference rules should be applied (lower numbers applied first)."@en ;
+    rdfs:domain ptp:InferenceRule ;
+    rdfs:range xsd:integer ;
+    skos:definition "Specifies the sequence for rule application when multiple rules interact or depend on each other's results."@en .
+
+ptp:isExternal a owl:DatatypeProperty ;
+    rdfs:label "is external"@en ;
+    rdfs:comment "Boolean indicating whether a data source is external (reference vocabulary) or internal (project data)."@en ;
+    rdfs:domain ptp:DataSource ;
+    rdfs:range xsd:boolean ;
+    skos:definition "True for reference vocabularies used only for inference; false for project-maintained data."@en .
+
+ptp:backendName a owl:DatatypeProperty ;
+    rdfs:label "backend name"@en ;
+    rdfs:comment "The name of the RDF processing backend (e.g., 'rdflib', 'jena', 'pyoxigraph')."@en ;
+    rdfs:domain ptp:ProcessingBackend ;
+    rdfs:range xsd:string ;
+    skos:definition "Identifier for the backend implementation used for RDF processing."@en .
+
+ptp:backendVersion a owl:DatatypeProperty ;
+    rdfs:label "backend version"@en ;
+    rdfs:comment "The version of the processing backend."@en ;
+    rdfs:domain ptp:ProcessingBackend ;
+    rdfs:range xsd:string ;
+    skos:definition "The specific version number of the backend library or tool."@en .
+
+# ===== RELATIONSHIPS WITH EXTERNAL VOCABULARIES =====
+
+# Project is a type of catalog and an activity
+ptp:Project rdfs:subClassOf dcat:Catalog, prov:Activity .
+
+# ===== INVERSE PROPERTIES =====
+
+ptp:isDataSourceOf a owl:ObjectProperty ;
+    rdfs:label "is data source of"@en ;
+    rdfs:comment "Inverse of hasDataSource."@en ;
+    owl:inverseOf ptp:hasDataSource .
+
+ptp:inferenceRuleOf a owl:ObjectProperty ;
+    rdfs:label "inference rule of"@en ;
+    rdfs:comment "Inverse of hasInferenceRule."@en ;
+    owl:inverseOf ptp:hasInferenceRule .
+
+ptp:isSourceOf a owl:ObjectProperty ;
+    rdfs:label "is source of"@en ;
+    rdfs:comment "Inverse of generatedFrom."@en ;
+    owl:inverseOf ptp:generatedFrom .
+
+# ===== CONSTRAINTS AND RESTRICTIONS =====
+
+ptp:Project rdfs:comment "A project MUST have at least one data source (internal or external) and a configuration."@en ;
+    owl:hasValue dct:title ;
+    owl:minCardinality 1 ;
+    owl:minCardinality [ 
+        a owl:Restriction ;
+        owl:onProperty ptp:hasDataSource ;
+        owl:minCardinality 1
+    ] .
+
+ptp:OutputConfiguration rdfs:comment "Output configuration MUST specify an output folder."@en ;
+    owl:minCardinality [
+        a owl:Restriction ;
+        owl:onProperty ptp:outputFolder ;
+        owl:cardinality 1
+    ] .
