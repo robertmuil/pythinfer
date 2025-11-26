@@ -229,3 +229,11 @@ class DatasetView(Dataset):
             encoding=encoding,
             **args,
         )
+
+
+def graph_lengths(ds: Dataset) -> dict[IdentifiedNode, int]:
+    """Get lengths of all named graphs in a Dataset."""
+    lengths: dict[IdentifiedNode, int] = {}
+    for g in ds.graphs():
+        lengths[g.identifier] = len(g)
+    return lengths

@@ -9,10 +9,9 @@ from rdflib import Dataset, IdentifiedNode
 from pythinfer.infer import run_inference_backend
 from pythinfer.inout import Project, discover_project, load_project
 from pythinfer.merge import (
-    graph_lengths,
     merge_graphs,
 )
-from pythinfer.rdflibplus import DatasetView
+from pythinfer.rdflibplus import DatasetView, graph_lengths
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)

@@ -14,14 +14,6 @@ info = logger.info
 dbg = debug = logger.debug
 
 
-def graph_lengths(ds: Dataset) -> dict[IdentifiedNode, int]:
-    """Get lengths of all named graphs in a Dataset."""
-    lengths: dict[IdentifiedNode, int] = {}
-    for g in ds.graphs():
-        lengths[g.identifier] = len(g)
-    return lengths
-
-
 # NB: in the below we are using the file *name* only as the named graph identifier.
 # This assumes that input files have unique names even if in different directories,
 # which is likely an invalid assumption...
