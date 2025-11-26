@@ -47,7 +47,7 @@ def merge(
     config: Path | None = None,
     output: Path | None = None,
     *,
-    exclude_external: bool = False,
+    exclude_external: bool = True,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Merge graphs as specified in the config file and export."""
     config_path = config or discover_project(Path.cwd())

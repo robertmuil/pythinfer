@@ -1,0 +1,77 @@
+@prefix ns1: <http://example.org/ancestor/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<inferences_full> {
+    ns1:David ns1:childOf ns1:Bob ;
+        ns1:descendantOf ns1:Alice,
+            ns1:Bob .
+
+    ns1:Eve ns1:childOf ns1:Carol ;
+        ns1:descendantOf ns1:Alice,
+            ns1:Carol .
+
+    ns1:Bob ns1:ancestorOf ns1:David ;
+        ns1:childOf ns1:Alice ;
+        ns1:descendantOf ns1:Alice .
+
+    ns1:Carol ns1:ancestorOf ns1:Eve ;
+        ns1:childOf ns1:Alice ;
+        ns1:descendantOf ns1:Alice .
+
+    ns1:Alice ns1:ancestorOf ns1:Bob,
+            ns1:Carol,
+            ns1:David,
+            ns1:Eve .
+}
+
+<ancestors-data.ttl> {
+    ns1:David a ns1:Person .
+
+    ns1:Eve a ns1:Person .
+
+    ns1:Bob a ns1:Person ;
+        ns1:parentOf ns1:David .
+
+    ns1:Carol a ns1:Person ;
+        ns1:parentOf ns1:Eve .
+
+    ns1:Alice a ns1:Person ;
+        ns1:parentOf ns1:Bob,
+            ns1:Carol .
+}
+
+<ancestors-model.ttl> {
+    ns1:childOf rdfs:label "child of" ;
+        owl:inverseOf ns1:parentOf .
+
+    ns1:descendantOf rdfs:label "descendant of" ;
+        owl:inverseOf ns1:ancestorOf .
+
+    ns1:ancestorOf a owl:ObjectProperty ;
+        rdfs:label "ancestor of" ;
+        rdfs:domain ns1:Person ;
+        rdfs:range ns1:Person ;
+        owl:propertyChainAxiom _:ne6711e1f4fde4e3da6282b51d3a9dc68b1,
+            _:ne6711e1f4fde4e3da6282b51d3a9dc68b3 .
+
+    ns1:parentOf a owl:ObjectProperty ;
+        rdfs:label "parent of" ;
+        rdfs:domain ns1:Person ;
+        rdfs:range ns1:Person .
+
+    ns1:Person a owl:Class ;
+        rdfs:label "Person" .
+
+    _:ne6711e1f4fde4e3da6282b51d3a9dc68b1 rdf:first ns1:parentOf ;
+        rdf:rest _:ne6711e1f4fde4e3da6282b51d3a9dc68b2 .
+
+    _:ne6711e1f4fde4e3da6282b51d3a9dc68b2 rdf:first ns1:ancestorOf ;
+        rdf:rest () .
+
+    _:ne6711e1f4fde4e3da6282b51d3a9dc68b3 rdf:first ns1:parentOf ;
+        rdf:rest () .
+}
+

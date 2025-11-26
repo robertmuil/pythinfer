@@ -130,6 +130,11 @@ def _redundant_thing_declarations(s: Node, p: Node, o: Node) -> bool:  # noqa: A
     )
 
 
+def _redundant_nothing_subclass(s: Node, p: Node, o: Node) -> bool:  # noqa: ARG001
+    """Identify useless declarations owl:Nothing is a subclass of something."""
+    return (s == OWL.Nothing) and (p == RDFS.subClassOf)
+
+
 # Filterset for invalid RDF triples, which are logically but not syntactically valid.
 # This can occur when the reasoner encounters malformed data or makes invalid
 # inferences.
@@ -139,6 +144,7 @@ filterset_unwanted_triples: list[_FilterFunction] = [
     _object_is_empty_string,
     _redundant_reflexives,
     _redundant_thing_declarations,
+    _redundant_nothing_subclass,
 ]
 # Combined filterset
 filterset_all: list[_FilterFunction] = (
