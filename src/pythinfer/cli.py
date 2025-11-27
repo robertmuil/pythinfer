@@ -194,6 +194,9 @@ def query(
         typer.secho(f"{len(result.bindings)} rows", fg="green")
         # TODO: turn the bindings into a proper typer table instead of serialize()
         typer.secho(result.serialize(format="csv").decode(), fg="yellow")
+    elif result.type == "CONSTRUCT":
+        typer.secho(f"{len(result.graph)} triples", fg="green")
+        typer.secho(result.graph.serialize(format="turtle"), fg="yellow")
     else:
         typer.echo(result.serialize().decode())
 
