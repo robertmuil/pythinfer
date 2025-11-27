@@ -4,7 +4,8 @@ import logging
 from pathlib import Path
 
 import typer
-from rdflib import Dataset, IdentifiedNode
+from rdflib import Dataset, IdentifiedNode, URIRef
+from rdflib.query import Result
 
 from pythinfer.infer import run_inference_backend
 from pythinfer.inout import Project, create_project, load_project
@@ -163,6 +164,40 @@ def infer(
         typer.secho(f"{gid.n3():60s} {length: 4d}", fg=typer.colors.YELLOW)
 
     return ds, all_external_ids
+
+@app.command()
+def query(
+    query: Path, project: Path | None = None, graph: list[str] | None = None
+) -> Result:
+    """Perform a query, from given path, against the latest inferred file.
+
+    Args:
+        query: Path to the query file to execute
+        project: Path to project file (defaults to project selection process)
+
+    """
+    with query.open() as f:
+        query_contents = f.read()
+
+    ds, _ = infer(project)
+
+    view = ds
+    if graph:
+        view = DatasetView(ds, [URIRef(g) for g in graph])
+        gid_n3s = [gid.n3() for gid in view.included_graph_ids]
+        typer.secho(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
+
+    result = view.query(query_contents)
+
+    typer.secho(f"Executed {result.type} query:")
+    if result.type == "SELECT":
+        typer.secho(f"{len(result.bindings)} rows", fg="green")
+        # TODO: turn the bindings into a proper typer table instead of serialize()
+        typer.secho(result.serialize(format="csv").decode(), fg="yellow")
+    else:
+        typer.echo(result.serialize().decode())
+
+    return result
 
 
 if __name__ == "__main__":
