@@ -232,6 +232,19 @@ Adding or removing a triple without specifying the graph would go to the default
 
 This is all following the principle of altering the API of `Dataset` as little as possible.
 
+## Real-World Usage
+
+The `example_projects` folder contains contrived examples, but this has also been run over real data:
+
+1. [foafPub](https://ebiquity.umbc.edu/resource/html/id/82/foafPub-dataset)
+   1. takes a while, but successfully completes
+   2. only infers 7 new useful triples, all deriving from an `owl:sameAs` link to an otherwise completely unconnected local id (treated as a blank node)
+1. [starwars](https://platform.ontotext.com/semantic-objects/_downloads/2043955fe25b183f32a7f6b6ba61d5c2/SWAPI-WD-data.ttl)
+   1. successfully completes, reasonable time
+   2. infers 175 new triples from the basic starwars.ttl file, mainly that characters are of type `voc:Mammal` and `voc:Sentient` or `voc:Artificial`, etc.
+      1. also funnily generates `xsd:decimal owl:disjointWith xsd:string`
+   3. including `summary.ttl` doesn't change the inferences, which I think is correct.
+
 ## Next Steps
 
 1. implement pattern support for input files
@@ -239,5 +252,7 @@ This is all following the principle of altering the API of `Dataset` as little a
 1. allow SPARQL CONSTRUCTs as rules for inference
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
 1. consider using a proper config language like dhal(?) instead of yaml
-1. add query command
 1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
+1. add make-like functionality to only re-process files that have changed since last run
+    - especially valuable for query command
+1. export *only* the inferred triples as a default, separately from the full merged + inferred graph, as something that could often be useful to preserve.
