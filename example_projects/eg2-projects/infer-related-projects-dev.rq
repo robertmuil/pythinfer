@@ -5,9 +5,10 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 # ===== SPARQL CONSTRUCT: Project Relationships =====
 # 
 # This query infers that two projects are related if they share external
-# data sources (reference vocabularies). This type of graph traversal and
-# aggregation is difficult to express in OWL-RL and benefits from
-# procedural query logic.
+# data sources (reference vocabularies). Projects are considered related if
+# their external data shares either the same isVersionOf source OR the same
+# inputPattern. This type of graph traversal and aggregation is difficult
+# to express in OWL-RL and benefits from procedural query logic.
 #
 # It demonstrates:
 # 1. Complex path traversal (project -> external data -> other projects)
@@ -21,12 +22,23 @@ CONSTRUCT {
         ptp:relationshipType "shared-vocabularies" .
 }
 WHERE {
-    # Find projects that share external data sources
+    # Find projects that share external data sources (by isVersionOf or inputPattern)
     ?project1 a ptp:Project ;
-        ptp:hasExternalData [ dct:isVersionOf ?externalData1 ].
+        ptp:hasExternalData ?externalData1 .
     
     ?project2 a ptp:Project ;
-        ptp:hasExternalData [ dct:isVersionOf ?externalData1 ].
+        ptp:hasExternalData ?externalData2 .
+    
+    # Match if either isVersionOf or inputPattern are the same
+    {
+        ?externalData1 dct:isVersionOf ?edSource .
+        ?externalData2 dct:isVersionOf ?edSource .
+    }
+    UNION
+    {
+        ?externalData1 ptp:inputPattern ?pattern .
+        ?externalData2 ptp:inputPattern ?pattern .
+    }
     
     # Ensure we don't relate a project to itself
     FILTER (?project1 != ?project2)

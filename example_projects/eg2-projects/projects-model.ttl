@@ -46,6 +46,11 @@ ptp:DataSource a owl:Class ;
     rdfs:comment "A source of RDF data within a project, which may be internal or external."@en ;
     rdfs:subClassOf dcat:Dataset .
 
+ptp:ProjectRelationship a owl:Class ;
+    rdfs:label "Project Relationship"@en ;
+    skos:definition "A reification of the relationship between any two Projects, allowing for specification of metadata about that relationship."@en ;
+    .
+
 ptp:InternalDataSource a owl:Class ;
     rdfs:label "Internal Data Source"@en ;
     rdfs:comment "A data source that is maintained by the user and forms part of the project's primary content."@en ;
@@ -254,7 +259,6 @@ ptp:backendVersion a owl:DatatypeProperty ;
 # ===== RELATIONSHIPS WITH EXTERNAL VOCABULARIES =====
 
 # Project is a type of catalog and an activity
-ptp:Project rdfs:subClassOf dcat:Catalog, prov:Activity .
 
 # ===== INVERSE PROPERTIES =====
 
