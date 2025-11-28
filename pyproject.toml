@@ -21,18 +21,14 @@ build-backend = "hatchling.build"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["COM812"]
+ignore = ["COM812", "D203", "D213"]
+
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
 
 [dependency-groups]
-dev = [
-    "jupyter>=1.1.1",
-    "pandas>=2.3.3",
-    "pytest>=9.0.1",
-    "pytest-cov>=7.0.0",
-]
+dev = ["jupyter>=1.1.1", "pandas>=2.3.3", "pytest>=9.0.1", "pytest-cov>=7.0.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,5 +1,7 @@
 # EG2 - Projects
 
+NB: if this matures, we might move the model into a more prominent and utilised place rather than just being an example.
+
 This should *not* include a `pythinfer.yaml` project file, because one of the test cases that use this example is to test automatic project creation.
 
 ## Supported Tests

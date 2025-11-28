@@ -6,8 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+from rdflib import Dataset, Graph
+
+from pythinfer.rdflibplus import DatasetView
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Project:
@@ -126,7 +130,7 @@ def load_project(config_path: Path | None) -> Project:
         project = Project.from_yaml(_config_path)
     except FileNotFoundError:
         logger.info(
-            "⚠  No existing project found, creating new project in current directory"
+            "⚠  No existing project found, creating new project in current directory",
         )
         project = create_project(Path.cwd())
     return project

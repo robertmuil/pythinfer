@@ -1,6 +1,6 @@
 """Extensions to rdflib for pythinfer."""
 
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 
 from rdflib import Dataset, Graph, IdentifiedNode
 from rdflib.graph import (
@@ -32,7 +32,7 @@ class DatasetView(Dataset):
     def __init__(
         self,
         original_ds: Dataset,
-        included_graph_ids: list[IdentifiedNode],
+        included_graph_ids: Sequence[IdentifiedNode],
     ) -> None:
         """Initialize the Dataset view containing a pointer to the original Dataset."""
         super().__init__(

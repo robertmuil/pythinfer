@@ -255,4 +255,4 @@ The `example_projects` folder contains contrived examples, but this has also bee
 1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
 1. add make-like functionality to only re-process files that have changed since last run
     - especially valuable for query command
-1. export *only* the inferred triples as a default, separately from the full merged + inferred graph, as something that could often be useful to preserve.
+1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.

@@ -15,7 +15,7 @@ from pythinfer.inout import Project, Query, load_sparql_inference_queries
 from pythinfer.merge import IRI_EXTERNAL_INFERENCES, IRI_FULL_INFERENCES
 from pythinfer.rdflibplus import DatasetView
 
-DEF_MAX_REASONING_ROUNDS = 5
+MAX_REASONING_ROUNDS = 5
 SCRIPT_DIR = Path(__file__).parent
 logger = logging.getLogger(__name__)
 info = logger.info
@@ -115,7 +115,7 @@ def _object_is_empty_string(s: Node, p: Node, o: Node, g: Graph) -> bool:  # noq
     return isinstance(o, Literal) and str(o) == ""
 
 
-def _redundant_reflexives(s: Node, p: Node, o: Node, g: Graph) -> bool:
+def _redundant_reflexives(s: Node, p: Node, o: Node, g: Graph) -> bool:  # noqa: ARG001
     """Reflexive statements that are redundant and useless, such as sameAs."""
     return (s == o) and (
         p
@@ -149,7 +149,7 @@ def _redundant_nothing_subclass(s: Node, p: Node, o: Node, g: Graph) -> bool:  #
 ###
 
 
-def _undeclared_blank_nodes(s: Node, p: Node, o: Node, g: Graph) -> bool:
+def _undeclared_blank_nodes(s: Node, p: Node, o: Node, g: Graph) -> bool:  # noqa: ARG001
     """Identify triples with blank nodes that are not declared in the graph."""
     if isinstance(o, BNode) and p in (
         RDF.type,
@@ -324,9 +324,11 @@ def run_inference_backend(
     ds: Dataset,
     external_graph_ids: list[IdentifiedNode],
     project: Project,
-    max_iterations: int = DEF_MAX_REASONING_ROUNDS,
+    output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
+    export_full: bool = False,
+    export_external: bool = False,
 ) -> list[IdentifiedNode]:
     """Run inference backend on merged graph using OWL-RL semantics.
 
@@ -347,8 +349,11 @@ def run_inference_backend(
         ds: Dataset containing data and vocabulary graphs.
         external_graph_ids: List of graph identifiers that are external (ephemeral).
         project: The project configuration to use (includes backend and other settings).
-        max_iterations: Maximum number of inference iterations (default 5).
+        output: Path to export inferences to, or None for project default
         include_unwanted_triples: If True, do not filter unwanted triples.
+        export_full: export a file with the full set of inputs and inferences
+        export_external: when exporting, include external graphs and inferences
+
 
     Returns:
         List of all external graph identifiers (input external_graph_ids plus
@@ -359,7 +364,10 @@ def run_inference_backend(
 
     """
     if project.owl_backend != "owlrl":
-        msg = f"Unsupported inference backend: {project.owl_backend}. Only 'owlrl' is currently supported."
+        msg = (
+            f"Unsupported inference backend: {project.owl_backend}. "
+            "Only 'owlrl' is currently supported."
+        )
         raise NotImplementedError(msg)
 
     sparql_queries = load_sparql_inference_queries(project.paths_sparql_inference or [])
@@ -370,14 +378,14 @@ def run_inference_backend(
     # Steps 3-5: Iterate full inferences + heuristics until convergence
     info(
         "Steps 3-5: Iterating full inferences + heuristics (max %d iterations)...",
-        max_iterations,
+        MAX_REASONING_ROUNDS,
     )
 
     g_full_inferences = ds.graph(IRI_FULL_INFERENCES)
     iteration = 0
     previous_triple_count = len(ds)  # Count triples in entire dataset
 
-    while iteration < max_iterations:
+    while iteration < MAX_REASONING_ROUNDS:
         iteration += 1
 
         triples_added_owl, triples_added_sparql = _run_inference_iteration(
@@ -401,8 +409,8 @@ def run_inference_backend(
 
         previous_triple_count = current_triple_count
 
-    if iteration >= max_iterations:
-        info("  Maximum iterations (%d) reached", max_iterations)
+    if iteration >= MAX_REASONING_ROUNDS:
+        info("  Maximum iterations (%d) reached", MAX_REASONING_ROUNDS)
 
     info("Total inferences after iteration: %d triples", len(g_full_inferences))
 
@@ -432,8 +440,33 @@ def run_inference_backend(
 
     info("Final inference graph: %d triples", len(g_full_inferences))
 
-    # Return all external graph IDs (originals plus external inferences)
-    return [
+    all_external_ids: list[IdentifiedNode] = [
         *external_graph_ids,
         IRI_EXTERNAL_INFERENCES,
     ]
+
+    if export_full:
+        output_file = (
+            project.path_self.parent / "derived" / f"full_{project.owl_backend}.trig"
+        )
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        final_ds = ds if export_external else DatasetView(ds, all_external_ids).invert()
+        final_ds.serialize(destination=str(output_file), format="trig")
+        info(f"Exported {len(final_ds)} triples (input and inferred) to `{output}`")
+
+    output_file = (
+        output
+        or project.path_self.parent / "derived" / f"inferred_{project.owl_backend}.trig"
+    )
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    output_ds = DatasetView(
+        ds,
+        [IRI_FULL_INFERENCES] + ([IRI_EXTERNAL_INFERENCES] if export_external else []),
+    )
+    output_ds.serialize(str(output_file), format="trig")
+    info(f"Exported {len(output_ds)} inferred triples to `{output_file}`")
+
+    # Return all external graph IDs (originals plus external inferences)
+    return all_external_ids
