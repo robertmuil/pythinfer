@@ -1,10 +1,12 @@
 """Merge RDF graphs from config, preserving named graph URIs for each input file."""
 
 import logging
+from pathlib import Path
 
 from rdflib import Dataset, IdentifiedNode, URIRef
 
 from pythinfer.inout import Project
+from pythinfer.rdflibplus import DatasetView
 
 IRI_EXTERNAL_INFERENCES: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
 IRI_FULL_INFERENCES: URIRef = URIRef("inferences_full")  # type: ignore[bad-assignment]
@@ -20,34 +22,52 @@ dbg = debug = logger.debug
 
 
 def merge_graphs(
-    cfg: Project,
+    project: Project, *, output: Path | bool = True, export_external: bool = False
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Merge graphs: preserve named graphs for each input.
 
-    Loads all input files into a single Dataset with named graphs.
-    External vocabulary files are tracked separately for filtering during export.
+    Loads all input files into a single Dataset with named graphs and optionally
+    persists to file.
+
+    List of external graph ids is tracked separately for filtering during export.
+
+    Args:
+        project:    Project defining what files to merge and which are external
+        output:     False for no persistence, True for default, or an explicit Path
+        export_external:  whether to include external graphs when exporting
 
     Returns:
         Tuple of (merged Dataset, list of external graph identifiers).
 
     """
-    merged = Dataset()
-    external_graph_ids: list[IdentifiedNode] = []
+    ds = Dataset()
+    external_gids: list[IdentifiedNode] = []
 
     # Load external vocabulary files (ephemeral - used for inference only)
-    for src in cfg.paths_vocab_ext:
-        g = merged.graph(src.name)
+    for src in project.paths_vocab_ext:
+        g = ds.graph(src.name)
         g.parse(src, format="turtle")
-        external_graph_ids.append(g.identifier)
+        external_gids.append(g.identifier)
 
     # Load internal vocabulary files
-    for src in cfg.paths_vocab_int:
-        g = merged.graph(src.name)
+    for src in project.paths_vocab_int:
+        g = ds.graph(src.name)
         g.parse(src, format="turtle")
 
     # Load data files
-    for src in cfg.paths_data:
-        g = merged.graph(src.name)
+    for src in project.paths_data:
+        g = ds.graph(src.name)
         g.parse(src, format="turtle")
 
-    return merged, external_graph_ids
+    if output:
+        if isinstance(output, bool):
+            output_file = project.path_self.parent / "derived" / "merged.trig"
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            output_file = output
+
+        output_ds = ds if export_external else DatasetView(ds, external_gids).invert()
+        output_ds.serialize(destination=str(output_file), format="trig", canon=True)
+        info(f"Exported {len(output_ds)} triples to `{output_file}`")
+
+    return ds, external_gids

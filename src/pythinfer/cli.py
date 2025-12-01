@@ -1,6 +1,7 @@
 """pythinfer CLI entry point."""
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 
 import typer
@@ -8,7 +9,7 @@ from rdflib import Dataset, IdentifiedNode, URIRef
 from rdflib.query import Result
 
 from pythinfer.infer import run_inference_backend
-from pythinfer.inout import Project, create_project, load_project
+from pythinfer.inout import create_project, load_project
 from pythinfer.merge import (
     merge_graphs,
 )
@@ -16,6 +17,32 @@ from pythinfer.rdflibplus import DatasetView, graph_lengths
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
+
+
+def echo_success(msg: str) -> None:  # noqa: D103 - self-explanatory function
+    typer.secho(msg, fg=typer.colors.GREEN)
+
+
+echo_neutral = typer.echo
+
+
+def echo_dataset_lengths(ds: Dataset, external_gids: Sequence[IdentifiedNode]) -> None:
+    """Pretty printing of a the length of a Dataset and its constituent graphs."""
+    # Calculate lengths by category
+    ext_len = sum(len(ds.graph(gid)) for gid in external_gids)
+    internal_len = len(ds) - ext_len
+
+    typer.secho(
+        "Graph Types:"
+        f"\n\t   TOTAL: {len(ds): 4d}"
+        f"\n\texternal: {ext_len: 4d}"
+        f"\n\tinternal: {internal_len: 4d}",
+        fg=typer.colors.YELLOW,
+    )
+    typer.secho("Named Graphs:", fg=typer.colors.YELLOW)
+    typer.secho(f"{'Graph':60s} Length", fg=typer.colors.YELLOW, bold=True)
+    for gid, length in graph_lengths(ds).items():
+        typer.secho(f"{gid.n3():60s} {length: 4d}", fg=typer.colors.YELLOW)
 
 
 def configure_logging(verbose: bool) -> None:
@@ -61,50 +88,30 @@ def create(
 
     """
     project = create_project(scan_directory=directory, output_path=output, force=force)
-    typer.secho(
-        f"✓ Created project file at: `{project.path_self}`",
-        fg=typer.colors.GREEN,
-    )
-    typer.echo(f"Project name: {project.path_self.parent.name}")
+    echo_success(f"✓ Created Project named '{project.name}' at: `{project.path_self}`")
+
 
 @app.command()
 def merge(
     config: Path | None = None,
     output: Path | None = None,
     *,
-    exclude_external: bool = True,
-) -> tuple[Dataset, list[IdentifiedNode], Project]:
-    """Merge graphs as specified in the config file and export."""
+    export_external: bool = False,
+) -> None:
+    """Merge graphs as specified in the config file and save.
+
+    Args:
+        config: path to the project configuration file
+        output: path for data to be saved to (defaults to `derived/merged.trig`)
+        export_external: whether to include external graphs in output
+
+    """
     project = load_project(config)
-
-    if output is None:
-        output = project.path_self.parent / "derived" / "merged.trig"
-        output.parent.mkdir(parents=True, exist_ok=True)
-
-    typer.echo(f"Merging RDF graphs using project at `{project.path_self}`")
-    typer.secho(f"Project loaded: {project}", fg=typer.colors.GREEN)
-    ds, external_graph_ids = merge_graphs(project)
-
-    # Calculate lengths by category
-    ext_len = sum(len(ds.graph(gid)) for gid in external_graph_ids)
-    internal_len = len(ds) - ext_len
-
-    typer.secho(
-        "Merged graph lengths:"
-        f"\n\texternal: {ext_len: 4d}"
-        f"\n\tinternal: {internal_len: 4d}"
-        f"\n\tmerged:   {len(ds): 4d}",
-        fg=typer.colors.GREEN,
+    ds, external_graph_ids = merge_graphs(
+        project, output=output or True, export_external=export_external
     )
-
-    output_ds = ds
-    if exclude_external:
-        external_view = DatasetView(ds, external_graph_ids)
-        output_ds = external_view.invert()
-    output_ds.serialize(destination=output, format="trig", canon=True)
-    typer.echo(f"Exported {len(output_ds)} triples to '{output}'")
-
-    return ds, external_graph_ids, project
+    echo_success(f"Merged graphs from `{project.path_self}`")
+    echo_dataset_lengths(ds, external_graph_ids)
 
 
 @app.command()
@@ -114,12 +121,26 @@ def infer(
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
-    include_external: bool = False,
+    export_full: bool = False,
+    export_external: bool = False,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
-    """Run inference backends on merged graph."""
-    ds, external_graph_ids, project = merge(config)
+    """Run inference backends on merged graph.
+
+    Args:
+        config: path to Project defining the inputs
+        backend: OWL inference engine to use
+        output: output path for final inferences (None for project-based default)
+        include_unwanted_triples: include all valid inferences, even banal and unhelpful
+        export_full: export full file with inputs as well as inferences
+        export_external: when exporting, include external graphs and inferences
+
+    """
+    project = load_project(config)
+    ds, external_graph_ids = merge_graphs(
+        project, output=True, export_external=export_external
+    )
     project.owl_backend = backend
-    typer.echo(
+    echo_neutral(
         f"Running inference using config: {project.path_self} and backend: {backend}"
     )
 
@@ -128,42 +149,16 @@ def infer(
         ds,
         external_graph_ids,
         project,
+        output,
         include_unwanted_triples=include_unwanted_triples,
+        export_full=export_full,
+        export_external=export_external,
     )
-    typer.secho(
-        f"Inference complete. {len(ds)} total triples in dataset",
-        fg=typer.colors.GREEN,
-    )
-
-    if output is None:
-        output = project.path_self.parent / "derived" / f"inferred_{backend}.trig"
-        output.parent.mkdir(parents=True, exist_ok=True)
-
-    final_ds = ds
-    if not include_external:
-        external_view = DatasetView(ds, all_external_ids)
-        final_ds = external_view.invert()
-    final_ds.serialize(destination=output, format="trig")
-    typer.echo(
-        f"Exported {len(final_ds)} inferred triples to '{output}'",
-    )
-
-    # Calculate lengths by category
-    ext_len = sum(len(ds.graph(gid)) for gid in all_external_ids)
-    internal_len = len(ds) - ext_len
-
-    typer.secho(
-        "Graph breakdown:"
-        f"\n\texternal (incl. inferences): {ext_len: 4d}"
-        f"\n\tinternal (incl. inferences): {internal_len: 4d}",
-        fg=typer.colors.GREEN,
-    )
-    typer.secho("Named graph breakdown:", fg=typer.colors.YELLOW)
-    typer.secho(f"{'Graph':60s} Length", fg=typer.colors.YELLOW, bold=True)
-    for gid, length in graph_lengths(ds).items():
-        typer.secho(f"{gid.n3():60s} {length: 4d}", fg=typer.colors.YELLOW)
+    echo_success(f"Inference complete. {len(ds)} total triples in dataset")
+    echo_dataset_lengths(ds, all_external_ids)
 
     return ds, all_external_ids
+
 
 @app.command()
 def query(
@@ -171,9 +166,13 @@ def query(
 ) -> Result:
     """Perform a query, from given path, against the latest inferred file.
 
+    TODO: don't call the infer CLI command
+    TODO: move functionality to module and keep this just CLI
+
     Args:
         query: Path to the query file to execute
         project: Path to project file (defaults to project selection process)
+        graph: IRI for graph to include (can be specified multiple times)
 
     """
     with query.open() as f:
@@ -194,7 +193,7 @@ def query(
         typer.secho(f"{len(result.bindings)} rows", fg="green")
         # TODO: turn the bindings into a proper typer table instead of serialize()
         typer.secho(result.serialize(format="csv").decode(), fg="yellow")
-    elif result.type == "CONSTRUCT":
+    elif result.type in ("CONSTRUCT", "DESCRIBE"):
         typer.secho(f"{len(result.graph)} triples", fg="green")
         typer.secho(result.graph.serialize(format="turtle"), fg="yellow")
     else:
