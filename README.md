@@ -69,6 +69,7 @@ Need better term than 'internal' because it can be data (incl. vocabs and models
 ### Project Selection
 
 The project selection process is:
+
 1. **User provided**: path to project file provided directly by user on command line, and if this file is not found, exit
     1. if no user-provided file, proceed to next step
 1. **Discovery**: search in current folder and parent folders for project file, returning first found
@@ -256,3 +257,4 @@ The `example_projects` folder contains contrived examples, but this has also bee
 1. add make-like functionality to only re-process files that have changed since last run
     - especially valuable for query command
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
+1. consider changing the distinction from interal/external to data/vocabulary (where vocab includes taxonomies or ontologies) - basically the ABox/TBox distinction where CBox is part of TBox.
