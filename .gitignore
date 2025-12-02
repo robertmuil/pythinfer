@@ -14,6 +14,7 @@ typings/**/*.pyi
 
 # IDE settings
 .vscode/settings.json
+*.code-workspace
 
 # Project-specific ignores
 example_projects/*/derived/*
