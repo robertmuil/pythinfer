@@ -453,7 +453,9 @@ def run_inference_backend(
 
         final_ds = ds if export_external else DatasetView(ds, all_external_ids).invert()
         final_ds.serialize(destination=str(output_file), format="trig")
-        info(f"Exported {len(final_ds)} triples (input and inferred) to `{output}`")
+        info(
+            f"Exported {len(final_ds)} triples (input and inferred) to `{output_file}`"
+        )
 
     output_file = (
         output

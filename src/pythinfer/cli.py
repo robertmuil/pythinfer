@@ -23,7 +23,7 @@ def echo_success(msg: str) -> None:  # noqa: D103 - self-explanatory function
     typer.secho(msg, fg=typer.colors.GREEN)
 
 
-echo_neutral = typer.echo
+echo_neutral = typer.secho
 
 
 def echo_dataset_lengths(ds: Dataset, external_gids: Sequence[IdentifiedNode]) -> None:
@@ -143,6 +143,7 @@ def infer(
     echo_neutral(
         f"Running inference using config: {project.path_self} and backend: {backend}"
     )
+    echo_dataset_lengths(ds, external_graph_ids)
 
     # Run inference and get updated external graph IDs (includes inference graphs)
     all_external_ids = run_inference_backend(
@@ -184,20 +185,20 @@ def query(
     if graph:
         view = DatasetView(ds, [URIRef(g) for g in graph])
         gid_n3s = [gid.n3() for gid in view.included_graph_ids]
-        typer.secho(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
+        echo_neutral(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
 
     result = view.query(query_contents)
 
-    typer.secho(f"Executed {result.type} query:")
+    echo_neutral(f"Executed {result.type} query against {len(view)} triples:")
     if result.type == "SELECT":
-        typer.secho(f"{len(result.bindings)} rows", fg="green")
+        echo_success(f"{len(result.bindings)} rows")
         # TODO: turn the bindings into a proper typer table instead of serialize()
-        typer.secho(result.serialize(format="csv").decode(), fg="yellow")
+        echo_neutral(result.serialize(format="csv").decode(), fg="yellow")
     elif result.type in ("CONSTRUCT", "DESCRIBE"):
-        typer.secho(f"{len(result.graph)} triples", fg="green")
-        typer.secho(result.graph.serialize(format="turtle"), fg="yellow")
+        echo_success(f"Resulted in {len(result.graph)} triples:")
+        echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
     else:
-        typer.echo(result.serialize().decode())
+        echo_neutral(result.serialize().decode())
 
     return result
 

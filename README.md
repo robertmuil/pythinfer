@@ -258,3 +258,8 @@ The `example_projects` folder contains contrived examples, but this has also bee
     - especially valuable for query command
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
 1. consider changing the distinction from interal/external to data/vocabulary (where vocab includes taxonomies or ontologies) - basically the ABox/TBox distinction where CBox is part of TBox.
+1. rename derived files to:
+   1. `0-merged.ttl`
+   2. `1-inferred.ttl`
+      - NB: this shouldn't include the backend, that can be included in the named graph inside?
+   3. `2-combined.ttl`
