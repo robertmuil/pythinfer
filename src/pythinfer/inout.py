@@ -301,6 +301,15 @@ def create_project(
     # Sort for consistent output
     rdf_files.sort()
 
+    # Load SPARQL inference queries from the 'queries' directory
+    sparql_query_files: list[Path] = []
+    for query_file in _scan_dir.rglob("infer*.rq"):
+        rel_path = query_file.relative_to(_scan_dir)
+        sparql_query_files.append(rel_path)
+
+    # Sort for consistent output
+    sparql_query_files.sort()
+
     # Create project configuration
     project_config = Project(
         name=_scan_dir.name,
@@ -308,6 +317,7 @@ def create_project(
         paths_data=rdf_files,
         paths_vocab_ext=[],
         paths_vocab_int=[],
+        paths_sparql_inference=sparql_query_files,
     )
 
     project_config.to_yaml_file(_output_path)
