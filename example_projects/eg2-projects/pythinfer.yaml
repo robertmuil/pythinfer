@@ -1,0 +1,4 @@
+data:
+- projects-data.ttl
+- projects-model.ttl
+name: eg2-projects

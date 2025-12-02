@@ -1,5 +1,4 @@
-name: very basic example
+name: eg0-basic
 data:
   - basic-data.ttl
-internal_vocabs:
   - basic-model.ttl

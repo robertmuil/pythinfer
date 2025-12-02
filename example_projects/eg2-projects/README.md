@@ -2,8 +2,6 @@
 
 NB: if this matures, we might move the model into a more prominent and utilised place rather than just being an example.
 
-This should *not* include a `pythinfer.yaml` project file, because one of the test cases that use this example is to test automatic project creation.
-
 ## Supported Tests
 
 ### Related Projects - Complex Inference with SPARQL
@@ -69,7 +67,7 @@ Output of SPARQL inference:
 
 ```turtle
 eg:rel_a_b a ptp:ProjectRelationship ;
-    ptp:hasParticipant eg:projA, eg:projB .
+    ptp:hasParticipant eg:projA, eg:projB ;
     ptp:relationshipWeight 5 ;
     ptp:sharedDataSources _:b0, _:b1, _:b2, _:b3, _:b4, _:b5;
     .
