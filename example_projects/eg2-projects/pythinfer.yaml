@@ -1,4 +1,7 @@
+name: eg2-projects
 data:
 - projects-data.ttl
+
+# We treat the model as external to avoid the model-only inferences
+external-vocabs:
 - projects-model.ttl
-name: eg2-projects
