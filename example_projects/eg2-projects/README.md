@@ -12,11 +12,13 @@ Determine a weighted link between any two projects, based on multiple dimensions
 
 For the example here, we can define the threshold like this:
 Either:
+
 1. 5 or more shared external vocabularies;
 2. OR 2 shared internal vocabulary;
 3. OR 1 shared internal and 2 shared external vocabularies.
 
 This would be equivalent to:
+
 1. Each shared external vocabulary is worth 1
 2. Each shared internal vocabulary is worth 3
 3. Threshold is 5 or more
@@ -24,10 +26,10 @@ This would be equivalent to:
 Further:
 4. A dataset is considered the same if it has identical `dct:isVersionOf` or, if that is not defined, then identical `ptp:inputPattern`.
 
-
 This example uses blank nodes for the projects, so the inference must first determine `owl:sameAs` links, based on rule 4 above. They share 2 external vocabs (SKOS and PROVO, defined with their `dct:isVersionOf`) and they share a single internal data source (defined with the data/*.ttl `ptp:inputPattern`). They should have a relationship weight of 5 (3 for the internal, and 1 each for the externals), and the shared data source IRIs should be 6 - because each of the 3 data sources is duplicated with a different blank node in each project.
 
 Input:
+
 ```turtle
 eg:projA a ptp:Project ;
     ptp:hasInternalData [
@@ -64,6 +66,7 @@ eg:projB a ptp:Project ;
 ```
 
 Output of SPARQL inference:
+
 ```turtle
 eg:rel_a_b a ptp:ProjectRelationship ;
     ptp:hasParticipant eg:projA, eg:projB .
@@ -79,6 +82,7 @@ Projects are related via a reified `Project Relationship` node, which makes quer
 The purpose of this is to use OWL-RL property-chain axioms to infer a direct link between projects, `ptp:relatedProject`, from the presence of the `Project Relationship` node.
 
 Input:
+
 ```turtle
 eg:rel_a_b a ptp:ProjectRelationship ;
     ptp:hasParticipant eg:projA, eg:projB ;
@@ -86,7 +90,8 @@ eg:rel_a_b a ptp:ProjectRelationship ;
 ```
 
 Output of inference:
-```turtle:
+
+```turtle
 eg:projA ptp:relatedProject eg:projB .
 eg:projB ptp:relatedProject eg:projA .
 ```
@@ -96,6 +101,7 @@ eg:projB ptp:relatedProject eg:projA .
 It may be desireable to have the relationships directional, if they are not commutative, which can be implemented as a sub-pattern of the above.
 
 Model:
+
 ```turtle
 ptp:ProjectDirectionalRelationship rdfs:subClassOf ptp:ProjectRelationship .
 ptp:hasSource rdfs:subPropertyOf ptp:hasParticipant .
@@ -105,6 +111,7 @@ ptp:ProjectSubsumption rdfs:subClassOf ptp:ProjectDirectionalRelationship .
 ```
 
 Example:
+
 ```turtle
 eg:a_subsumes_b a ptp:ProjectSubsumption ;
     ptp:hasSource eg:projA ;
@@ -115,30 +122,36 @@ eg:a_subsumes_b a ptp:ProjectSubsumption ;
 
 ### Single-use Properties
 
-Use of a uniquely minted property to provide the above flattening of reifications, allowing statements about the single-use property.
+Use of a uniquely minted property to provide the reification of a relationship, allowing statements about the the relationship to just be asserted directly against the single-use property. This avoids or complements the need for n-ary relations or rdf:Statement style reification.
 
-These properties should be placed in a distinct named graph to make selection easier. They may complicate inference, but they should make querying easier.
+They would be made subProperties of the main property to make querying trivial, though it may be that an annotation property should be used to avoid overloading inference engines.
 
-They would be made subProperties of the main property.
+These single-use properties can be placed in a distinct named graph to make selection easier.
 
 e.g. `ptp:relatedProject-u453e6 rdfs:subPropertyOf ptp:relatedProject`
 
-To repeat the same example as above, now preserving attributes of the relationship itself with a single-use property:
+Using the same example as above, and now preserving attributes of the relationship with a single-use property while flattening the n-ary relationship:
+
 ```turtle
 eg:rel_a_b a ptp:ProjectRelationship ;
     ptp:hasParticipant eg:projA, eg:projB ;
     ptp:relationshipWeight 5 .
 ```
 
+![relationship as an n-ary object](relationship-as-n-ary-object.svg)
+
 Output of inference:
-```turtle:
-ptp:relatedProject-rel_a_b ptp:relationshipWeight 5 ;
-    rdfs:subPropertyOf ptp:relatedProject ;  # Optional
+
+```turtle
+ptp:relatedProject-u453e6 ptp:relationshipWeight 5 ;
+    rdfs:subPropertyOf ptp:relatedProject ;
     .
 
-eg:projA ptp:relatedProject-rel_a_b eg:projB .
-eg:projB ptp:relatedProject-rel_a_b eg:projA .
+eg:projA ptp:relatedProject-u453e6 eg:projB .
+eg:projB ptp:relatedProject-u453e6 eg:projA .
 ```
+
+![relationship as a single-use property](relationship-as-single-use-property.svg)
 
 ### Marking as Redundant the inference sources, such as reified relationships
 
@@ -147,6 +160,5 @@ Once a relationship is flattened, the original is no longer strictly necessary, 
 So, it would be valuable to mark them as being redundant such that they can easily be excluded in export or visualisation.
 
 This could be done with an annotation property, or by making all redundant classes subclass of a special class like `meta:RedundantClass` and properties subproperty of a special property like `meta:RedundantProperty`
-
 
 If single-use properties are used, then the source of the redundancy can be captured - otherwise RDF reification would need to be used.

@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="595pt" height="133pt" viewBox="0.00 0.00 595.42 132.80">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 128.8)">
+<title>%0</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-128.8 591.4193,-128.8 591.4193,4 -4,4"/>
+<!-- N0 -->
+<g id="node1" class="node">
+<title>N0</title>
+<g id="a_node1"><a xlink:href="http://example.org/rel_a_b" xlink:title="ex:rel_a_b">
+<ellipse fill="none" stroke="#000000" cx="316.0055" cy="-106.8" rx="51.5862" ry="18"/>
+<text text-anchor="middle" x="316.0055" y="-102.6" font-family="Times,serif" font-size="14.00" fill="#000000">ex:rel_a_b</text>
+</a>
+</g>
+</g>
+<!-- N4 -->
+<g id="node2" class="node">
+<title>N4</title>
+<g id="a_node2"><a xlink:href="http://example.org/ProjectRelationship" xlink:title="ex:ProjectRelationship">
+<ellipse fill="none" stroke="#000000" cx="99.0055" cy="-18" rx="99.011" ry="18"/>
+<text text-anchor="middle" x="99.0055" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">ex:ProjectRelationship</text>
+</a>
+</g>
+</g>
+<!-- N0&#45;&gt;N4 -->
+<g id="edge1" class="edge">
+<title>N0-&gt;N4</title>
+<g id="a_edge1"><a xlink:href="http://www.w3.org/1999/02/22-rdf-syntax-ns#type" xlink:title="a">
+<path fill="none" stroke="#000000" d="M282.0692,-92.9657C265.669,-86.2762 245.7035,-78.127 227.7909,-70.8 201.7446,-60.146 172.7449,-48.2588 148.8689,-38.4651"/>
+<polygon fill="#000000" stroke="#000000" points="149.8932,-35.1023 139.313,-34.545 147.2363,-41.5786 149.8932,-35.1023"/>
+</a>
+</g>
+<g id="a_edge1-label"><a xlink:href="http://www.w3.org/1999/02/22-rdf-syntax-ns#type" xlink:title="a">
+<text text-anchor="middle" x="230.1128" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">a</text>
+</a>
+</g>
+</g>
+<!-- N1 -->
+<g id="node3" class="node">
+<title>N1</title>
+<g id="a_node3"><a xlink:href="http://example.org/ProjectRelationship" xlink:title="5">
+<polygon fill="#ffff00" stroke="#ffff00" points="270.0055,-36 216.0055,-36 216.0055,0 270.0055,0 270.0055,-36"/>
+<text text-anchor="middle" x="243.0055" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">5</text>
+</a>
+</g>
+</g>
+<!-- N0&#45;&gt;N1 -->
+<g id="edge4" class="edge">
+<title>N0-&gt;N1</title>
+<g id="a_edge4"><a xlink:href="http://example.org/relationshipWeight" xlink:title="ex:relationshipWeight">
+<path fill="none" stroke="#000000" d="M274.8983,-95.5702C262.7292,-90.134 250.7555,-82.2172 243.5931,-70.8 239.1401,-63.7017 237.7921,-54.941 237.8995,-46.61"/>
+<polygon fill="#000000" stroke="#000000" points="241.4041,-46.6858 238.6898,-36.4446 234.4251,-46.1432 241.4041,-46.6858"/>
+</a>
+</g>
+<g id="a_edge4-label"><a xlink:href="http://example.org/relationshipWeight" xlink:title="ex:relationshipWeight">
+<text text-anchor="middle" x="305.2117" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">ex:relationshipWeight</text>
+</a>
+</g>
+</g>
+<!-- N3 -->
+<g id="node4" class="node">
+<title>N3</title>
+<g id="a_node4"><a xlink:href="http://example.org/projA" xlink:title="ex:projA">
+<ellipse fill="none" stroke="#000000" cx="390.0055" cy="-18" rx="45.2247" ry="18"/>
+<text text-anchor="middle" x="390.0055" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">ex:projA</text>
+</a>
+</g>
+</g>
+<!-- N0&#45;&gt;N3 -->
+<g id="edge2" class="edge">
+<title>N0-&gt;N3</title>
+<g id="a_edge2"><a xlink:href="http://example.org/hasParticipant" xlink:title="ex:hasParticipant">
+<path fill="none" stroke="#000000" d="M344.0545,-91.6173C352.5943,-85.9595 361.4463,-78.9108 368.0055,-70.8 373.9943,-63.3945 378.5836,-54.1272 381.9814,-45.4325"/>
+<polygon fill="#000000" stroke="#000000" points="385.2867,-46.5836 385.3226,-35.9888 378.6875,-44.2488 385.2867,-46.5836"/>
+</a>
+</g>
+<g id="a_edge2-label"><a xlink:href="http://example.org/hasParticipant" xlink:title="ex:hasParticipant">
+<text text-anchor="middle" x="425.2124" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">ex:hasParticipant</text>
+</a>
+</g>
+</g>
+<!-- N2 -->
+<g id="node5" class="node">
+<title>N2</title>
+<g id="a_node5"><a xlink:href="http://example.org/projB" xlink:title="ex:projB">
+<ellipse fill="none" stroke="#000000" cx="509.0055" cy="-18" rx="44.6626" ry="18"/>
+<text text-anchor="middle" x="509.0055" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">ex:projB</text>
+</a>
+</g>
+</g>
+<!-- N0&#45;&gt;N2 -->
+<g id="edge3" class="edge">
+<title>N0-&gt;N2</title>
+<g id="a_edge3"><a xlink:href="http://example.org/hasParticipant" xlink:title="ex:hasParticipant">
+<path fill="none" stroke="#000000" d="M364.5794,-100.2147C405.178,-93.9458 459.2105,-83.5837 477.0055,-70.8 486.0155,-64.3274 492.9706,-54.458 498.0598,-44.9964"/>
+<polygon fill="#000000" stroke="#000000" points="501.301,-46.3346 502.5338,-35.8117 495.008,-43.2691 501.301,-46.3346"/>
+</a>
+</g>
+<g id="a_edge3-label"><a xlink:href="http://example.org/hasParticipant" xlink:title="ex:hasParticipant">
+<text text-anchor="middle" x="539.2124" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">ex:hasParticipant</text>
+</a>
+</g>
+</g>
+</g>
+</svg>

@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="660pt" height="133pt" viewBox="0.00 0.00 660.18 132.80">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 128.8)">
+<title>%0</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-128.8 656.178,-128.8 656.178,4 -4,4"/>
+<!-- N1 -->
+<g id="node1" class="node">
+<title>N1</title>
+<g id="a_node1"><a xlink:href="http://example.org/relatedProject" xlink:title="ex:relatedProject">
+<ellipse fill="none" stroke="#000000" cx="76.4584" cy="-18" rx="76.4169" ry="18"/>
+<text text-anchor="middle" x="76.4584" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">ex:relatedProject</text>
+</a>
+</g>
+</g>
+<!-- N0 -->
+<g id="node2" class="node">
+<title>N0</title>
+<g id="a_node2"><a xlink:href="http://example.org/relatedProject-u453e6" xlink:title="ex:relatedProject-u453e6">
+<ellipse fill="none" stroke="#000000" cx="171.4584" cy="-106.8" rx="108.2047" ry="18"/>
+<text text-anchor="middle" x="171.4584" y="-102.6" font-family="Times,serif" font-size="14.00" fill="#000000">ex:relatedProject-u453e6</text>
+</a>
+</g>
+</g>
+<!-- N0&#45;&gt;N1 -->
+<g id="edge4" class="edge">
+<title>N0-&gt;N1</title>
+<g id="a_edge4"><a xlink:href="http://www.w3.org/2000/01/rdf-schema#subPropertyOf" xlink:title="rdfs:subPropertyOf">
+<path fill="none" stroke="#000000" d="M113.7544,-91.4726C95.9301,-85.498 79.591,-78.2885 74.3812,-70.8 69.4647,-63.733 68.4319,-54.752 69.0961,-46.2099"/>
+<polygon fill="#000000" stroke="#000000" points="72.5804,-46.5746 70.6009,-36.1663 65.6577,-45.5373 72.5804,-46.5746"/>
+</a>
+</g>
+<g id="a_edge4-label"><a xlink:href="http://www.w3.org/2000/01/rdf-schema#subPropertyOf" xlink:title="rdfs:subPropertyOf">
+<text text-anchor="middle" x="128.497" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">rdfs:subPropertyOf</text>
+</a>
+</g>
+</g>
+<!-- N2 -->
+<g id="node3" class="node">
+<title>N2</title>
+<g id="a_node3"><a xlink:href="http://example.org/relatedProject-u453e6" xlink:title="5">
+<polygon fill="#ffff00" stroke="#ffff00" points="234.4584,-36 180.4584,-36 180.4584,0 234.4584,0 234.4584,-36"/>
+<text text-anchor="middle" x="207.4584" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">5</text>
+</a>
+</g>
+</g>
+<!-- N0&#45;&gt;N2 -->
+<g id="edge3" class="edge">
+<title>N0-&gt;N2</title>
+<g id="a_edge3"><a xlink:href="http://example.org/relationshipWeight" xlink:title="ex:relationshipWeight">
+<path fill="none" stroke="#000000" d="M178.7436,-88.83C183.7365,-76.5142 190.4587,-59.9328 196.1438,-45.9095"/>
+<polygon fill="#000000" stroke="#000000" points="199.5471,-46.8305 200.0606,-36.2481 193.0599,-44.2005 199.5471,-46.8305"/>
+</a>
+</g>
+<g id="a_edge3-label"><a xlink:href="http://example.org/relationshipWeight" xlink:title="ex:relationshipWeight">
+<text text-anchor="middle" x="255.6646" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">ex:relationshipWeight</text>
+</a>
+</g>
+</g>
+<!-- N3 -->
+<g id="node4" class="node">
+<title>N3</title>
+<g id="a_node4"><a xlink:href="http://example.org/projA" xlink:title="ex:projA">
+<ellipse fill="none" stroke="#000000" cx="401.4584" cy="-106.8" rx="45.2247" ry="18"/>
+<text text-anchor="middle" x="401.4584" y="-102.6" font-family="Times,serif" font-size="14.00" fill="#000000">ex:projA</text>
+</a>
+</g>
+</g>
+<!-- N4 -->
+<g id="node5" class="node">
+<title>N4</title>
+<g id="a_node5"><a xlink:href="http://example.org/projB" xlink:title="ex:projB">
+<ellipse fill="none" stroke="#000000" cx="448.4584" cy="-18" rx="44.6626" ry="18"/>
+<text text-anchor="middle" x="448.4584" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">ex:projB</text>
+</a>
+</g>
+</g>
+<!-- N3&#45;&gt;N4 -->
+<g id="edge2" class="edge">
+<title>N3-&gt;N4</title>
+<g id="a_edge2"><a xlink:href="http://example.org/relatedProject-u453e6" xlink:title="ex:relatedProject-u453e6">
+<path fill="none" stroke="#000000" d="M378.52,-91.0642C366.2956,-80.6733 355.3472,-66.6837 363.7388,-54 371.6151,-42.0953 384.3086,-34.1153 397.4991,-28.7707"/>
+<polygon fill="#000000" stroke="#000000" points="398.8926,-31.9894 407.1298,-25.3262 396.5352,-25.3983 398.8926,-31.9894"/>
+</a>
+</g>
+<g id="a_edge2-label"><a xlink:href="http://example.org/relatedProject-u453e6" xlink:title="ex:relatedProject-u453e6">
+<text text-anchor="middle" x="434.8182" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">ex:relatedProject-u453e6</text>
+</a>
+</g>
+</g>
+<!-- N4&#45;&gt;N3 -->
+<g id="edge1" class="edge">
+<title>N4-&gt;N3</title>
+<g id="a_edge1"><a xlink:href="http://example.org/relatedProject-u453e6" xlink:title="ex:relatedProject-u453e6">
+<path fill="none" stroke="#000000" d="M480.8159,-30.7736C500.5147,-40.5085 519.8759,-54.9123 508.4584,-70.8 501.3461,-80.697 475.8918,-89.4742 451.5952,-95.8838"/>
+<polygon fill="#000000" stroke="#000000" points="450.5055,-92.5491 441.6695,-98.395 452.2225,-99.3353 450.5055,-92.5491"/>
+</a>
+</g>
+<g id="a_edge1-label"><a xlink:href="http://example.org/relatedProject-u453e6" xlink:title="ex:relatedProject-u453e6">
+<text text-anchor="middle" x="581.8182" y="-58.2" font-family="Times,serif" font-size="14.00" fill="#000000">ex:relatedProject-u453e6</text>
+</a>
+</g>
+</g>
+</g>
+</svg>
