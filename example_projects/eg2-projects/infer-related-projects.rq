@@ -18,37 +18,39 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 # 3. Conditional inference based on graph patterns
 #
 # TODO:
-# 1. Examine blank nodes used for sharedExternalSource to determine if relationships can be traced back to specific shared data sources
-# 2. Add internal datasources
-# 3. Add other connections between projects (e.g., shared authors, institutions, topics)
+# 1. Examine blank nodes used for sharedDataSource to determine if relationships can be traced back to specific shared data sources
 
 CONSTRUCT {
    # Create a ProjectRelationship between related projects
    ?rel a ptp:ProjectRelationship ;
        ptp:hasParticipant ?project1, ?project2 ;
-       ptp:relationshipWeight ?countCanonical ;
-       ptp:fullSharedCount ?countRaw ;
+       ptp:relationshipWeight ?totalCanonicalWeighted ;
+       ptp:countSharedExternalCanonicalSources ?countCanonicalExternal ;
+       ptp:countSharedInternalCanonicalSources ?countCanonicalInternal ;
+       ptp:countSharedExternalSources ?countRawExternal ;
+       ptp:countSharedInternalSources ?countRawInternal ;
        ptp:sharedDataSourceLabels ?sourceLabels ;
        .
    
    # Add individual assertions for each shared data source
    ?rel ptp:sharedCanonicalDataSource ?canonicalSource .
-   ?rel ptp:sharedDataSource ?sharedExternalSource .
+   ?rel ptp:sharedDataSource ?sharedDataSource .
 
-   # This forces the serialisation to give a specific blank node ID (_:<id>) to the sharedExternalSource
-   ?project1 ptp:hasDataSource ?sharedExternalSource .
-   ?project2 ptp:hasDataSource ?sharedExternalSource .
    ?project1 ptp:identifiedBy ?project1Sanitised .
    ?project2 ptp:identifiedBy ?project2Sanitised .
+
+   # This forces the serialisation to give a specific blank node ID (_:<id>) to the sharedExternalSource
+   ?project1 ptp:hasDataSource ?sharedDataSource .
+   ?project2 ptp:hasDataSource ?sharedDataSource .
 }
 WHERE {
     # Define valid project pairs once - filters applied here only
     {
         ?project1 a ptp:Project ;
-            ptp:hasExternalData ?sharedExternalSource .
+            ptp:hasDataSource ?sharedDataSource .
 
         ?project2 a ptp:Project ;
-            ptp:hasExternalData ?sharedExternalSource .
+            ptp:hasDataSource ?sharedDataSource .
 
         FILTER (?project1 != ?project2)
         FILTER (STR(?project1) < STR(?project2))
@@ -63,13 +65,13 @@ WHERE {
     }
     
     # Get aggregated counts for the project pair (inherits project1/project2/sharedExternalSource bindings)
-    {
+    OPTIONAL {
         SELECT
             ?project1
             ?project2
-            (COUNT(DISTINCT ?src) as ?countRaw)
-            (COUNT(DISTINCT ?canon) as ?countCanonical)
-            (GROUP_CONCAT(DISTINCT ?lbl; SEPARATOR="|") as ?sourceLabels)
+            (COUNT(DISTINCT ?src) as ?countRawExternal)
+            (COUNT(DISTINCT ?canon) as ?countCanonicalExternal)
+            (GROUP_CONCAT(DISTINCT ?lbl; SEPARATOR="|") as ?externalSourceLabels)
         WHERE {
             ?project1 ptp:hasExternalData ?src .
             ?project2 ptp:hasExternalData ?src .
@@ -88,16 +90,49 @@ WHERE {
         }
         GROUP BY ?project1 ?project2
     }
+    OPTIONAL {
+        SELECT
+            ?project1
+            ?project2
+            (COUNT(DISTINCT ?src) as ?countRawInternal)
+            (COUNT(DISTINCT ?canon) as ?countCanonicalInternal)
+            (GROUP_CONCAT(DISTINCT ?lbl; SEPARATOR="|") as ?internalSourceLabels)
+        WHERE {
+            ?project1 ptp:hasInternalData ?src .
+            ?project2 ptp:hasInternalData ?src .
+
+            OPTIONAL {
+                ?src dct:title|rdfs:label ?lbl .
+            }
+
+            OPTIONAL {
+                ?src dct:isVersionOf ?ver .
+            }
+            OPTIONAL {
+                ?src ptp:inputPattern ?pat .
+            }
+            BIND(COALESCE(?ver, URI(CONCAT("file://", ?pat))) AS ?canon)
+        }
+        GROUP BY ?project1 ?project2
+    }
     
     # Get canonical source for each shared external source
     OPTIONAL {
-        ?sharedExternalSource dct:isVersionOf ?sharedVersionOf .
+        ?sharedDataSource dct:isVersionOf ?sharedVersionOf .
     }
     OPTIONAL {
-        ?sharedExternalSource ptp:inputPattern ?sharedInputPattern .
+        ?sharedDataSource ptp:inputPattern ?sharedInputPattern .
     }
-    BIND(COALESCE(?sharedVersionOf, URI(CONCAT("file://", ?sharedExternalSource))) AS ?canonicalSource)
-    
+    BIND(COALESCE(?sharedVersionOf, URI(CONCAT("file://", ?sharedInputPattern))) AS ?canonicalSource)
+
+    # Handle cases where one or both label sets might be unbound
+    BIND(COALESCE(?externalSourceLabels, "") AS ?extLabels)
+    BIND(COALESCE(?internalSourceLabels, "") AS ?intLabels)
+    BIND(IF(?extLabels != "" && ?intLabels != "", CONCAT(?extLabels, "|", ?intLabels),
+         IF(?extLabels != "", ?extLabels, ?intLabels)) AS ?sourceLabels)
+
+    BIND(COALESCE(?countCanonicalExternal, 0) + (3*COALESCE(?countCanonicalInternal, 0)) AS ?totalCanonicalWeighted)
+
     # Create a unique IRI based on the project pair
     BIND(IRI(CONCAT("relationship-", ?project1Sanitised, "-", ?project2Sanitised)) AS ?rel)
 }
