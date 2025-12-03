@@ -1,0 +1,12 @@
+name: eg2-projects
+
+data:
+- projects-data.ttl
+
+# We treat the model as external to avoid the model-only inferences
+external-vocabs:
+- projects-model.ttl
+
+sparql_inference:
+- infer-identical-datasets.rq
+- infer-related-projects.rq

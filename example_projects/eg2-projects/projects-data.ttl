@@ -1,22 +1,26 @@
-@prefix ptp: <http://example.org/pythinfer/project/> .
+@base <http://www.example.org/> .
+@prefix eg: <http://www.example.org/> .
 @prefix dct: <http://purl.org/dc/terms/> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix ptp: <http://www.example.org/pythinfer/project/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-[] owl:imports <http://example.org/pythinfer/project/ontology> .
+[] owl:imports <pythinfer/project/ontology> .
 
 # ===== EXAMPLE INSTANCES =====
 
-ptp:ExampleProject a ptp:Project ;
+eg:projA a ptp:Project ;
     dct:title "Example Pythinfer Project"@en ;
     dct:description "A sample project demonstrating the ontology structure."@en ;
     dct:creator "Project Creator" ;
     dct:created "2025-11-26"^^xsd:date ;
-    ptp:basePath "/path/to/project" ;
     ptp:hasInternalData [
         a ptp:DataFile ;
         ptp:inputPattern "data/*.ttl" ;
-        dct:title "Project Data Files"
+        dct:title "Project A Data Files"
     ] ;
     ptp:hasExternalData [
         a ptp:VocabularyFile ;
@@ -24,67 +28,44 @@ ptp:ExampleProject a ptp:Project ;
         dct:title "SKOS Reference Vocabulary" ;
         dct:isVersionOf <http://www.w3.org/2004/02/skos/core>
     ] ;
-    ptp:hasInferenceRule [
-        a ptp:OwlRuleSet ;
-        dct:title "OWL-RL Inference"@en ;
-        ptp:inferenceOrder 1
+    ptp:hasExternalData [
+        dct:isVersionOf prov:
     ] ;
-    ptp:hasOutputConfiguration [
-        a ptp:OutputConfiguration ;
-        ptp:outputFolder "derived/"
-    ] ;
-    ptp:usesBackend [
-        a ptp:ProcessingBackend ;
-        ptp:backendName "rdflib" ;
-        ptp:backendVersion "7.0.0"
-    ] .
+    .
 
-ptp:TaxonomyProject a ptp:Project ;
-    dct:title "Taxonomy Classification Project"@en ;
+eg:projB a ptp:Project ;
+    dct:title "Example Taxonomy Classification Project"@en ;
     dct:description "A project for managing and classifying taxonomic hierarchies using shared vocabularies."@en ;
     dct:creator "Taxonomy Team" ;
     dct:created "2025-11-20"^^xsd:date ;
-    ptp:basePath "/path/to/taxonomy" ;
+    ptp:hasInternalData [
+        a ptp:DataFile ;
+        ptp:inputPattern "data/*.ttl" ;
+        dct:title "Data to Classify"
+    ] ;
     ptp:hasInternalData [
         a ptp:DataFile ;
         ptp:inputPattern "taxonomy-data/*.ttl" ;
         dct:title "Taxonomic Classifications"
     ] ;
     ptp:hasExternalData [
-        a ptp:VocabularyFile ;
-        ptp:inputPattern "vocabularies/skos.ttl" ;
-        dct:title "SKOS Reference Vocabulary" ;
+        rdfs:label "Official SKOS" ;
         dct:isVersionOf <http://www.w3.org/2004/02/skos/core>
     ] ;
     ptp:hasExternalData [
         a ptp:VocabularyFile ;
-        ptp:inputPattern "vocabularies/rdfs.ttl" ;
-        dct:title "RDFS Vocabulary" ;
-        dct:isVersionOf <http://www.w3.org/2000/01/rdf-schema#>
+        dct:title "PROV-O Provenance Ontology"@en ;
+        dct:isVersionOf <http://www.w3.org/ns/prov#>
     ] ;
-    ptp:hasInferenceRule [
-        a ptp:OwlRuleSet ;
-        dct:title "OWL-RL Inference"@en ;
-        ptp:inferenceOrder 1
+    ptp:hasExternalData [
+        dct:title "Friend-of-a-Friend (FOAF)"@en ;
+        dct:isVersionOf foaf:
     ] ;
-    ptp:hasInferenceRule [
-        a ptp:SparqlRule ;
-        dct:title "Hierarchy Inference"@en ;
-        ptp:inferenceOrder 2
-    ] ;
-    ptp:hasOutputConfiguration [
-        a ptp:OutputConfiguration ;
-        ptp:outputFolder "derived/"
-    ] ;
-    ptp:usesBackend [
-        a ptp:ProcessingBackend ;
-        ptp:backendName "rdflib" ;
-        ptp:backendVersion "7.0.0"
-    ] .
+    .
 
-ptp:UnrelatedProject a ptp:Project ;
+eg:projU a ptp:Project ;
     dct:title "Unrelated Knowledge Graph Project"@en ;
-    dct:description "A project using different vocabularies, with no shared external sources with other projects."@en ;
+    dct:description "A project using different vocabularies, with insufficient shared sources with other projects to be considered related."@en ;
     dct:creator "Knowledge Graph Team" ;
     dct:created "2025-11-15"^^xsd:date ;
     ptp:basePath "/path/to/knowledge-graph" ;
@@ -105,17 +86,9 @@ ptp:UnrelatedProject a ptp:Project ;
         dct:title "FOAF Vocabulary" ;
         dct:isVersionOf <http://xmlns.com/foaf/0.1/>
     ] ;
-    ptp:hasInferenceRule [
-        a ptp:PythonRule ;
-        dct:title "Custom Entity Linking"@en ;
-        ptp:inferenceOrder 1
+    ptp:hasExternalData [
+        a ptp:VocabularyFile ;
+        dct:title "PROV-O Provenance Ontology"@en ;
+        dct:isVersionOf <http://www.w3.org/ns/prov#>
     ] ;
-    ptp:hasOutputConfiguration [
-        a ptp:OutputConfiguration ;
-        ptp:outputFolder "derived/"
-    ] ;
-    ptp:usesBackend [
-        a ptp:ProcessingBackend ;
-        ptp:backendName "pyoxigraph" ;
-        ptp:backendVersion "0.3.0"
-    ] .
+    .

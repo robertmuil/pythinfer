@@ -4,7 +4,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
-import yaml
 
 from pythinfer.inout import PROJECT_FILE_NAME, Project, create_project
 
@@ -61,17 +60,16 @@ class TestCreateProjectCommand:
             # Should not include non-RDF files
             assert not any("readme.txt" in str(f) for f in found_files)
 
-    def test_create_project_with_eg2_projects_example(self) -> None:
-        """Test create_project using the eg2-projects example project."""
-        # Use the actual eg2-projects directory as test data
-        eg2_path = (
-            Path(__file__).parent.parent.parent / "example_projects" / "eg2-projects"
+    def test_create_project_with_eg0_example(self) -> None:
+        """Test create_project using the eg0-basic example project."""
+        eg0_path = (
+            Path(__file__).parent.parent.parent / "example_projects" / "eg0-basic"
         )
 
         # Path to expected output
-        expected_config_path = eg2_path / "expected_pythinfer.yaml"
+        expected_config_path = eg0_path / "expected_pythinfer.yaml"
         if not expected_config_path.exists():
-            pytest.skip("expected_pythinfer.yaml not found in eg2-projects")
+            pytest.skip("expected_pythinfer.yaml not found in eg0-basic")
 
         with TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
@@ -80,9 +78,9 @@ class TestCreateProjectCommand:
             output_dir = tmp_path / "generated_project"
             output_dir.mkdir()
 
-            # Call create_project to scan eg2-projects
+            # Call create_project to scan eg0-basic
             project_generated = create_project(
-                scan_directory=eg2_path,
+                scan_directory=eg0_path,
                 output_path=output_dir / PROJECT_FILE_NAME,
             )
 

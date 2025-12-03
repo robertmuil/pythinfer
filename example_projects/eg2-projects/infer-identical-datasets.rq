@@ -1,0 +1,48 @@
+PREFIX dcat: <http://www.w3.org/ns/dcat#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX ptp: <http://www.example.org/pythinfer/project/>
+
+# ===== SPARQL CONSTRUCT: Identical Datasets =====
+# 
+# This query infers that a dataset the same another if it has the same `dct:isVersionOf`
+# or, if that is not defined for either, then the `ptp:inputPattern`.
+# Q: could this be done in OWL-RL?
+#
+# Note that for this query to work, OWL-RL reasoning must already have been applied to infer
+# the which nodes are dcat:Datasets.
+#
+# Note also that the inferences made by this query are not necessarily correct -
+# the datasets may be versions of the same source, but not identical. However, this is
+# perfectly fine for the purposes of this example project.
+
+CONSTRUCT {
+    ?dataset1 owl:sameAs ?dataset2 ;
+        # Add the version and pattern to see source of sameAs, mainly to aid debugging
+        dct:isVersionOf ?version ;
+        ptp:inputPattern ?pattern ;
+        .
+}
+WHERE {
+    ?dataset1 a dcat:Dataset .
+    ?dataset2 a dcat:Dataset .
+    
+    FILTER (?dataset1 != ?dataset2)
+    
+    # Check if they share the same dct:isVersionOf
+    {
+        ?dataset1 dct:isVersionOf ?version .
+        ?dataset2 dct:isVersionOf ?version .
+    }
+    UNION
+    # If not, check if they share the same ptp:inputPattern (when either lacks a version)
+    {
+        FILTER (
+            NOT EXISTS { ?dataset1 dct:isVersionOf ?anyVersion1 . } ||
+            NOT EXISTS { ?dataset2 dct:isVersionOf ?anyVersion2 . }
+        )
+        
+        ?dataset1 ptp:inputPattern ?pattern .
+        ?dataset2 ptp:inputPattern ?pattern .
+    }
+}

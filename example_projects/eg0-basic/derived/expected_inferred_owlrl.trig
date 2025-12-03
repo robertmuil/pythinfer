@@ -1,6 +1,6 @@
 @prefix : <http://example.org/> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
-<inferences_full> {
+<inferences_owl> {
     :Alice foaf:knows :Bob .
 }

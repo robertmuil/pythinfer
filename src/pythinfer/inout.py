@@ -6,15 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
-from rdflib import Dataset, Graph
-
-from pythinfer.rdflibplus import DatasetView
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Project:
+class Project(BaseModel):
     """Represents a pythinfer project configuration.
 
     Attributes:
@@ -26,13 +23,64 @@ class Project:
 
     """
 
+    model_config = ConfigDict(
+        extra="forbid",  # This rejects unexpected keys
+        arbitrary_types_allowed=True,  # Allows Path objects
+    )
+
     name: str
     path_self: Path
-    paths_data: list[Path]
-    paths_vocab_int: list[Path]
-    paths_vocab_ext: list[Path]
+    paths_data: list[Path] = Field(min_length=1)
+    paths_vocab_int: list[Path] = Field(default_factory=list)
+    paths_vocab_ext: list[Path] = Field(default_factory=list)
     owl_backend: str | None = None
     paths_sparql_inference: list[Path] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_field_names(cls, data: dict) -> dict:
+        """Normalize field names to accept multiple spellings."""
+        if not isinstance(data, dict):
+            return data
+
+        # Map of alternative spellings to canonical field names
+        field_aliases = {
+            "data": "paths_data",
+            "paths_data": "paths_data",
+            "internal-vocabs": "paths_vocab_int",
+            "internal_vocabs": "paths_vocab_int",
+            "paths_vocab_int": "paths_vocab_int",
+            "external-vocabs": "paths_vocab_ext",
+            "external_vocabs": "paths_vocab_ext",
+            "paths_vocab_ext": "paths_vocab_ext",
+            "sparql-inference": "paths_sparql_inference",
+            "sparql_inference": "paths_sparql_inference",
+            "paths_sparql_inference": "paths_sparql_inference",
+            "owl-backend": "owl_backend",
+            "owl_backend": "owl_backend",
+        }
+
+        normalized = {}
+        for key, value in data.items():
+            # Use canonical name if it's an alias, otherwise keep original
+            canonical_key = field_aliases.get(key, key)
+            normalized[canonical_key] = value
+
+        return normalized
+
+    @field_validator(
+        "paths_data",
+        "paths_vocab_int",
+        "paths_vocab_ext",
+        "paths_sparql_inference",
+        mode="before",
+    )
+    @classmethod
+    def convert_str_to_path(cls, v: list[str] | list[Path] | None) -> list[Path] | None:
+        """Convert string paths to Path objects."""
+        if v is None:
+            return None
+        return [Path(p) if isinstance(p, str) else p for p in v]
 
     @staticmethod
     def from_yaml(config_path: Path | str) -> "Project":
@@ -43,13 +91,13 @@ class Project:
 
         # TODO(robert): handle path patterns.
         # TODO(robert): validate paths exist.
-        return Project(
-            name=cfg.get("name", _config_path.stem),
-            path_self=_config_path,
-            paths_vocab_ext=[Path(p) for p in cfg.get("external_vocabs", [])],
-            paths_vocab_int=[Path(p) for p in cfg.get("internal_vocabs", [])],
-            paths_data=[Path(p) for p in cfg["data"]],
-        )
+        # Add path_self to the config dict before validation
+        cfg["path_self"] = _config_path
+        if "name" not in cfg:
+            cfg["name"] = _config_path.stem
+
+        # Let Pydantic handle validation and field normalization
+        return Project(**cfg)
 
     def to_yaml(self) -> str:
         """Serialize project configuration to a YAML string."""
@@ -61,6 +109,10 @@ class Project:
             cfg_dict["internal_vocabs"] = [str(p) for p in self.paths_vocab_int]
         if self.paths_vocab_ext:
             cfg_dict["external_vocabs"] = [str(p) for p in self.paths_vocab_ext]
+        if self.owl_backend:
+            cfg_dict["owl_backend"] = self.owl_backend
+        if self.paths_sparql_inference:
+            cfg_dict["sparql_inference"] = [str(p) for p in self.paths_sparql_inference]
         return yaml.dump(cfg_dict)
 
     def to_yaml_file(self, output_path: Path) -> None:
@@ -249,6 +301,15 @@ def create_project(
     # Sort for consistent output
     rdf_files.sort()
 
+    # Load SPARQL inference queries from the 'queries' directory
+    sparql_query_files: list[Path] = []
+    for query_file in _scan_dir.rglob("infer*.rq"):
+        rel_path = query_file.relative_to(_scan_dir)
+        sparql_query_files.append(rel_path)
+
+    # Sort for consistent output
+    sparql_query_files.sort()
+
     # Create project configuration
     project_config = Project(
         name=_scan_dir.name,
@@ -256,6 +317,7 @@ def create_project(
         paths_data=rdf_files,
         paths_vocab_ext=[],
         paths_vocab_int=[],
+        paths_sparql_inference=sparql_query_files,
     )
 
     project_config.to_yaml_file(_output_path)

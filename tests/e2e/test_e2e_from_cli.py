@@ -20,6 +20,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
         ("eg0-basic", "infer"),
         ("eg1-ancestors", "merge"),
         ("eg1-ancestors", "infer"),
+        ("eg2-projects", "infer"),
     ],
 )
 def test_cli_command(

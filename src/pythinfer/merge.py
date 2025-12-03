@@ -3,13 +3,10 @@
 import logging
 from pathlib import Path
 
-from rdflib import Dataset, IdentifiedNode, URIRef
+from rdflib import Dataset, IdentifiedNode
 
 from pythinfer.inout import Project
 from pythinfer.rdflibplus import DatasetView
-
-IRI_EXTERNAL_INFERENCES: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
-IRI_FULL_INFERENCES: URIRef = URIRef("inferences_full")  # type: ignore[bad-assignment]
 
 logger = logging.getLogger(__name__)
 info = logger.info

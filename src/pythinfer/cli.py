@@ -7,6 +7,8 @@ from pathlib import Path
 import typer
 from rdflib import Dataset, IdentifiedNode, URIRef
 from rdflib.query import Result
+from rich import print as rich_print
+from rich.table import Table
 
 from pythinfer.infer import run_inference_backend
 from pythinfer.inout import create_project, load_project
@@ -23,7 +25,7 @@ def echo_success(msg: str) -> None:  # noqa: D103 - self-explanatory function
     typer.secho(msg, fg=typer.colors.GREEN)
 
 
-echo_neutral = typer.echo
+echo_neutral = typer.secho
 
 
 def echo_dataset_lengths(ds: Dataset, external_gids: Sequence[IdentifiedNode]) -> None:
@@ -143,6 +145,7 @@ def infer(
     echo_neutral(
         f"Running inference using config: {project.path_self} and backend: {backend}"
     )
+    echo_dataset_lengths(ds, external_graph_ids)
 
     # Run inference and get updated external graph IDs (includes inference graphs)
     all_external_ids = run_inference_backend(
@@ -170,13 +173,16 @@ def query(
     TODO: move functionality to module and keep this just CLI
 
     Args:
-        query: Path to the query file to execute
+        query: Path to the query file to execute, or the query string itself
         project: Path to project file (defaults to project selection process)
         graph: IRI for graph to include (can be specified multiple times)
 
     """
-    with query.open() as f:
-        query_contents = f.read()
+    if Path(query).is_file():
+        with Path(query).open() as f:
+            query_contents = f.read()
+    else:
+        query_contents = str(query)
 
     ds, _ = infer(project)
 
@@ -184,20 +190,36 @@ def query(
     if graph:
         view = DatasetView(ds, [URIRef(g) for g in graph])
         gid_n3s = [gid.n3() for gid in view.included_graph_ids]
-        typer.secho(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
+        echo_neutral(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
 
     result = view.query(query_contents)
 
-    typer.secho(f"Executed {result.type} query:")
+    echo_neutral(f"Executed {result.type} query against {len(view)} triples:")
     if result.type == "SELECT":
-        typer.secho(f"{len(result.bindings)} rows", fg="green")
-        # TODO: turn the bindings into a proper typer table instead of serialize()
-        typer.secho(result.serialize(format="csv").decode(), fg="yellow")
+        echo_success(f"{len(result.bindings)} rows")
+
+        if not result.vars:
+            msg = "Query returned no variables."
+            raise ValueError(msg)
+
+        # Create a Rich table from query results
+        table = Table(show_header=True, header_style="bold yellow")
+
+        # Add columns from result variables
+        for var in result.vars:
+            table.add_column(str(var))
+
+        # Add rows from bindings
+        for binding in result.bindings:
+            row = [str(binding.get(var, "")) for var in result.vars]
+            table.add_row(*row)
+
+        rich_print(table)
     elif result.type in ("CONSTRUCT", "DESCRIBE"):
-        typer.secho(f"{len(result.graph)} triples", fg="green")
-        typer.secho(result.graph.serialize(format="turtle"), fg="yellow")
+        echo_success(f"Resulted in {len(result.graph)} triples:")
+        echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
     else:
-        typer.echo(result.serialize().decode())
+        echo_neutral(result.serialize().decode())
 
     return result
 

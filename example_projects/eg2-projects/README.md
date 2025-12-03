@@ -2,7 +2,7 @@
 
 NB: if this matures, we might move the model into a more prominent and utilised place rather than just being an example.
 
-This should *not* include a `pythinfer.yaml` project file, because one of the test cases that use this example is to test automatic project creation.
+We are treating the model as an external vocabulary to avoid the model-only inferences during testing. This is probably a good indication that we either need a concept of 'vocabulary-only' inference, or a way to separate model and data in the same graph, or just better name for 'external'.
 
 ## Supported Tests
 
@@ -68,10 +68,10 @@ eg:projB a ptp:Project ;
 Output of SPARQL inference:
 
 ```turtle
-eg:rel_a_b a ptp:ProjectRelationship ;
-    ptp:hasParticipant eg:projA, eg:projB .
+[] a ptp:ProjectRelationship ;
+    ptp:hasParticipant eg:projA, eg:projB ;
     ptp:relationshipWeight 5 ;
-    ptp:sharedDataSources _:b0, _:b1, _:b2, _:b3, _:b4, _:b5;
+    ptp:sharedDataSource _:b0, _:b1, _:b2, _:b3, _:b4, _:b5;
     .
 ```
 
@@ -84,7 +84,7 @@ The purpose of this is to use OWL-RL property-chain axioms to infer a direct lin
 Input:
 
 ```turtle
-eg:rel_a_b a ptp:ProjectRelationship ;
+[] a ptp:ProjectRelationship ;
     ptp:hasParticipant eg:projA, eg:projB ;
     ptp:relationshipWeight 5 .
 ```

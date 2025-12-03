@@ -1,0 +1,14 @@
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX eg: <http://www.example.org/>
+PREFIX ptp: <http://www.example.org/pythinfer/project/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?project ?projectLocal ?projectSanitised ?label
+WHERE {
+    ?project a ptp:Project .
+    OPTIONAL { ?project rdfs:label|dct:title ?label .  }
+    BIND(STRAFTER(STR(?project), STR(eg:)) AS ?projectLocal)
+    BIND(REPLACE(IF(?projectLocal != "", ?projectLocal, STR(?project)), "[^a-zA-Z0-9._]", "_") AS ?projectSanitised)
+
+}
+ORDER BY ?project

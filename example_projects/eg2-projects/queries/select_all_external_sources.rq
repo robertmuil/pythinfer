@@ -1,0 +1,13 @@
+PREFIX ptp: <http://example.org/pythinfer/project/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?project ?externalData ?label
+WHERE {
+    ?project a ptp:Project ;
+        ptp:hasExternalData ?externalData .
+    
+    OPTIONAL { ?externalData rdfs:label|dct:title ?label }
+}
+ORDER BY ?project ?externalData

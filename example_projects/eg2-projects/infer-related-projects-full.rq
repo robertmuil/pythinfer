@@ -6,27 +6,32 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
 # ===== SPARQL CONSTRUCT: Project Relationships =====
 # 
-# This query infers that two projects are related if they share external
-# data sources (reference vocabularies). Projects are considered related if
-# their external data shares either the same isVersionOf source OR the same
-# inputPattern. This type of graph traversal and aggregation is difficult
-# to express in OWL-RL and benefits from procedural query logic.
-# See README.md in this folder for more details of the logic.
-#
-# It demonstrates:
-# 1. Complex path traversal (project -> external data -> other projects)
-# 2. Aggregation and filtering logic (finding common vocabularies)
-# 3. Conditional inference based on graph patterns
-#
-# TODO:
-# 1. Examine blank nodes used for sharedDataSource to determine if relationships can be traced back to specific shared data sources
+# This is identical to infer-related-projects.rq but includes many triples that 
+# are useful as additional context for understanding the inferred relationships, but not
+# for testing the inference.
 
 CONSTRUCT {
    # Create a ProjectRelationship between related projects
    ?rel a ptp:ProjectRelationship ;
        ptp:hasParticipant ?project1, ?project2 ;
        ptp:relationshipWeight ?totalCanonicalWeighted ;
+       ptp:countSharedExternalCanonicalSources ?countCanonicalExternal ;
+       ptp:countSharedInternalCanonicalSources ?countCanonicalInternal ;
+       ptp:countSharedExternalSources ?countRawExternal ;
+       ptp:countSharedInternalSources ?countRawInternal ;
+       ptp:sharedDataSourceLabels ?sourceLabels ;
        .
+   
+   # Add individual assertions for each shared data source
+   ?rel ptp:sharedCanonicalDataSource ?canonicalSource .
+   ?rel ptp:sharedDataSource ?sharedDataSource .
+
+   ?project1 ptp:identifiedBy ?project1Sanitised .
+   ?project2 ptp:identifiedBy ?project2Sanitised .
+
+   # This forces the serialisation to give a specific blank node ID (_:<id>) to the sharedExternalSource
+   ?project1 ptp:hasDataSource ?sharedDataSource .
+   ?project2 ptp:hasDataSource ?sharedDataSource .
 }
 WHERE {
     # Define valid project pairs once - filters applied here only
@@ -117,8 +122,6 @@ WHERE {
          IF(?extLabels != "", ?extLabels, ?intLabels)) AS ?sourceLabels)
 
     BIND(COALESCE(?countCanonicalExternal, 0) + (3*COALESCE(?countCanonicalInternal, 0)) AS ?totalCanonicalWeighted)
-
-    FILTER (?totalCanonicalWeighted >= 5)
 
     # Create a unique IRI based on the project pair
     BIND(IRI(CONCAT("relationship-", ?project1Sanitised, "-", ?project2Sanitised)) AS ?rel)
