@@ -171,13 +171,16 @@ def query(
     TODO: move functionality to module and keep this just CLI
 
     Args:
-        query: Path to the query file to execute
+        query: Path to the query file to execute, or the query string itself
         project: Path to project file (defaults to project selection process)
         graph: IRI for graph to include (can be specified multiple times)
 
     """
-    with query.open() as f:
-        query_contents = f.read()
+    if Path(query).is_file():
+        with Path(query).open() as f:
+            query_contents = f.read()
+    else:
+        query_contents = str(query)
 
     ds, _ = infer(project)
 
