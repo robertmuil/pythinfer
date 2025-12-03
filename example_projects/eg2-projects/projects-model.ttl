@@ -235,13 +235,6 @@ ptp:inferenceOrder a owl:DatatypeProperty ;
     rdfs:range xsd:integer ;
     skos:definition "Specifies the sequence for rule application when multiple rules interact or depend on each other's results."@en .
 
-ptp:isExternal a owl:DatatypeProperty ;
-    rdfs:label "is external"@en ;
-    rdfs:comment "Boolean indicating whether a data source is external (reference vocabulary) or internal (project data)."@en ;
-    rdfs:domain ptp:DataSource ;
-    rdfs:range xsd:boolean ;
-    skos:definition "True for reference vocabularies used only for inference; false for project-maintained data."@en .
-
 ptp:backendName a owl:DatatypeProperty ;
     rdfs:label "backend name"@en ;
     rdfs:comment "The name of the RDF processing backend (e.g., 'rdflib', 'jena', 'pyoxigraph')."@en ;
@@ -255,6 +248,20 @@ ptp:backendVersion a owl:DatatypeProperty ;
     rdfs:domain ptp:ProcessingBackend ;
     rdfs:range xsd:string ;
     skos:definition "The specific version number of the backend library or tool."@en .
+
+ptp:relationshipWeight a owl:DatatypeProperty ;
+    rdfs:label "relationship weight"@en ;
+    rdfs:domain ptp:ProjectRelationship ;
+    rdfs:range xsd:float ;
+    skos:definition "A numeric value quantifying how closely related two projects are based on shared data sources etc."@en ;
+    .
+
+ptp:sharedDataSource a owl:ObjectProperty ;
+    rdfs:label "shared data source"@en ;
+    rdfs:domain ptp:ProjectRelationship ;
+    rdfs:range ptp:DataSource ;
+    skos:definition "Data source that is common between two related projects."@en ;
+    .
 
 # ===== RELATIONSHIPS WITH EXTERNAL VOCABULARIES =====
 

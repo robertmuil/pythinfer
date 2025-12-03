@@ -68,10 +68,10 @@ eg:projB a ptp:Project ;
 Output of SPARQL inference:
 
 ```turtle
-eg:rel_a_b a ptp:ProjectRelationship ;
+[] a ptp:ProjectRelationship ;
     ptp:hasParticipant eg:projA, eg:projB ;
     ptp:relationshipWeight 5 ;
-    ptp:sharedDataSources _:b0, _:b1, _:b2, _:b3, _:b4, _:b5;
+    ptp:sharedDataSource _:b0, _:b1, _:b2, _:b3, _:b4, _:b5;
     .
 ```
 
@@ -84,7 +84,7 @@ The purpose of this is to use OWL-RL property-chain axioms to infer a direct lin
 Input:
 
 ```turtle
-eg:rel_a_b a ptp:ProjectRelationship ;
+[] a ptp:ProjectRelationship ;
     ptp:hasParticipant eg:projA, eg:projB ;
     ptp:relationshipWeight 5 .
 ```

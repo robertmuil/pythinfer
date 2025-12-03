@@ -1,0 +1,23 @@
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX ptp: <http://example.org/pythinfer/project/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT
+    ?a
+    (COUNT(?a_label) AS ?a_label_count)
+    (GROUP_CONCAT(DISTINCT ?a_label ; SEPARATOR="|") AS ?a_labels)
+    ?b
+    (COUNT(?b_label) AS ?b_label_count)
+    (GROUP_CONCAT(DISTINCT ?b_label ; SEPARATOR="|") AS ?b_labels)
+WHERE {
+    ?a owl:sameAs ?b .
+
+    OPTIONAL { ?a rdfs:label|skos:prefLabel|skos:altLabel|dct:title ?a_label }
+    OPTIONAL { ?b rdfs:label|skos:prefLabel|skos:altLabel|dct:title ?b_label }
+    FILTER (?a != ?b)
+    FILTER (STR(?a) < STR(?b))
+}
+GROUP BY ?a ?b
+ORDER BY ?a ?b
