@@ -1,9 +1,7 @@
 PREFIX dcat: <http://www.w3.org/ns/dcat#>
 PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX eg: <http://www.example.org/>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
-PREFIX ptp: <http://example.org/pythinfer/project/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX ptp: <http://www.example.org/pythinfer/project/>
 
 # ===== SPARQL CONSTRUCT: Identical Datasets =====
 # 
@@ -37,10 +35,12 @@ WHERE {
         ?dataset2 dct:isVersionOf ?version .
     }
     UNION
-    # If not, check if they share the same ptp:inputPattern
+    # If not, check if they share the same ptp:inputPattern (when either lacks a version)
     {
-        FILTER NOT EXISTS { ?dataset1 dct:isVersionOf ?anyVersion1 . }
-        FILTER NOT EXISTS { ?dataset2 dct:isVersionOf ?anyVersion2 . }
+        FILTER (
+            NOT EXISTS { ?dataset1 dct:isVersionOf ?anyVersion1 . } ||
+            NOT EXISTS { ?dataset2 dct:isVersionOf ?anyVersion2 . }
+        )
         
         ?dataset1 ptp:inputPattern ?pattern .
         ?dataset2 ptp:inputPattern ?pattern .
