@@ -7,6 +7,8 @@ from pathlib import Path
 import typer
 from rdflib import Dataset, IdentifiedNode, URIRef
 from rdflib.query import Result
+from rich import print as rich_print
+from rich.table import Table
 
 from pythinfer.infer import run_inference_backend
 from pythinfer.inout import create_project, load_project
@@ -195,8 +197,24 @@ def query(
     echo_neutral(f"Executed {result.type} query against {len(view)} triples:")
     if result.type == "SELECT":
         echo_success(f"{len(result.bindings)} rows")
-        # TODO: turn the bindings into a proper typer table instead of serialize()
-        echo_neutral(result.serialize(format="csv").decode(), fg="yellow")
+
+        if not result.vars:
+            msg = "Query returned no variables."
+            raise ValueError(msg)
+
+        # Create a Rich table from query results
+        table = Table(show_header=True, header_style="bold yellow")
+
+        # Add columns from result variables
+        for var in result.vars:
+            table.add_column(str(var))
+
+        # Add rows from bindings
+        for binding in result.bindings:
+            row = [str(binding.get(var, "")) for var in result.vars]
+            table.add_row(*row)
+
+        rich_print(table)
     elif result.type in ("CONSTRUCT", "DESCRIBE"):
         echo_success(f"Resulted in {len(result.graph)} triples:")
         echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
