@@ -9,5 +9,4 @@ external-vocabs:
 
 sparql_inference:
 - infer-identical-datasets.rq
-# - infer-related-projects-dev.rq
-# - infer-related-projects.rq
+- infer-related-projects.rq
