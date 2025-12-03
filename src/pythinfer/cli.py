@@ -216,8 +216,9 @@ def query(
 
         rich_print(table)
     elif result.type in ("CONSTRUCT", "DESCRIBE"):
-        echo_success(f"Resulted in {len(result.graph)} triples:")
-        echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
+        echo_success(f"Resulted in {len(result.graph) if result.graph else 0} triples:")
+        if result.graph:
+            echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
     else:
         echo_neutral(result.serialize().decode())
 
