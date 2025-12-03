@@ -63,7 +63,7 @@ eg:projB a ptp:Project ;
     ] ;
     .
 
-ptp:projU a ptp:Project ;
+eg:projU a ptp:Project ;
     dct:title "Unrelated Knowledge Graph Project"@en ;
     dct:description "A project using different vocabularies, with insufficient shared sources with other projects to be considered related."@en ;
     dct:creator "Knowledge Graph Team" ;
