@@ -8,12 +8,26 @@ from pathlib import Path
 
 from owlrl import DeductiveClosure
 from owlrl.OWLRL import OWLRL_Semantics
-from rdflib import OWL, RDF, RDFS, BNode, Dataset, Graph, IdentifiedNode, Literal, Node
+from rdflib import (
+    OWL,
+    RDF,
+    RDFS,
+    BNode,
+    Dataset,
+    Graph,
+    IdentifiedNode,
+    Literal,
+    Node,
+    URIRef,
+)
 from rdflib.query import ResultRow
 
 from pythinfer.inout import Project, Query, load_sparql_inference_queries
-from pythinfer.merge import IRI_EXTERNAL_INFERENCES, IRI_FULL_INFERENCES
 from pythinfer.rdflibplus import DatasetView
+
+IRI_EXTERNAL_INFERENCES: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
+IRI_OWL_INFERENCES: URIRef = URIRef("inferences_owl")  # type: ignore[bad-assignment]
+IRI_SPARQL_INFERENCES: URIRef = URIRef("inferences_sparql")  # type: ignore[bad-assignment]
 
 MAX_REASONING_ROUNDS = 5
 SCRIPT_DIR = Path(__file__).parent
@@ -273,7 +287,8 @@ def _generate_external_inferences(
 
 def _run_inference_iteration(
     ds: Dataset,
-    g_full_inferences: Graph,
+    g_inferences_owl: Graph,
+    g_inferences_sparql: Graph,
     sparql_queries: list[Query],
     iteration: int,
 ) -> tuple[int, int]:
@@ -281,7 +296,8 @@ def _run_inference_iteration(
 
     Args:
         ds: Dataset containing all graphs.
-        g_full_inferences: Graph to accumulate inferences into.
+        g_inferences_owl: Graph to accumulate OWL inferences into.
+        g_inferences_sparql: Graph to accumulate SPARQL inferences into.
         sparql_queries: List of SPARQL CONSTRUCT queries for heuristics.
         iteration: Current iteration number (for logging).
 
@@ -289,19 +305,22 @@ def _run_inference_iteration(
         Tuple of (triples_added_owl, triples_added_sparql).
 
     """
+    assert ds.store == g_inferences_owl.store, "Graphs must share the same store"
+    assert ds.store == g_inferences_sparql.store, "Graphs must share the same store"
+
     info("--- Iteration %d ---", iteration)
 
     # Step 3: Generate full inferences over current state
     info("  Step 3: Running OWL-RL inference over current state...")
-    triples_before_owl = len(g_full_inferences)
-    apply_owlrl_inference(ds, g_full_inferences)
-    triples_added_owl = len(g_full_inferences) - triples_before_owl
+    triples_before_owl = len(g_inferences_owl)
+    apply_owlrl_inference(ds, g_inferences_owl)
+    triples_added_owl = len(g_inferences_owl) - triples_before_owl
     info("    OWL-RL added %d new inferences", triples_added_owl)
 
     # Step 4: Run heuristics (SPARQL CONSTRUCT queries)
     if sparql_queries:
         info("  Step 4: Running %d SPARQL heuristics...", len(sparql_queries))
-        triples_before_sparql = len(g_full_inferences)
+        triples_before_sparql = len(g_inferences_sparql)
 
         # Apply SPARQL constructs over the entire dataset (which now includes
         # the full inferences from step 3)
@@ -309,9 +328,9 @@ def _run_inference_iteration(
 
         # Add heuristic results to full inferences
         for s, p, o in heuristic_results:
-            g_full_inferences.add((s, p, o))
+            g_inferences_sparql.add((s, p, o))
 
-        triples_added_sparql = len(g_full_inferences) - triples_before_sparql
+        triples_added_sparql = len(g_inferences_sparql) - triples_before_sparql
         info("    SPARQL heuristics added %d new inferences", triples_added_sparql)
     else:
         triples_added_sparql = 0
@@ -381,7 +400,8 @@ def run_inference_backend(
         MAX_REASONING_ROUNDS,
     )
 
-    g_full_inferences = ds.graph(IRI_FULL_INFERENCES)
+    g_inferences_owl = ds.graph(IRI_OWL_INFERENCES)
+    g_inferences_sparql = ds.graph(IRI_SPARQL_INFERENCES)
     iteration = 0
     previous_triple_count = len(ds)  # Count triples in entire dataset
 
@@ -389,7 +409,7 @@ def run_inference_backend(
         iteration += 1
 
         triples_added_owl, triples_added_sparql = _run_inference_iteration(
-            ds, g_full_inferences, sparql_queries, iteration
+            ds, g_inferences_owl, g_inferences_sparql, sparql_queries, iteration
         )
 
         # Check for convergence
@@ -412,7 +432,7 @@ def run_inference_backend(
     if iteration >= MAX_REASONING_ROUNDS:
         info("  Maximum iterations (%d) reached", MAX_REASONING_ROUNDS)
 
-    info("Total inferences after iteration: %d triples", len(g_full_inferences))
+    info("Total inferences after iteration: %d triples", len(g_inferences_owl))
 
     # Step 6: Subtract external inferences from full inferences
     # This is actually unnecessary if we are only exporting internal graphs later,
@@ -426,7 +446,7 @@ def run_inference_backend(
         dbg("%d external inferences", len(g_external_inferences))
 
         triples_overlapping = sum(
-            1 for s, p, o in g_external_inferences if (s, p, o) in g_full_inferences
+            1 for s, p, o in g_external_inferences if (s, p, o) in g_inferences_owl
         )
 
         dbg("  %d of these exist in full", triples_overlapping)
@@ -436,9 +456,9 @@ def run_inference_backend(
     if not include_unwanted_triples:
         # Step 7: Subtract unwanted inferences
         info("Step 7: Filtering unwanted inferences...")
-        filter_triples(g_full_inferences, filterset_all)
+        filter_triples(g_inferences_owl, filterset_all)
 
-    info("Final inference graph: %d triples", len(g_full_inferences))
+    info("Final inference graph: %d triples", len(g_inferences_owl))
 
     all_external_ids: list[IdentifiedNode] = [
         *external_graph_ids,
@@ -465,7 +485,8 @@ def run_inference_backend(
 
     output_ds = DatasetView(
         ds,
-        [IRI_FULL_INFERENCES] + ([IRI_EXTERNAL_INFERENCES] if export_external else []),
+        [IRI_OWL_INFERENCES, IRI_SPARQL_INFERENCES]
+        + ([IRI_EXTERNAL_INFERENCES] if export_external else []),
     )
     output_ds.serialize(str(output_file), format="trig")
     info(f"Exported {len(output_ds)} inferred triples to `{output_file}`")

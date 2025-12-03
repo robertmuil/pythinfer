@@ -1,6 +1,6 @@
 @prefix ex: <http://example.org/ancestor/> .
 
-<inferences_full> {
+<inferences_owl> {
     ex:David ex:childOf ex:Bob ;
         ex:descendantOf ex:Alice,
             ex:Bob .
