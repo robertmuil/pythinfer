@@ -250,6 +250,7 @@ The `example_projects` folder contains contrived examples, but this has also bee
 
 1. implement pattern support for input files
 1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
+    - also use of text / linguistic analysis would be a good motivation (e.g. infer that two projects are related if they share similar topics based on text analysis of abstracts)
 1. allow SPARQL CONSTRUCTs as rules for inference
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
 1. consider using a proper config language like dhal(?) instead of yaml
@@ -263,3 +264,4 @@ The `example_projects` folder contains contrived examples, but this has also bee
    2. `1-inferred.ttl`
       - NB: this shouldn't include the backend, that can be included in the named graph inside?
    3. `2-combined.ttl`
+      - could include externals here also to use this as a cache for querying
