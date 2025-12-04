@@ -5,18 +5,11 @@
 
 *Pronounced 'python fur'.*
 
-This is a package to perform OWL-based inference, provided by external packages, to an RDF graph.
+CLI to easily merge multiple RDF files and perform inference (OWL or SPARQL) on the result.
 
 Point this at a selection of RDF files and it will merge them, run inference over them, and export the results. The results are the original statements together with the *useful* set of inferences (see below under `Inference` for what 'useful' means here).
 
-In the inference, a distinction is made between 'external' and 'internal' files. See below.
-
-The backends that should be supported are:
-
-1. rdflib
-1. pyoxigraph
-1. jena
-1. rdf4j?
+A distinction is made between 'external' and 'internal' files. See below.
 
 ## Project Specification
 
@@ -48,15 +41,16 @@ NEW:
 name: (optional)
 base_folder: <all relative paths are resolved against this> (optional - defaults to folder in which the Project configuration file resides.)
 data:
-    internal:
-        - <pattern>: <a pattern specifying a specific or set of files>
-    external:
+    - <pattern>: <a pattern specifying a specific or set of files>
+    - ...
+    reference:
         - <pattern>: <a pattern specifying a specific or set of external files>
+        - ...
 output:
     folder: <a path to the folder in which to put the output> (defaults to `<base_folder>/derived`)
 ```
 
-#### External vs Internal
+#### External vs Internal (Reference vs. Local)
 
 External files are treated as ephemeral sources used for inference and then discarded. They are those that are not maintained by the user of the library, and whose axioms can generally be assumed to hold true for any application. They are used to provide inference rules, but are not part of the data being modelled, and they are not generally needed in the output.
 
