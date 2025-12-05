@@ -144,7 +144,8 @@ def infer(
         echo_success(
             f"Loaded cached dataset from previous inference at `{project.path_self}`"
         )
-        echo_dataset_lengths(ds, [])
+        if logger.isEnabledFor(logging.DEBUG):
+            echo_dataset_lengths(ds, [])
         return ds, []
 
     ds, external_graph_ids = merge_graphs(
@@ -205,8 +206,6 @@ def query(
         view = DatasetView(ds, [URIRef(g) for g in graph])
         gid_n3s = [gid.n3() for gid in view.included_graph_ids]
         echo_neutral(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
-
-    echo_dataset_lengths(view, [])
 
     result = view.query(query_contents)
 
