@@ -10,7 +10,7 @@ from rdflib.query import Result
 from rich import print as rich_print
 from rich.table import Table
 
-from pythinfer.infer import run_inference_backend
+from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.inout import create_project, load_project
 from pythinfer.merge import (
     merge_graphs,
@@ -123,8 +123,9 @@ def infer(
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
-    export_full: bool = False,
+    export_full: bool = True,
     export_external: bool = False,
+    no_cache: bool = False,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Run inference backends on merged graph.
 
@@ -138,6 +139,14 @@ def infer(
 
     """
     project = load_project(config)
+    ds = None if no_cache else load_cache(project)
+    if ds:
+        echo_success(
+            f"Loaded cached dataset from previous inference at `{project.path_self}`"
+        )
+        echo_dataset_lengths(ds, [])
+        return ds, []
+
     ds, external_graph_ids = merge_graphs(
         project, output=True, export_external=export_external
     )
@@ -155,7 +164,7 @@ def infer(
         output,
         include_unwanted_triples=include_unwanted_triples,
         export_full=export_full,
-        export_external=export_external,
+        export_external_inferences=export_external,
     )
     echo_success(f"Inference complete. {len(ds)} total triples in dataset")
     echo_dataset_lengths(ds, all_external_ids)
@@ -165,7 +174,11 @@ def infer(
 
 @app.command()
 def query(
-    query: Path, project: Path | None = None, graph: list[str] | None = None
+    query: Path,
+    project: Path | None = None,
+    graph: list[str] | None = None,
+    *,
+    no_cache: bool = False,
 ) -> Result:
     """Perform a query, from given path, against the latest inferred file.
 
@@ -176,6 +189,7 @@ def query(
         query: Path to the query file to execute, or the query string itself
         project: Path to project file (defaults to project selection process)
         graph: IRI for graph to include (can be specified multiple times)
+        no_cache: whether to skip loading from cache and re-run inference
 
     """
     if Path(query).is_file():
@@ -184,13 +198,15 @@ def query(
     else:
         query_contents = str(query)
 
-    ds, _ = infer(project)
+    ds, _ = infer(project, no_cache=no_cache)
 
     view = ds
     if graph:
         view = DatasetView(ds, [URIRef(g) for g in graph])
         gid_n3s = [gid.n3() for gid in view.included_graph_ids]
         echo_neutral(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
+
+    echo_dataset_lengths(view, [])
 
     result = view.query(query_contents)
 

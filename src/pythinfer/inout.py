@@ -10,6 +10,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 logger = logging.getLogger(__name__)
 
+PROJECT_FILE_NAME = "pythinfer.yaml"
+MAX_DISCOVERY_SEARCH_DEPTH = 10
+
+MERGED_FILESTEM = "0-merged"
+COMBINED_FULL_FILESTEM = "1-combined-full"
+INFERRED_WANTED_FILESTEM = "2-inferred-wanted"
+
 
 class Project(BaseModel):
     """Represents a pythinfer project configuration.
@@ -120,9 +127,11 @@ class Project(BaseModel):
         with output_path.open("w") as f:
             f.write(self.to_yaml())
 
+    @property
+    def path_output(self) -> Path:
+        """Path to the output folder."""
+        return self.path_self.parent / "derived"
 
-PROJECT_FILE_NAME = "pythinfer.yaml"
-MAX_DISCOVERY_SEARCH_DEPTH = 10
 
 
 def discover_project(start_path: Path, _current_depth: int = 0) -> Path:

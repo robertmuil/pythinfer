@@ -22,7 +22,13 @@ from rdflib import (
 )
 from rdflib.query import ResultRow
 
-from pythinfer.inout import Project, Query, load_sparql_inference_queries
+from pythinfer.inout import (
+    COMBINED_FULL_FILESTEM,
+    INFERRED_WANTED_FILESTEM,
+    Project,
+    Query,
+    load_sparql_inference_queries,
+)
 from pythinfer.rdflibplus import DatasetView
 
 IRI_EXTERNAL_INFERENCES: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
@@ -71,6 +77,9 @@ def apply_owlrl_inference(graph: Graph, destination_graph: Graph) -> None:
     NB: The destination graph must have the *same store* as the input graph. This
     is required by the `owlrl` library for some reason.
 
+    NBB: Something in here sets the Dataset default_union to True, if one of the graphs
+    comes from a Dataset.
+
     This function performs complete OWL 2 RL reasoning, which includes:
     - RDFS inference (subclass, subproperty, domain, range)
     - OWL inference (inverse properties, symmetric/transitive properties,
@@ -92,6 +101,8 @@ def apply_owlrl_inference(graph: Graph, destination_graph: Graph) -> None:
         destination_graph.identifier,
     )
     # Apply OWL 2 RL reasoning - this will add inferred triples to destination_graph
+    # WARNING - this expand() call will set Dataset.default_union = True if one or both
+    # of the graphs is from a Dataset
     DeductiveClosure(OWLRL_Semantics).expand(graph, destination_graph)  # pyright: ignore[reportUnknownMemberType]
     ntriples_inferred = len(destination_graph)
 
@@ -346,8 +357,8 @@ def run_inference_backend(
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
-    export_full: bool = False,
-    export_external: bool = False,
+    export_full: bool = True,
+    export_external_inferences: bool = False,
 ) -> list[IdentifiedNode]:
     """Run inference backend on merged graph using OWL-RL semantics.
 
@@ -371,7 +382,9 @@ def run_inference_backend(
         output: Path to export inferences to, or None for project default
         include_unwanted_triples: If True, do not filter unwanted triples.
         export_full: export a file with the full set of inputs and inferences
-        export_external: when exporting, include external graphs and inferences
+            - this can be used for caching and for diagnostics
+        export_external: when exporting wanted inferences, include external graphs
+            and inferences also
 
 
     Returns:
@@ -430,9 +443,12 @@ def run_inference_backend(
         previous_triple_count = current_triple_count
 
     if iteration >= MAX_REASONING_ROUNDS:
-        info("  Maximum iterations (%d) reached", MAX_REASONING_ROUNDS)
+        logger.warning("  Maximum iterations (%d) reached", MAX_REASONING_ROUNDS)
 
-    info("Total inferences after iteration: %d triples", len(g_inferences_owl))
+    info(
+        "Total valid inferences after iteration: %d triples",
+        len(g_inferences_owl) + len(g_inferences_sparql),
+    )
 
     # Step 6: Subtract external inferences from full inferences
     # This is actually unnecessary if we are only exporting internal graphs later,
@@ -453,43 +469,81 @@ def run_inference_backend(
 
         assert triples_overlapping == 0  # noqa: S101
 
+    if export_full:
+        output_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        ds.serialize(destination=str(output_file), format="trig")
+        info(f"Exported {len(ds)} triples (input and inferred) to `{output_file}`")
+
     if not include_unwanted_triples:
         # Step 7: Subtract unwanted inferences
         info("Step 7: Filtering unwanted inferences...")
         filter_triples(g_inferences_owl, filterset_all)
+        filter_triples(g_inferences_sparql, filterset_all)
 
-    info("Final inference graph: %d triples", len(g_inferences_owl))
+    info(
+        "Final inference graphs: %d triples",
+        len(g_inferences_owl) + len(g_inferences_sparql),
+    )
 
     all_external_ids: list[IdentifiedNode] = [
         *external_graph_ids,
         IRI_EXTERNAL_INFERENCES,
     ]
 
-    if export_full:
-        output_file = (
-            project.path_self.parent / "derived" / f"full_{project.owl_backend}.trig"
-        )
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-
-        final_ds = ds if export_external else DatasetView(ds, all_external_ids).invert()
-        final_ds.serialize(destination=str(output_file), format="trig")
-        info(
-            f"Exported {len(final_ds)} triples (input and inferred) to `{output_file}`"
-        )
-
-    output_file = (
-        output
-        or project.path_self.parent / "derived" / f"inferred_{project.owl_backend}.trig"
-    )
+    output_file = output or project.path_output / f"{INFERRED_WANTED_FILESTEM}.trig"
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     output_ds = DatasetView(
         ds,
         [IRI_OWL_INFERENCES, IRI_SPARQL_INFERENCES]
-        + ([IRI_EXTERNAL_INFERENCES] if export_external else []),
+        + ([IRI_EXTERNAL_INFERENCES] if export_external_inferences else []),
     )
     output_ds.serialize(str(output_file), format="trig")
     info(f"Exported {len(output_ds)} inferred triples to `{output_file}`")
 
     # Return all external graph IDs (originals plus external inferences)
     return all_external_ids
+
+
+def load_cache(project: Project) -> Dataset | None:
+    """Load cached inferred dataset if it exists and is valid.
+
+    Valid means that the project's input files have not changed since the cache
+    was created.
+
+    The cache file is the COMBINED_FULL file in the project's output folder.
+
+    We set the default_union of the Dataset to True here, because the cached
+    file contains named graphs. This ensures that queries over the Dataset
+    will see all triples by default. It turns out that the owlrl expand() call
+    does this implicitly, which is why the queries work after inference.
+
+    Args:
+        project: Project defining the paths.
+
+    Returns:
+        Dataset if cache file exists AND IS VALID, else None.
+
+    """
+    cache_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+    if not cache_file.exists():
+        return None
+
+    # Check if cache is valid
+    cache_mtime = cache_file.stat().st_mtime
+    for path in project.paths_all:
+        if path.stat().st_mtime > cache_mtime:
+            info(
+                "Cache file `%s` is outdated due to input file `%s`",
+                cache_file,
+                path,
+            )
+            return None
+
+    # Load cached dataset
+    info(f"Loading cached dataset from `{cache_file}`")
+    ds = Dataset(default_union=True)
+    ds.parse(str(cache_file), format="trig")
+    return ds
