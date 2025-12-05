@@ -9,6 +9,7 @@ from rdflib.compare import graph_diff, isomorphic
 from typer.testing import CliRunner
 
 from pythinfer.cli import app
+from pythinfer.inout import INFERRED_WANTED_FILESTEM, MERGED_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -33,8 +34,16 @@ def test_cli_command(
     # Ensure the example directory exists
     assert project_dir.exists(), f"Project directory not found: {project_dir}"
 
-    actual_file = "merged.trig" if (command == "merge") else "inferred_owlrl.trig"
-    expected_file = "expected_" + actual_file
+    actual_file = (
+        f"{MERGED_FILESTEM}.trig"
+        if (command == "merge")
+        else f"{INFERRED_WANTED_FILESTEM}.trig"
+    )
+    expected_file = (
+        "expected_merged.trig"
+        if (command == "merge")
+        else "expected_inferred_wanted.trig"
+    )
 
     # Path to expected and actual output files
     expected_file_path = project_dir / "derived" / expected_file
@@ -55,10 +64,11 @@ def test_cli_command(
     try:
         os.chdir(project_dir)
         runner = CliRunner()
-        result = runner.invoke(
-            app,
-            [command, "--output", str(actual_file_path)],
-        )
+        cmd_args = [command, "--output", str(actual_file_path)]
+        # Disable cache for infer command to ensure fresh runs
+        if command == "infer":
+            cmd_args.append("--no-cache")
+        result = runner.invoke(app, cmd_args)
     finally:
         os.chdir(original_cwd)
 

@@ -1,0 +1,6 @@
+PREFIX ex: <http://example.org/ancestor/>
+
+SELECT *
+WHERE {
+    ?person a ex:Person .
+}

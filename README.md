@@ -39,7 +39,6 @@ NEW:
 
 ```yaml
 name: (optional)
-base_folder: <all relative paths are resolved against this> (optional - defaults to folder in which the Project configuration file resides.)
 data:
     - <pattern>: <a pattern specifying a specific or set of files>
     - ...
@@ -59,6 +58,50 @@ Examples are OWL, RDFS, SKOS, and other standard vocabularies.
 Synonyms for 'external' here could be 'transient' or 'reference' or 'catalyst'.
 
 Need better term than 'internal' because it can be data (incl. vocabs and models) that are maintained outside of the project folder itself, but are desired to be part of the output. Perhaps 'local'.
+
+### Path Resolution
+
+Paths in the project configuration file can be either **relative or absolute**.
+
+**Relative paths** are resolved relative to the directory containing the project configuration file (`pythinfer.yaml`). This allows project configurations to remain portable - you can move the project folder around or share it with others, and relative paths will continue to work.
+
+This means that the current working directory from which you execute pythinfer is irrelevant - as long as you point to the right project file, the paths will be resolved correctly.
+
+**Absolute paths** are used as-is without modification.
+
+#### Examples
+
+If your project structure is:
+
+```
+my_project/
+├── pythinfer.yaml
+├── data/
+│   ├── file1.ttl
+│   └── file2.ttl
+└── vocabs/
+    └── schema.ttl
+```
+
+Your `pythinfer.yaml` can use relative paths:
+
+```yaml
+name: My Project
+data:
+  - data/file1.ttl
+  - data/file2.ttl
+internal_vocabs:
+  - vocabs/schema.ttl
+```
+
+These paths will be resolved relative to the directory containing `pythinfer.yaml`, so the configuration is portable.
+
+You can also use absolute paths if needed:
+
+```yaml
+data:
+  - /home/user/my_project/data/file1.ttl
+```
 
 ### Project Selection
 
@@ -140,18 +183,20 @@ Steps:
     - output:        `merged`
     - consequence:   `current = merged`
 2. **Generate external inferences** by running RDFS/OWL-RL engine over 'external' input data[^1]
-    - output:        `external_owl_inferences`
+    - output:        `inferences_external_owl`
 3. **Generate full inferences** by running RDFS/OWL-RL inference over all data so far[^1]
-    - output:        `full_owl_inferences`
-    - consequence:   `current += full_owl_inferences`
+    - output:        `inferences_full_owl`
+    - consequence:   `current += inferences_full_owl`
 4. **Run heuristics**[^2] over all data
-    - output:        `heuristic_results`
-    - consequence:   `current += heuristic_results`
+    - output:        `inferences_sparql` + `inferences_python`
+    - consequence:   `current += inferences_sparql` + `inferences_python`
 5. **Repeat steps 3 through 4** until no new triples are generated, or limit reached
+    - consequence:   `combined_full = current`
 6. **Subtract external data and inferences** from the current graph[^4]
-    - consequence:   `current -= external_data + external_owl_inferences`
+    - consequence:   `current -= (external_data + inferences_external_owl)`
+    - consequence:   `combined_internal = current`
 7. Subtract all 'unwanted' inferences from result[^3]
-    - consequence:   `final = current - unwanted_inferences`
+    - consequence:   `combined_wanted = current - inferences_unwanted`
 
 [^1]: inference is backend dependent, and will include the removal of *invalid* triples that may result, e.g. from `owlrl`
 [^2]: See below for heuristics.

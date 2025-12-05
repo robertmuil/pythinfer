@@ -6,9 +6,23 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 logger = logging.getLogger(__name__)
+
+PROJECT_FILE_NAME = "pythinfer.yaml"
+MAX_DISCOVERY_SEARCH_DEPTH = 10
+
+MERGED_FILESTEM = "0-merged"
+COMBINED_FULL_FILESTEM = "1-combined-full"
+INFERRED_WANTED_FILESTEM = "2-inferred-wanted"
 
 
 class Project(BaseModel):
@@ -82,37 +96,99 @@ class Project(BaseModel):
             return None
         return [Path(p) if isinstance(p, str) else p for p in v]
 
+    @field_validator(
+        "paths_data",
+        "paths_vocab_int",
+        "paths_vocab_ext",
+        "paths_sparql_inference",
+        mode="after",
+    )
+    @classmethod
+    def resolve_relative_paths(
+        cls, v: list[Path] | None, info: ValidationInfo
+    ) -> list[Path] | None:
+        """Resolve relative paths against the project directory.
+
+        Uses the config_dir from validation context if available.
+        """
+        if v is None:
+            return None
+
+        config_dir = info.context.get("config_dir") if info.context else None
+        if not config_dir:
+            return v
+
+        resolved_paths: list[Path] = []
+        for path in v:
+            # Only resolve relative paths; absolute paths stay as-is
+            resolved_path = path if path.is_absolute() else config_dir / path
+            resolved_paths.append(resolved_path)
+        return resolved_paths
+
     @staticmethod
     def from_yaml(config_path: Path | str) -> "Project":
-        """Load project configuration from a YAML file."""
-        _config_path = Path(config_path)
+        """Load project configuration from a YAML file.
+
+        Relative paths in the YAML file are resolved relative to the directory
+        containing the project file.
+        """
+        _config_path = Path(config_path).resolve()
+        config_dir = _config_path.parent
+
         with _config_path.open() as f:
             cfg = yaml.safe_load(f)
 
         # TODO(robert): handle path patterns.
         # TODO(robert): validate paths exist.
+
         # Add path_self to the config dict before validation
         cfg["path_self"] = _config_path
         if "name" not in cfg:
             cfg["name"] = _config_path.stem
 
         # Let Pydantic handle validation and field normalization
-        return Project(**cfg)
+        # Pass config_dir through context for path resolution in validators
+        return Project.model_validate(cfg, context={"config_dir": config_dir})
+
+    def _path_to_yaml_str(self, path: Path) -> str:
+        """Convert a path to a string for YAML serialization.
+
+        If the path is relative to the project file's directory, store it
+        relative for better portability. Otherwise, store as absolute path.
+        """
+        project_dir = self.path_self.parent
+        try:
+            # Try to make it relative to the project directory
+            rel_path = path.relative_to(project_dir)
+            return str(rel_path)
+        except ValueError:
+            # Path is not relative to project_dir, store as-is
+            return str(path)
 
     def to_yaml(self) -> str:
-        """Serialize project configuration to a YAML string."""
+        """Serialize project configuration to a YAML string.
+
+        Paths are stored relative to the project file directory when possible,
+        for better portability.
+        """
         cfg_dict: dict[str, object] = {
             "name": self.name,
-            "data": [str(p) for p in self.paths_data],
+            "data": [self._path_to_yaml_str(p) for p in self.paths_data],
         }
         if self.paths_vocab_int:
-            cfg_dict["internal_vocabs"] = [str(p) for p in self.paths_vocab_int]
+            cfg_dict["internal_vocabs"] = [
+                self._path_to_yaml_str(p) for p in self.paths_vocab_int
+            ]
         if self.paths_vocab_ext:
-            cfg_dict["external_vocabs"] = [str(p) for p in self.paths_vocab_ext]
+            cfg_dict["external_vocabs"] = [
+                self._path_to_yaml_str(p) for p in self.paths_vocab_ext
+            ]
         if self.owl_backend:
             cfg_dict["owl_backend"] = self.owl_backend
         if self.paths_sparql_inference:
-            cfg_dict["sparql_inference"] = [str(p) for p in self.paths_sparql_inference]
+            cfg_dict["sparql_inference"] = [
+                self._path_to_yaml_str(p) for p in self.paths_sparql_inference
+            ]
         return yaml.dump(cfg_dict)
 
     def to_yaml_file(self, output_path: Path) -> None:
@@ -120,9 +196,20 @@ class Project(BaseModel):
         with output_path.open("w") as f:
             f.write(self.to_yaml())
 
+    @property
+    def path_output(self) -> Path:
+        """Path to the output folder."""
+        return self.path_self.parent / "derived"
 
-PROJECT_FILE_NAME = "pythinfer.yaml"
-MAX_DISCOVERY_SEARCH_DEPTH = 10
+    @property
+    def paths_all_input(self) -> list[Path]:
+        """List of all input paths (data + vocabularies)."""
+        return self.paths_data + self.paths_vocab_int + self.paths_vocab_ext
+
+    @property
+    def paths_all(self) -> list[Path]:
+        """List of all paths (input + SPARQL inference) - cache checking."""
+        return self.paths_all_input + (self.paths_sparql_inference or [])
 
 
 def discover_project(start_path: Path, _current_depth: int = 0) -> Path:

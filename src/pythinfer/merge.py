@@ -5,7 +5,7 @@ from pathlib import Path
 
 from rdflib import Dataset, IdentifiedNode
 
-from pythinfer.inout import Project
+from pythinfer.inout import MERGED_FILESTEM, Project
 from pythinfer.rdflibplus import DatasetView
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def merge_graphs(
 
     if output:
         if isinstance(output, bool):
-            output_file = project.path_self.parent / "derived" / "merged.trig"
+            output_file = project.path_output / f"{MERGED_FILESTEM}.trig"
             output_file.parent.mkdir(parents=True, exist_ok=True)
         else:
             output_file = output
