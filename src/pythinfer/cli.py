@@ -211,13 +211,18 @@ def query(
 
         # Add rows from bindings
         for binding in result.bindings:
-            row = [str(binding.get(var, "")) for var in result.vars]
+            row = [binding[var].n3(ds.namespace_manager) for var in result.vars]
             table.add_row(*row)
 
         rich_print(table)
     elif result.type in ("CONSTRUCT", "DESCRIBE"):
-        echo_success(f"Resulted in {len(result.graph) if result.graph else 0} triples:")
+        echo_success(
+            f"Query returned {len(result.graph) if result.graph else 0} triples:"
+        )
         if result.graph:
+            # Bind all namespaces from the dataset to preserve prefixes
+            for prefix, namespace in ds.namespace_manager.namespaces():
+                result.graph.bind(prefix, namespace)
             echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
     else:
         echo_neutral(result.serialize().decode())
