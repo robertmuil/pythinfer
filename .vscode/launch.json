@@ -5,6 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "pythinfer eg1-ancestors query",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "src/pythinfer/cli.py",
+            "console": "integratedTerminal",
+            "args": [
+                "query",
+                "--no-cache",
+                "--project",
+                "example_projects/eg1-ancestors/pythinfer.yaml",
+                "example_projects/eg1-ancestors/select_people.rq",
+            ]
+        },
+        {
             "name": "pythinfer infer",
             "type": "debugpy",
             "request": "launch",

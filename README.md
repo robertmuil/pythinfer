@@ -39,7 +39,6 @@ NEW:
 
 ```yaml
 name: (optional)
-base_folder: <all relative paths are resolved against this> (optional - defaults to folder in which the Project configuration file resides.)
 data:
     - <pattern>: <a pattern specifying a specific or set of files>
     - ...
@@ -59,6 +58,50 @@ Examples are OWL, RDFS, SKOS, and other standard vocabularies.
 Synonyms for 'external' here could be 'transient' or 'reference' or 'catalyst'.
 
 Need better term than 'internal' because it can be data (incl. vocabs and models) that are maintained outside of the project folder itself, but are desired to be part of the output. Perhaps 'local'.
+
+### Path Resolution
+
+Paths in the project configuration file can be either **relative or absolute**.
+
+**Relative paths** are resolved relative to the directory containing the project configuration file (`pythinfer.yaml`). This allows project configurations to remain portable - you can move the project folder around or share it with others, and relative paths will continue to work.
+
+This means that the current working directory from which you execute pythinfer is irrelevant - as long as you point to the right project file, the paths will be resolved correctly.
+
+**Absolute paths** are used as-is without modification.
+
+#### Examples
+
+If your project structure is:
+
+```
+my_project/
+├── pythinfer.yaml
+├── data/
+│   ├── file1.ttl
+│   └── file2.ttl
+└── vocabs/
+    └── schema.ttl
+```
+
+Your `pythinfer.yaml` can use relative paths:
+
+```yaml
+name: My Project
+data:
+  - data/file1.ttl
+  - data/file2.ttl
+internal_vocabs:
+  - vocabs/schema.ttl
+```
+
+These paths will be resolved relative to the directory containing `pythinfer.yaml`, so the configuration is portable.
+
+You can also use absolute paths if needed:
+
+```yaml
+data:
+  - /home/user/my_project/data/file1.ttl
+```
 
 ### Project Selection
 
