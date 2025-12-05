@@ -196,7 +196,7 @@ def query(
 
     echo_neutral(f"Executed {result.type} query against {len(view)} triples:")
     if result.type == "SELECT":
-        echo_success(f"{len(result.bindings)} rows")
+        echo_success(f"Retrieved {len(result.bindings)} rows")
 
         if not result.vars:
             msg = "Query returned no variables."
