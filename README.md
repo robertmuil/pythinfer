@@ -11,6 +11,30 @@ Point this at a selection of RDF files and it will merge them, run inference ove
 
 A distinction is made between 'external' and 'internal' files. See below.
 
+## Quick Start
+
+### Using `uv`
+
+(in the below, replace `some-folder` and `project-folder` with actual folder paths on your system, of course)
+
+1. Clone the repository:
+
+   ```bash
+   cd ~/some-folder
+   git clone https://github.com/robertmuil/pythinfer.git
+   ```
+
+1. Execute it as a tool in your project:
+
+    ```bash
+    cd ~/project-folder
+    uvx ~/some-folder/pythinfer query "SELECT * WHERE { ?s ?p ?o } LIMIT 10"
+    ```
+
+    This will create a `pythinfer.yaml` project file in your current folder if none exists, merging all RDF files it finds, performing inference, and then executing the SPARQL query against the inferred graph.
+
+1. Edit the `pythinfer.yaml` file to specify which files to include
+
 ## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
