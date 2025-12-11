@@ -11,6 +11,33 @@ Point this at a selection of RDF files and it will merge them, run inference ove
 
 A distinction is made between 'external' and 'internal' files. See below.
 
+## Quick Start
+
+### Using `uv`
+
+(in the below, replace `~/git` and `~/git/pythinfer/example_projects/eg0-basic` with folder paths on your system, of course)
+
+1. Clone the repository:
+
+   ```bash
+   cd ~/git
+   git clone https://github.com/robertmuil/pythinfer.git
+   ```
+
+1. Execute it as a tool in your project:
+
+    ```bash
+    cd ~/git/pythinfer/example_projects/eg0-basic
+    uvx ~/git/pythinfer query "SELECT * WHERE { ?s ?p ?o } LIMIT 10"
+    uvx ~/git/pythinfer query select_who_knows_whom.rq
+    ```
+
+    This will create a `pythinfer.yaml` project file in the project folder, merge all RDF files it finds, perform inference, and then execute the SPARQL query against the inferred graph.
+
+1. Edit the `pythinfer.yaml` file to specify which files to include, try again. Have fun.
+
+![Demo of executing eg0 in CLI](demo-eg0.gif)
+
 ## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
