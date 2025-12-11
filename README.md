@@ -15,25 +15,28 @@ A distinction is made between 'external' and 'internal' files. See below.
 
 ### Using `uv`
 
-(in the below, replace `some-folder` and `project-folder` with actual folder paths on your system, of course)
+(in the below, replace `~/git` and `~/git/pythinfer/example_projects/eg0-basic` with folder paths on your system, of course)
 
 1. Clone the repository:
 
    ```bash
-   cd ~/some-folder
+   cd ~/git
    git clone https://github.com/robertmuil/pythinfer.git
    ```
 
 1. Execute it as a tool in your project:
 
     ```bash
-    cd ~/project-folder
-    uvx ~/some-folder/pythinfer query "SELECT * WHERE { ?s ?p ?o } LIMIT 10"
+    cd ~/git/pythinfer/example_projects/eg0-basic
+    uvx ~/git/pythinfer query "SELECT * WHERE { ?s ?p ?o } LIMIT 10"
+    uvx ~/git/pythinfer query select_who_knows_whom.rq
     ```
 
-    This will create a `pythinfer.yaml` project file in your current folder if none exists, merging all RDF files it finds, performing inference, and then executing the SPARQL query against the inferred graph.
+    This will create a `pythinfer.yaml` project file in the project folder, merge all RDF files it finds, perform inference, and then execute the SPARQL query against the inferred graph.
 
-1. Edit the `pythinfer.yaml` file to specify which files to include
+1. Edit the `pythinfer.yaml` file to specify which files to include, try again. Have fun.
+
+![Demo of executing eg0 in CLI](demo-eg0.gif)
 
 ## Project Specification
 
