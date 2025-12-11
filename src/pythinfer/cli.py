@@ -217,6 +217,10 @@ def query(
             msg = "Query returned no variables."
             raise ValueError(msg)
 
+        if not result.bindings:
+            msg = "Query returned no results."
+            raise ValueError(msg)
+
         # Create a Rich table from query results
         table = Table(show_header=True, header_style="bold yellow")
 
@@ -226,7 +230,10 @@ def query(
 
         # Add rows from bindings
         for binding in result.bindings:
-            row = [binding[var].n3(ds.namespace_manager) for var in result.vars]
+            row = [
+                binding[var].n3(ds.namespace_manager) if var in binding else None
+                for var in result.vars
+            ]
             table.add_row(*row)
 
         rich_print(table)

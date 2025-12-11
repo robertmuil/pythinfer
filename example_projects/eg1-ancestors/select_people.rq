@@ -1,6 +1,13 @@
 PREFIX ex: <http://example.org/ancestor/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-SELECT *
+SELECT ?person (GROUP_CONCAT(DISTINCT ?name ; SEPARATOR="|") AS ?names) (MAX(?age) AS ?maxAge)
 WHERE {
     ?person a ex:Person .
+
+    OPTIONAL { ?person foaf:name ?foaf_name . }
+    OPTIONAL { ?person foaf:age ?age . }
+
+    BIND(COALESCE(?foaf_name, ?person) AS ?name)
 }
+GROUP BY ?person
