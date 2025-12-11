@@ -1,4 +1,4 @@
-# This fails in pythinfer (rdflib query) if a variable is bound in some rows but not others, and a DISTINCT is used in an aggregation in the project clause
+# This fails in pythinfer (rdflib query) if a variable is bound in some rows but not others, and a DISTINCT is used in GROUP_CONCAT aggregation in the project clause
 # So currently the name works (no distinct) but the age fails (distinct used)
 PREFIX ex: <http://example.org/ancestor/>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>

@@ -3,13 +3,13 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
 ex:Alice a ex:Person ;
-    foaf:name "Alice Smythington" ;
+    foaf:name "Alice Smythington", "Alice S." ;
     foaf:age 68 ;
     ex:parentOf ex:Bob ;
     ex:parentOf ex:Carol .
 
 ex:Bob a ex:Person ;
-    foaf:age 34 ;
+    foaf:age 34, 35 ;
     ex:parentOf ex:David .
 
 ex:Carol a ex:Person ;
