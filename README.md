@@ -5,9 +5,9 @@
 
 *Pronounced 'python fur'.*
 
-CLI to easily merge multiple RDF files and perform inference (OWL or SPARQL) on the result.
+CLI to easily merge multiple RDF files, perform inference (OWL or SPARQL), and query the result.
 
-Point this at a selection of RDF files and it will merge them, run inference over them, and export the results. The results are the original statements together with the *useful* set of inferences (see below under `Inference` for what 'useful' means here).
+Point this at a selection of RDF files and it will merge them, run inference over them, export the results, and execute a query on them. The results are the original statements together with the *useful* set of inferences (see below under `Inference` for what 'useful' means here).
 
 A distinction is made between 'external' and 'internal' files. See below.
 
