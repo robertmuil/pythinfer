@@ -533,10 +533,10 @@ def load_cache(project: Project) -> Dataset | None:
 
     # Check if cache is valid
     cache_mtime = cache_file.stat().st_mtime
-    for path in project.paths_all:
+    for path in [project.path_self, *project.paths_all]:
         if path.stat().st_mtime > cache_mtime:
             info(
-                "Cache file `%s` is outdated due to input file `%s`",
+                "Cache file `%s` is outdated due to updated file `%s`",
                 cache_file,
                 path,
             )
