@@ -317,7 +317,6 @@ The `example_projects` folder contains contrived examples, but this has also bee
 1. implement pattern support for input files
 1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
     - also use of text / linguistic analysis would be a good motivation (e.g. infer that two projects are related if they share similar topics based on text analysis of abstracts)
-1. allow SPARQL CONSTRUCTs as rules for inference
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
 1. consider using a proper config language like dhal(?) instead of yaml
 1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
@@ -325,9 +324,3 @@ The `example_projects` folder contains contrived examples, but this has also bee
     - especially valuable for query command
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
 1. consider changing the distinction from interal/external to data/vocabulary (where vocab includes taxonomies or ontologies) - basically the ABox/TBox distinction where CBox is part of TBox.
-1. rename derived files to:
-   1. `0-merged.ttl`
-   2. `1-inferred.ttl`
-      - NB: this shouldn't include the backend, that can be included in the named graph inside?
-   3. `2-combined.ttl`
-      - could include externals here also to use this as a cache for querying
