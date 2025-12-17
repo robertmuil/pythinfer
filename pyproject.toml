@@ -1,6 +1,6 @@
 [project]
 name = "pythinfer"
-version = "0.2.0"
+version = "0.2.1"
 description = "CLI to easily merge multiple RDF files and perform inference (OWL or SPARQL) on the result."
 readme = "README.md"
 authors = [{ name = "Robert Muil", email = "robertmuil@gmail.com" }]
@@ -27,6 +27,7 @@ ignore = ["COM812", "D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
+"scripts/*" = ["T201"]
 
 [dependency-groups]
 dev = ["jupyter>=1.1.1", "pandas>=2.3.3", "pytest>=9.0.1", "pytest-cov>=7.0.0"]
