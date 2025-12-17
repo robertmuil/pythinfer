@@ -99,6 +99,12 @@ def merge(
     output: Path | None = None,
     *,
     export_external: bool = False,
+    extra_export_format: list[str] = typer.Option(
+        None,
+        "--extra-export-format",
+        "-x",
+        help="Export to additional format (e.g., 'ttl', 'jsonld', 'xml'). Can be specified multiple times.",
+    ),
 ) -> None:
     """Merge graphs as specified in the config file and save.
 
@@ -106,11 +112,18 @@ def merge(
         config: path to the project configuration file
         output: path for data to be saved to (defaults to `derived/merged.trig`)
         export_external: whether to include external graphs in output
+        extra_export_format: additional export format(s) (besides trig),
+                                can be specified multiple times
 
     """
     project = load_project(config)
+    # Convert empty list to None for backward compatibility
+    formats = extra_export_format if extra_export_format else None
     ds, external_graph_ids = merge_graphs(
-        project, output=output or True, export_external=export_external
+        project,
+        output=output or True,
+        export_external=export_external,
+        extra_export_format=formats,
     )
     echo_success(f"Merged graphs from `{project.path_self}`")
     echo_dataset_lengths(ds, external_graph_ids)
@@ -126,6 +139,12 @@ def infer(
     export_full: bool = True,
     export_external: bool = False,
     no_cache: bool = False,
+    extra_export_format: list[str] = typer.Option(
+        None,
+        "--extra-export-format",
+        "-x",
+        help="Export to additional format (e.g., 'ttl', 'jsonld', 'xml'). Can be specified multiple times.",
+    ),
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Run inference backends on merged graph.
 
@@ -133,9 +152,12 @@ def infer(
         config: path to Project defining the inputs
         backend: OWL inference engine to use
         output: output path for final inferences (None for project-based default)
-        include_unwanted_triples: include all valid inferences, even banal and unhelpful
+        include_unwanted_triples: include all valid inferences, even unhelpful
         export_full: export full file with inputs as well as inferences
-        export_external: when exporting, include external graphs and inferences
+        export_external: include external graphs and inferences in exports
+        no_cache: skip cache and re-run inference
+        extra_export_format: additional export format(s) (besides trig),
+                                can be specified multiple times
 
     """
     project = load_project(config)
@@ -148,8 +170,13 @@ def infer(
             echo_dataset_lengths(ds, [])
         return ds, []
 
+    # Convert empty list to None for backward compatibility
+    formats = extra_export_format if extra_export_format else None
     ds, external_graph_ids = merge_graphs(
-        project, output=True, export_external=export_external
+        project,
+        output=True,
+        export_external=export_external,
+        extra_export_format=formats,
     )
     project.owl_backend = backend
     echo_neutral(
@@ -166,6 +193,7 @@ def infer(
         include_unwanted_triples=include_unwanted_triples,
         export_full=export_full,
         export_external_inferences=export_external,
+        extra_export_format=formats,
     )
     echo_success(f"Inference complete. {len(ds)} total triples in dataset")
     echo_dataset_lengths(ds, all_external_ids)

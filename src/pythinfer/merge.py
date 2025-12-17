@@ -5,7 +5,7 @@ from pathlib import Path
 
 from rdflib import Dataset, IdentifiedNode
 
-from pythinfer.inout import MERGED_FILESTEM, Project
+from pythinfer.inout import MERGED_FILESTEM, Project, export_dataset
 from pythinfer.rdflibplus import DatasetView
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,11 @@ dbg = debug = logger.debug
 
 
 def merge_graphs(
-    project: Project, *, output: Path | bool = True, export_external: bool = False
+    project: Project,
+    *,
+    output: Path | bool = True,
+    export_external: bool = False,
+    extra_export_format: str | list[str] | None = None,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Merge graphs: preserve named graphs for each input.
 
@@ -32,6 +36,7 @@ def merge_graphs(
         project:    Project defining what files to merge and which are external
         output:     False for no persistence, True for default, or an explicit Path
         export_external:  whether to include external graphs when exporting
+        extra_export_format: additional export format(s) (e.g., "ttl", ["ttl", "jsonld"])
 
     Returns:
         Tuple of (merged Dataset, list of external graph identifiers).
@@ -64,7 +69,19 @@ def merge_graphs(
             output_file = output
 
         output_ds = ds if export_external else DatasetView(ds, external_gids).invert()
-        output_ds.serialize(destination=str(output_file), format="trig", canon=True)
-        info(f"Exported {len(output_ds)} triples to `{output_file}`")
+
+        # Build formats list: start with trig, add any extra formats
+        formats = ["trig"]
+        if extra_export_format:
+            if isinstance(extra_export_format, str):
+                formats.append(extra_export_format)
+            else:
+                formats.extend(extra_export_format)
+
+        export_dataset(
+            output_ds,
+            output_file,
+            formats=formats,
+        )
 
     return ds, external_gids
