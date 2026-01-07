@@ -38,6 +38,34 @@ A distinction is made between 'external' and 'internal' files. See below.
 
 ![Demo of executing eg0 in CLI](demo-eg0.gif)
 
+## Command Line Interface
+
+### Common Options
+
+- `--extra-export`: allows specifying extra export formats beyond the default trig. Can be used to 'flatten' quads to triples when exporting (by exporting to ttl or nt as well as trig)
+  - NB: `trig` is always included as an export because it is used for caching
+- ...
+
+### `pythinfer create`
+
+Create a new project specification file in the current folder by scanning for RDF files.
+
+Invoked automatically if another command is used and no project file exists already.
+
+### `pythinfer merge`
+
+Largely a helper command, not likely to need direct invocation.
+
+### `pythinfer infer`
+
+Perform merging and inference as per the project specification, and export the resulting graphs to the output folder.
+
+### `pythinfer query`
+
+A simple helper command should allow easily specifying a query, or queries, and these should be executed against the latest full inferred graph.
+
+In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
+
 ## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
@@ -100,7 +128,7 @@ This means that the current working directory from which you execute pythinfer i
 
 If your project structure is:
 
-```
+```ascii
 my_project/
 ├── pythinfer.yaml
 ├── data/
@@ -258,12 +286,6 @@ The order of application of these heuristics may matter - for instance, a SPARQL
 
 Thus, we apply heuristics and OWL-RL inference in alternating steps until no new triples are generated.
 
-## Querying
-
-A simple helper command should allow easily specifying a query, or queries, and these should be executed against the latest full inferred graph.
-
-In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
-
 ## Data Structures
 
 ### DatasetView
@@ -315,6 +337,7 @@ The `example_projects` folder contains contrived examples, but this has also bee
 ## Next Steps
 
 1. implement pattern support for input files
+1. check this handles non-turtle input files ok
 1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
     - also use of text / linguistic analysis would be a good motivation (e.g. infer that two projects are related if they share similar topics based on text analysis of abstracts)
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...

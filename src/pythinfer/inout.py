@@ -14,6 +14,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from rdflib import Dataset, Graph
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,70 @@ MAX_DISCOVERY_SEARCH_DEPTH = 10
 MERGED_FILESTEM = "0-merged"
 COMBINED_FULL_FILESTEM = "1-combined-full"
 INFERRED_WANTED_FILESTEM = "2-inferred-wanted"
+
+
+def export_dataset(
+    dataset: Dataset,
+    output_file: Path,
+    formats: list[str] | None = None,
+) -> None:
+    """Export a Dataset or Graph to file(s) in specified format(s).
+
+    Exports to one or more formats. For each format, the output file path stem
+    is used with the appropriate file extension determined by the format.
+
+    For non-quad-aware formats, the Dataset is merged into a single Graph before export,
+    while trig/trix/nquads formats natively support multiple named graphs.
+
+    Args:
+        dataset: The Dataset or Graph object to export
+        output_file: Path template for output files (determines base name and directory)
+        formats: List of export formats (default: ["trig"]).
+                Examples: ["trig"], ["ttl"], ["ttl", "xml", "n3"], etc.
+
+    """
+    # Determine file extension based on format
+    format_to_ext = {
+        "ttl": "ttl",
+        "turtle": "ttl",
+        "xml": "rdf",
+        "rdfxml": "rdf",
+        "n3": "n3",
+        "nt": "nt",
+        "nq": "nquads",
+        "nquads": "nquads",
+        "ntriples": "nt",
+        "trig": "trig",
+        "trix": "trix",
+        "jsonld": "json-ld",
+        "json-ld": "json-ld",
+    }
+
+    exts = [format_to_ext.get(f.lower(), f.lower()) for f in (formats or ["trig"])]
+
+    have_non_quad_format = any(f not in ("trig", "trix", "nquads") for f in exts)
+
+    # For non-quad formats, we'll need to merge Dataset into a single Graph
+    combined_graph = Graph()
+    if have_non_quad_format:
+        # Iterate over quads - this works with DatasetView naturally
+        for s, p, o, _ in dataset.quads():
+            combined_graph.add((s, p, o))
+
+    for ext in exts:
+        fmt_output_file = output_file.with_suffix(f".{ext}")
+
+        # For quad-aware formats (trig) use Dataset directly, otherwise
+        # combine into single Graph first
+        if ext in ("trig", "trix", "nquads"):
+            dataset.serialize(destination=str(fmt_output_file), format=ext, canon=True)
+        else:
+            _fmt = ext if (ext != "rdf") else "xml"
+            combined_graph.serialize(
+                destination=str(fmt_output_file), format=_fmt, canon=True
+            )
+
+        logger.info("Exported %d triples to %s", len(dataset), fmt_output_file)
 
 
 class Project(BaseModel):

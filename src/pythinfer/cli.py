@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rdflib import Dataset, IdentifiedNode, URIRef
@@ -16,6 +17,16 @@ from pythinfer.merge import (
     merge_graphs,
 )
 from pythinfer.rdflibplus import DatasetView, graph_lengths
+
+ExtraExportFormatOption = Annotated[
+    list[str] | None,
+    typer.Option(
+        "--extra-export-format",
+        "-x",
+        help="Export to additional format (e.g., 'ttl', 'jsonld', 'xml'). "
+        "Can be specified multiple times.",
+    ),
+]
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
@@ -47,7 +58,7 @@ def echo_dataset_lengths(ds: Dataset, external_gids: Sequence[IdentifiedNode]) -
         typer.secho(f"{gid.n3():60s} {length: 4d}", fg=typer.colors.YELLOW)
 
 
-def configure_logging(verbose: bool) -> None:
+def configure_logging(*, verbose: bool) -> None:
     """Configure logging level based on verbose flag."""
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
@@ -60,15 +71,16 @@ def configure_logging(verbose: bool) -> None:
 
 @app.callback()
 def main_callback(
+    *,
     verbose: bool = typer.Option(
-        False,
+        False,  # noqa: FBT003
         "--verbose",
         "-v",
         help="Enable verbose (DEBUG) logging output",
     ),
 ) -> None:
     """Global options for pythinfer CLI."""
-    configure_logging(verbose)
+    configure_logging(verbose=verbose)
 
 
 @app.command()
@@ -99,6 +111,7 @@ def merge(
     output: Path | None = None,
     *,
     export_external: bool = False,
+    extra_export_format: ExtraExportFormatOption = None,
 ) -> None:
     """Merge graphs as specified in the config file and save.
 
@@ -106,11 +119,16 @@ def merge(
         config: path to the project configuration file
         output: path for data to be saved to (defaults to `derived/merged.trig`)
         export_external: whether to include external graphs in output
+        extra_export_format: additional export format(s) (besides trig),
+                                can be specified multiple times
 
     """
     project = load_project(config)
     ds, external_graph_ids = merge_graphs(
-        project, output=output or True, export_external=export_external
+        project,
+        output=output or True,
+        export_external=export_external,
+        extra_export_formats=extra_export_format,
     )
     echo_success(f"Merged graphs from `{project.path_self}`")
     echo_dataset_lengths(ds, external_graph_ids)
@@ -126,6 +144,7 @@ def infer(
     export_full: bool = True,
     export_external: bool = False,
     no_cache: bool = False,
+    extra_export_format: ExtraExportFormatOption = None,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Run inference backends on merged graph.
 
@@ -133,12 +152,24 @@ def infer(
         config: path to Project defining the inputs
         backend: OWL inference engine to use
         output: output path for final inferences (None for project-based default)
-        include_unwanted_triples: include all valid inferences, even banal and unhelpful
+        include_unwanted_triples: include all valid inferences, even unhelpful
         export_full: export full file with inputs as well as inferences
-        export_external: when exporting, include external graphs and inferences
+        export_external: include external graphs and inferences in exports
+        no_cache: skip cache and re-run inference
+        extra_export_format: additional export format(s) (besides trig),
+                                can be specified multiple times
 
     """
     project = load_project(config)
+
+    # Force no_cache when extra export formats requested, otherwise exports won't happen
+    if extra_export_format and not no_cache:
+        typer.secho(
+            "Warning: --extra-export-format requires fresh export; ignoring cache.",
+            fg=typer.colors.YELLOW,
+        )
+        no_cache = True
+
     ds = None if no_cache else load_cache(project)
     if ds:
         echo_success(
@@ -149,7 +180,10 @@ def infer(
         return ds, []
 
     ds, external_graph_ids = merge_graphs(
-        project, output=True, export_external=export_external
+        project,
+        output=True,
+        export_external=export_external,
+        extra_export_formats=extra_export_format,
     )
     project.owl_backend = backend
     echo_neutral(
@@ -166,6 +200,7 @@ def infer(
         include_unwanted_triples=include_unwanted_triples,
         export_full=export_full,
         export_external_inferences=export_external,
+        extra_export_formats=extra_export_format,
     )
     echo_success(f"Inference complete. {len(ds)} total triples in dataset")
     echo_dataset_lengths(ds, all_external_ids)
