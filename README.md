@@ -43,6 +43,7 @@ A distinction is made between 'external' and 'internal' files. See below.
 ### Common Options
 
 - `--extra-export`: allows specifying extra export formats beyond the default trig. Can be used to 'flatten' quads to triples when exporting (by exporting to ttl or nt as well as trig)
+  - NB: `trig` is always included as an export because it is used for caching
 - ...
 
 ### `pythinfer create`
@@ -336,6 +337,7 @@ The `example_projects` folder contains contrived examples, but this has also bee
 ## Next Steps
 
 1. implement pattern support for input files
+1. check this handles non-turtle input files ok
 1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
     - also use of text / linguistic analysis would be a good motivation (e.g. infer that two projects are related if they share similar topics based on text analysis of abstracts)
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
