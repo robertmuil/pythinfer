@@ -161,6 +161,15 @@ def infer(
 
     """
     project = load_project(config)
+
+    # Force no_cache when extra export formats requested, otherwise exports won't happen
+    if extra_export_format and not no_cache:
+        typer.secho(
+            "Warning: --extra-export-format requires fresh export; ignoring cache.",
+            fg=typer.colors.YELLOW,
+        )
+        no_cache = True
+
     ds = None if no_cache else load_cache(project)
     if ds:
         echo_success(
