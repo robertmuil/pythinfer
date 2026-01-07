@@ -12,7 +12,7 @@ class TestProjectPathResolution:
     def test_paths_resolved_relative_to_project_file(self) -> None:
         """Test that relative paths are resolved to project file's directory."""
         with TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
+            tmpdir_path = Path(tmpdir).resolve()
 
             # Create directory structure:
             # tmpdir/
@@ -52,7 +52,7 @@ data:
     def test_paths_with_subdirectories(self) -> None:
         """Test that relative paths in subdirectories are resolved correctly."""
         with TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
+            tmpdir_path = Path(tmpdir).resolve()
 
             # Create structure:
             # tmpdir/
@@ -193,7 +193,7 @@ data:
     def test_vocab_paths_also_resolved(self) -> None:
         """Test that vocabulary file paths are also resolved correctly."""
         with TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
+            tmpdir_path = Path(tmpdir).resolve()
 
             # Create structure
             project_dir = tmpdir_path / "project"
