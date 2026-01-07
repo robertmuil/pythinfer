@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rdflib import Dataset, IdentifiedNode, URIRef
@@ -16,6 +17,16 @@ from pythinfer.merge import (
     merge_graphs,
 )
 from pythinfer.rdflibplus import DatasetView, graph_lengths
+
+ExtraExportFormatOption = Annotated[
+    list[str] | None,
+    typer.Option(
+        "--extra-export-format",
+        "-x",
+        help="Export to additional format (e.g., 'ttl', 'jsonld', 'xml'). "
+        "Can be specified multiple times.",
+    ),
+]
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
@@ -47,7 +58,7 @@ def echo_dataset_lengths(ds: Dataset, external_gids: Sequence[IdentifiedNode]) -
         typer.secho(f"{gid.n3():60s} {length: 4d}", fg=typer.colors.YELLOW)
 
 
-def configure_logging(verbose: bool) -> None:
+def configure_logging(*, verbose: bool) -> None:
     """Configure logging level based on verbose flag."""
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
@@ -60,15 +71,16 @@ def configure_logging(verbose: bool) -> None:
 
 @app.callback()
 def main_callback(
+    *,
     verbose: bool = typer.Option(
-        False,
+        False,  # noqa: FBT003
         "--verbose",
         "-v",
         help="Enable verbose (DEBUG) logging output",
     ),
 ) -> None:
     """Global options for pythinfer CLI."""
-    configure_logging(verbose)
+    configure_logging(verbose=verbose)
 
 
 @app.command()
@@ -99,12 +111,7 @@ def merge(
     output: Path | None = None,
     *,
     export_external: bool = False,
-    extra_export_format: list[str] = typer.Option(
-        None,
-        "--extra-export-format",
-        "-x",
-        help="Export to additional format (e.g., 'ttl', 'jsonld', 'xml'). Can be specified multiple times.",
-    ),
+    extra_export_format: ExtraExportFormatOption = None,
 ) -> None:
     """Merge graphs as specified in the config file and save.
 
@@ -117,13 +124,11 @@ def merge(
 
     """
     project = load_project(config)
-    # Convert empty list to None for backward compatibility
-    formats = extra_export_format if extra_export_format else None
     ds, external_graph_ids = merge_graphs(
         project,
         output=output or True,
         export_external=export_external,
-        extra_export_format=formats,
+        extra_export_formats=extra_export_format,
     )
     echo_success(f"Merged graphs from `{project.path_self}`")
     echo_dataset_lengths(ds, external_graph_ids)
@@ -139,12 +144,7 @@ def infer(
     export_full: bool = True,
     export_external: bool = False,
     no_cache: bool = False,
-    extra_export_format: list[str] = typer.Option(
-        None,
-        "--extra-export-format",
-        "-x",
-        help="Export to additional format (e.g., 'ttl', 'jsonld', 'xml'). Can be specified multiple times.",
-    ),
+    extra_export_format: ExtraExportFormatOption = None,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Run inference backends on merged graph.
 
@@ -170,13 +170,11 @@ def infer(
             echo_dataset_lengths(ds, [])
         return ds, []
 
-    # Convert empty list to None for backward compatibility
-    formats = extra_export_format if extra_export_format else None
     ds, external_graph_ids = merge_graphs(
         project,
         output=True,
         export_external=export_external,
-        extra_export_format=formats,
+        extra_export_formats=extra_export_format,
     )
     project.owl_backend = backend
     echo_neutral(
@@ -193,7 +191,7 @@ def infer(
         include_unwanted_triples=include_unwanted_triples,
         export_full=export_full,
         export_external_inferences=export_external,
-        extra_export_format=formats,
+        extra_export_formats=extra_export_format,
     )
     echo_success(f"Inference complete. {len(ds)} total triples in dataset")
     echo_dataset_lengths(ds, all_external_ids)

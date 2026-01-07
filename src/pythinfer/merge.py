@@ -23,7 +23,7 @@ def merge_graphs(
     *,
     output: Path | bool = True,
     export_external: bool = False,
-    extra_export_format: str | list[str] | None = None,
+    extra_export_formats: list[str] | None = None,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Merge graphs: preserve named graphs for each input.
 
@@ -36,7 +36,7 @@ def merge_graphs(
         project:    Project defining what files to merge and which are external
         output:     False for no persistence, True for default, or an explicit Path
         export_external:  whether to include external graphs when exporting
-        extra_export_format: additional export format(s) (e.g., "ttl", ["ttl", "jsonld"])
+        extra_export_formats: export format(s) in addition to trig (e.g., ["ttl"])
 
     Returns:
         Tuple of (merged Dataset, list of external graph identifiers).
@@ -70,18 +70,10 @@ def merge_graphs(
 
         output_ds = ds if export_external else DatasetView(ds, external_gids).invert()
 
-        # Build formats list: start with trig, add any extra formats
-        formats = ["trig"]
-        if extra_export_format:
-            if isinstance(extra_export_format, str):
-                formats.append(extra_export_format)
-            else:
-                formats.extend(extra_export_format)
-
         export_dataset(
             output_ds,
             output_file,
-            formats=formats,
+            formats=["trig", *(extra_export_formats or [])],
         )
 
     return ds, external_gids

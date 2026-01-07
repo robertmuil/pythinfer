@@ -360,7 +360,7 @@ def run_inference_backend(
     include_unwanted_triples: bool = False,
     export_full: bool = True,
     export_external_inferences: bool = False,
-    extra_export_format: str | list[str] | None = None,
+    extra_export_formats: list[str] | None = None,
 ) -> list[IdentifiedNode]:
     """Run inference backend on merged graph using OWL-RL semantics.
 
@@ -385,9 +385,8 @@ def run_inference_backend(
         include_unwanted_triples: If True, do not filter unwanted triples.
         export_full: export a file with the full set of inputs and inferences
             - this can be used for caching and for diagnostics
-        export_external: when exporting wanted inferences, include external graphs
-            and inferences also
-        extra_export_format: additional export format(s) (e.g., "ttl", ["ttl", "jsonld"])
+        export_external_inferences: when exporting inferences, include external graphs
+        extra_export_formats: export formats in addition to trig e.g., ["ttl", "jsonld"]
 
     Returns:
         List of all external graph identifiers (input external_graph_ids plus
@@ -475,18 +474,10 @@ def run_inference_backend(
         output_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Build formats list: start with trig, add any extra formats
-        formats = ["trig"]
-        if extra_export_format:
-            if isinstance(extra_export_format, str):
-                formats.append(extra_export_format)
-            else:
-                formats.extend(extra_export_format)
-
         export_dataset(
             ds,
             output_file,
-            formats=formats,
+            formats=["trig", *(extra_export_formats or [])],
         )
 
     if not include_unwanted_triples:
@@ -514,18 +505,10 @@ def run_inference_backend(
         + ([IRI_EXTERNAL_INFERENCES] if export_external_inferences else []),
     )
 
-    # Build formats list: start with trig, add any extra formats
-    formats = ["trig"]
-    if extra_export_format:
-        if isinstance(extra_export_format, str):
-            formats.append(extra_export_format)
-        else:
-            formats.extend(extra_export_format)
-
     export_dataset(
         output_ds,
         output_file,
-        formats=formats,
+        formats=["trig", *(extra_export_formats or [])],
     )
 
     # Return all external graph IDs (originals plus external inferences)
