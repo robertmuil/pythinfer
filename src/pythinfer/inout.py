@@ -59,8 +59,8 @@ def export_dataset(
         "ntriples": "nt",
         "trig": "trig",
         "trix": "trix",
-        "jsonld": "jsonld",
-        "json-ld": "jsonld",
+        "jsonld": "json-ld",
+        "json-ld": "json-ld",
     }
 
     exts = [format_to_ext.get(f.lower(), f.lower()) for f in (formats or ["trig"])]
