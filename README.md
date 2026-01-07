@@ -38,6 +38,33 @@ A distinction is made between 'external' and 'internal' files. See below.
 
 ![Demo of executing eg0 in CLI](demo-eg0.gif)
 
+## Command Line Interface
+
+### Common Options
+
+- `--extra-export`: allows specifying extra export formats beyond the default trig. Can be used to 'flatten' quads to triples when exporting (by exporting to ttl or nt as well as trig)
+- ...
+
+### `pythinfer create`
+
+Create a new project specification file in the current folder by scanning for RDF files.
+
+Invoked automatically if another command is used and no project file exists already.
+
+### `pythinfer merge`
+
+Largely a helper command, not likely to need direct invocation.
+
+### `pythinfer infer`
+
+Perform merging and inference as per the project specification, and export the resulting graphs to the output folder.
+
+### `pythinfer query`
+
+A simple helper command should allow easily specifying a query, or queries, and these should be executed against the latest full inferred graph.
+
+In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
+
 ## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
@@ -100,7 +127,7 @@ This means that the current working directory from which you execute pythinfer i
 
 If your project structure is:
 
-```
+```ascii
 my_project/
 ├── pythinfer.yaml
 ├── data/
@@ -257,12 +284,6 @@ Therefore we want to support specification of 'heuristics' in other formalisms, 
 The order of application of these heuristics may matter - for instance, a SPARQL CONSTRUCT may create triples that are then used by a Python heuristic, or the former may require the full type hierarchy to be explicit from OWL-RL inference.
 
 Thus, we apply heuristics and OWL-RL inference in alternating steps until no new triples are generated.
-
-## Querying
-
-A simple helper command should allow easily specifying a query, or queries, and these should be executed against the latest full inferred graph.
-
-In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
 
 ## Data Structures
 
