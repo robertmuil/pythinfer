@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
 """Test script to verify the extra export format functionality."""
 
 import tempfile
 from pathlib import Path
 
-from pythinfer.inout import export_dataset
 from rdflib import Dataset, Namespace, URIRef
+
+from pythinfer.inout import export_dataset
 
 # Create a simple test dataset
 ds = Dataset()
@@ -30,12 +30,12 @@ with tempfile.TemporaryDirectory() as tmpdir:
     print(f"TTL file exists: {ttl_file.exists()}")
 
     if trig_file.exists():
-        with open(trig_file) as f:
+        with trig_file.open() as f:
             trig_content = f.read()
         print(f"TRIG file size: {len(trig_content)} bytes")
 
     if ttl_file.exists():
-        with open(ttl_file) as f:
+        with ttl_file.open() as f:
             ttl_content = f.read()
         print(f"TTL file size: {len(ttl_content)} bytes")
 

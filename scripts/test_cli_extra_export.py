@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 # Use one of the example projects
-example_project = Path("/home/robert/git/pythinfer/example_projects/eg0-basic")
+example_project = Path(__file__).parent.parent / "example_projects" / "eg0-basic"
 
 with tempfile.TemporaryDirectory() as tmpdir:
     # Copy example project to temp directory
@@ -45,7 +45,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
     # Test 2: Infer with extra export format
     print("\nTest 2: Testing 'infer' command with extra export format (jsonld)")
     result = subprocess.run(
-        ["uv", "run", "pythinfer", "infer", "-x", "jsonld"],
+        ["uv", "run", "pythinfer", "infer", "-x", "json-ld"],
         cwd=test_project,
         capture_output=True,
         text=True,
@@ -59,9 +59,9 @@ with tempfile.TemporaryDirectory() as tmpdir:
 
     # Check output files
     combined_trig = derived_dir / "1-combined-full.trig"
-    combined_jsonld = derived_dir / "1-combined-full.jsonld"
+    combined_jsonld = derived_dir / "1-combined-full.json-ld"
     inferred_trig = derived_dir / "2-inferred-wanted.trig"
-    inferred_jsonld = derived_dir / "2-inferred-wanted.jsonld"
+    inferred_jsonld = derived_dir / "2-inferred-wanted.json-ld"
 
     print(f"  Combined TRIG file exists: {combined_trig.exists()}")
     print(f"  Combined JSONLD file exists: {combined_jsonld.exists()}")
@@ -92,13 +92,13 @@ with tempfile.TemporaryDirectory() as tmpdir:
         print("✅ Infer command (without extra format) succeeded")
 
     derived_dir2 = test_project2 / "derived"
-    jsonld_file = derived_dir2 / "2-inferred-wanted.jsonld"
+    jsonld_file = derived_dir2 / "2-inferred-wanted.json-ld"
     trig_file = derived_dir2 / "2-inferred-wanted.trig"
 
     print(f"  TRIG file exists: {trig_file.exists()}")
     print(f"  JSONLD file exists: {jsonld_file.exists()}")
 
-if all([trig_file.exists(), not jsonld_file.exists()]):
-    print("\n✅ All CLI tests passed!")
-else:
-    print("\n❌ Some tests failed")
+    if all([trig_file.exists(), jsonld_file.exists()]):
+        print("\n✅ All CLI tests passed!")
+    else:
+        print("\n❌ Some tests failed")

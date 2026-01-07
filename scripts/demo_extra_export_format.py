@@ -9,7 +9,7 @@ print("pythinfer Extra Export Format Feature Demo")
 print("=" * 70)
 
 # Use one of the example projects
-example_project = Path("/home/robert/git/pythinfer/example_projects/eg0-basic")
+example_project = Path(__file__).parent.parent / "example_projects" / "eg0-basic"
 
 with tempfile.TemporaryDirectory() as tmpdir:
     # Copy example project to temp directory
