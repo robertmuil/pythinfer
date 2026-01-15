@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -210,7 +211,7 @@ def infer(
 
 @app.command()
 def query(
-    query: Path,
+    query: str,
     project: Path | None = None,
     graph: list[str] | None = None,
     *,
@@ -222,7 +223,7 @@ def query(
     TODO: move functionality to module and keep this just CLI
 
     Args:
-        query: Path to the query file to execute, or the query string itself
+        query: path to the query file to execute, or the query string itself
         project: Path to project file (defaults to project selection process)
         graph: IRI for graph to include (can be specified multiple times)
         no_cache: whether to skip loading from cache and re-run inference

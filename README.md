@@ -347,3 +347,4 @@ The `example_projects` folder contains contrived examples, but this has also bee
     - especially valuable for query command
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
 1. consider changing the distinction from interal/external to data/vocabulary (where vocab includes taxonomies or ontologies) - basically the ABox/TBox distinction where CBox is part of TBox.
+1. add support for ASK query
