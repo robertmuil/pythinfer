@@ -2,7 +2,7 @@
 
 NB: if this matures, we might move the model into a more prominent and utilised place rather than just being an example.
 
-We are treating the model as an external vocabulary to avoid the model-only inferences during testing. This is probably a good indication that we either need a concept of 'vocabulary-only' inference, or a way to separate model and data in the same graph, or just better name for 'external'.
+We are treating the model as an external vocabulary to avoid the model-only inferences during testing. This is probably a good indication that we should rename 'external' and 'internal' to 'reference' and 'local'.
 
 ## Supported Tests
 
