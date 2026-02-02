@@ -1,0 +1,6 @@
+name: eg0-basic
+data:
+- basic-data.ttl
+- basic-model.ttl
+sparql_inference:
+- infer_celebrity.rq

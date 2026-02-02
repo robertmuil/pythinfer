@@ -4,7 +4,14 @@ Very basic example project to demonstrate usage.
 
 This is also used in the test suite to verify the `create` command, so it is deliberately lacking a `pythinfer.yaml` file.
 
-## Contents
+This example tests the following functionality:
+
+1. Loading data and model files.
+1. Using a symmetric property axiom to infer new triples.
+1. Running queries against the inferred data.
+1. Adding custom inference rules via SPARQL CONSTRUCT queries.
+
+## Data
 
 In this folder are two files which define a very simple graph of who knows whom (common prefixes ommitted):
 
@@ -26,9 +33,9 @@ foaf:knows a owl:SymmetricProperty .
     foaf:knows :Alice .
 ```
 
-### `select_who_knows_whom.rq`
+## Querying
 
-Also present is a SPARQL query file which lists who knows whom from the files:
+Also present is a SPARQL query file (`select_who_knows_whom.rq`) which lists who knows whom from the files:
 
 ```sparql
 SELECT ?who ?whom
@@ -36,8 +43,6 @@ SELECT ?who ?whom
     ?who foaf:knows ?whom
 }
 ```
-
-## Operation
 
 Queried without inference, only a single result is returned (Bob knows Alice):
 
@@ -62,3 +67,13 @@ uv run pythinfer query select_who_knows_whom.rq
 │ :Alice │ :Bob   │
 └────────┴────────┘
 ```
+
+## Custom Inference Rules
+
+To demonstrate custom inference rules with SPARQL, a CONSTRUCT query `infer_celebrity.rq` is include which infers that anyone older than 29 who knows Bob also knows Jamiroquai.
+
+```sh
+uv run pythinfer query --no-cache --project pythinfer_celebrity.yaml select_who_knows_whom.rq
+```
+
+NB: beware of [bug #33](https://github.com/robertmuil/pythinfer/issues/33): hence the `--no-cache` flag.
