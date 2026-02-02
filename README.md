@@ -34,11 +34,22 @@ A distinction is made between 'external' and 'internal' files. See below.
 
     This will create a `pythinfer.yaml` project file in the project folder, merge all RDF files it finds, perform inference, and then execute the SPARQL query against the inferred graph.
 
+1. To use a specific project file, use the `--project` option before the command:
+
+    ```bash
+    uvx ~/git/pythinfer --project pythinfer_celebrity.yaml query select_who_knows_whom.rq
+    ```
+
 1. Edit the `pythinfer.yaml` file to specify which files to include, try again. Have fun.
 
 ![Demo of executing eg0 in CLI](demo-eg0.gif)
 
 ## Command Line Interface
+
+### Global Options
+
+- `--project` / `-p`: Specify the path to a project configuration file. If not provided, pythinfer will search for `pythinfer.yaml` in the current directory and parent directories, or create a new project if none is found.
+- `--verbose` / `-v`: Enable verbose (DEBUG) logging output.
 
 ### Common Options
 

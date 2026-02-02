@@ -75,7 +75,7 @@ To demonstrate custom inference rules with SPARQL, a CONSTRUCT query `eg_rule_to
 (BTW: the CONSTRUCT query file is named `eg_rule...` instead of `infer...` to avoid being picked up by the automatic project creation in the test suite.)
 
 ```sh
-uv run pythinfer query --no-cache --project pythinfer_celebrity.yaml select_who_knows_whom.rq
+uv run pythinfer --project pythinfer_celebrity.yaml query --no-cache select_who_knows_whom.rq
 ```
 
 NB: beware of [bug #33](https://github.com/robertmuil/pythinfer/issues/33): hence the `--no-cache` flag.
