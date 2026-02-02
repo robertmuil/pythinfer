@@ -70,7 +70,9 @@ uv run pythinfer query select_who_knows_whom.rq
 
 ## Custom Inference Rules
 
-To demonstrate custom inference rules with SPARQL, a CONSTRUCT query `infer_celebrity.rq` is include which infers that anyone older than 29 who knows Bob also knows Jamiroquai.
+To demonstrate custom inference rules with SPARQL, a CONSTRUCT query `eg_rule_to_infer_celebrity.rq` is include which infers that anyone older than 29 who knows Bob also knows Jamiroquai.
+
+(BTW: the CONSTRUCT query file is named `eg_rule...` instead of `infer...` to avoid being picked up by the automatic project creation in the test suite.)
 
 ```sh
 uv run pythinfer query --no-cache --project pythinfer_celebrity.yaml select_who_knows_whom.rq

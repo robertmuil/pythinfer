@@ -3,4 +3,4 @@ data:
 - basic-data.ttl
 - basic-model.ttl
 sparql_inference:
-- infer_celebrity.rq
+- eg_rule_to_infer_celebrity.rq
