@@ -263,8 +263,12 @@ class Project(BaseModel):
 
     @property
     def path_output(self) -> Path:
-        """Path to the output folder."""
-        return self.path_self.parent / "derived"
+        """Path to the output folder.
+
+        Includes the project file stem to avoid cache collisions when multiple
+        project files exist in the same directory.
+        """
+        return self.path_self.parent / "derived" / self.path_self.stem
 
     @property
     def paths_all_input(self) -> list[Path]:
