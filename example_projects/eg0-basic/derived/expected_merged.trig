@@ -2,7 +2,7 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 
-<basic-data.ttl> {
+<urn:pythinfer:eg0-basic:file:basic-data.ttl> {
     :Bob a foaf:Person ;
         foaf:knows :Alice ;
         foaf:name "Bob Jones" .
@@ -12,7 +12,7 @@
         foaf:name "Alice Smith" .
 }
 
-<basic-model.ttl> {
+<urn:pythinfer:eg0-basic:file:basic-model.ttl> {
     foaf:knows a owl:SymmetricProperty .
 }
 
