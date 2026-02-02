@@ -1,0 +1,14 @@
+SELECT
+    ?g
+    (COUNT(?s) AS ?nTriples)
+    (COUNT(DISTINCT ?s) AS ?nDistinctSubjects)
+    (COUNT(DISTINCT ?p) AS ?nDistinctPredicates)
+    (COUNT(DISTINCT ?o) AS ?nDistinctObjects)
+WHERE
+{
+    GRAPH ?g {
+        ?s ?p ?o .
+    }
+}
+GROUP BY ?g
+ORDER BY DESC(?nTriples)
