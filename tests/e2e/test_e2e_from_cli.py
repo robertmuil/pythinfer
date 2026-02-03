@@ -65,8 +65,8 @@ def test_cli_command(
     # Disable cache for infer command to ensure fresh runs
     if command == "infer":
         cmd_args.append("--no-cache")
-    os.chdir(project_dir)
     try:
+        os.chdir(project_dir)
         result = runner.invoke(app, cmd_args)
     finally:
         os.chdir(original_cwd)
