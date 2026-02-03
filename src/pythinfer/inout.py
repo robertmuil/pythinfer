@@ -209,7 +209,7 @@ class Project(BaseModel):
         # Add path_self to the config dict before validation
         cfg["path_self"] = _config_path
         if "name" not in cfg:
-            cfg["name"] = _config_path.stem
+            cfg["name"] = _config_path.parent.stem
 
         # Let Pydantic handle validation and field normalization
         # Pass config_dir through context for path resolution in validators
