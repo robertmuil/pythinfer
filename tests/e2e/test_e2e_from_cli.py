@@ -55,7 +55,7 @@ def test_cli_command(
         actual_file_path.unlink()
 
     # Make sure intermediate output folder exists
-    actual_file_path.parent.mkdir(exist_ok=True)
+    actual_file_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Run the command using CliRunner but with proper working directory
     # Save current working directory and change to project directory
