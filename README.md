@@ -129,7 +129,7 @@ Examples are OWL, RDFS, SKOS, and other standard vocabularies.
 
 Synonyms for 'external' here could be 'transient' or 'reference' or 'catalyst'.
 
-Need better term than 'internal' because it can be data (incl. vocabs and models) that are maintained outside of the project folder itself, but are desired to be part of the output. Perhaps 'local'.
+Need better term than 'internal' because it can be data (incl. vocabs and models) which is maintained outside of the project folder itself but desired in the output. Perhaps 'local'.
 
 ### Path Resolution
 
@@ -361,5 +361,5 @@ The `example_projects` folder contains contrived examples, but this has also bee
 1. consider using a proper config language like dhal(?) instead of yaml
 1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
-1. consider changing the distinction from interal/external to data/vocabulary (where vocab includes taxonomies or ontologies) - basically the ABox/TBox distinction where CBox is part of TBox.
+1. change the distinction from interal/external to local/reference
 1. add support for ASK query
