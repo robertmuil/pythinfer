@@ -7,7 +7,9 @@
 @prefix ptp: <http://www.example.org/pythinfer/project/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
-<inferences_sparql> {
+@base <http://pythinfer.local/eg2-projects/> .
+
+<inferences/sparql> {
     # This is the most important SPARQL-based inference: the relationship between projA and projB
     eg:relationship-projA-projB a ptp:ProjectRelationship ;
         ptp:hasParticipant eg:projA,
@@ -47,7 +49,7 @@
 }
 
 
-<inferences_owl> {
+<inferences/owl> {
     eg:projA a dcat:Catalog,
             prov:Activity ;
         ptp:hasDataSource _:b0,

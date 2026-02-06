@@ -14,9 +14,16 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from rdflib import Dataset, Graph
+from rdflib import Dataset, Graph, Namespace, URIRef
 
 logger = logging.getLogger(__name__)
+
+# Base namespace for pythinfer graph identifiers and potentially other IRIs
+# Originally wanted to use a URN base (`urn:pythinfer:`) like so:
+# Format: urn:pythinfer:{project-name}:file:{relative-path}
+#     or: urn:pythinfer:{project-name}:inferences:{type}
+# However, parsing the TTL complained about no slash after colon etc.
+PYTHINFER_NS = Namespace("http://pythinfer.local/")
 
 PROJECT_FILE_NAME = "pythinfer.yaml"
 MAX_DISCOVERY_SEARCH_DEPTH = 10
@@ -117,7 +124,7 @@ class Project(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def normalize_field_names(cls, data: dict) -> dict:
+    def normalize_field_names(cls, data: dict[str, str]) -> dict[str, str]:
         """Normalize field names to accept multiple spellings."""
         if not isinstance(data, dict):
             return data
@@ -136,10 +143,9 @@ class Project(BaseModel):
             "sparql_inference": "paths_sparql_inference",
             "paths_sparql_inference": "paths_sparql_inference",
             "owl-backend": "owl_backend",
-            "owl_backend": "owl_backend",
         }
 
-        normalized = {}
+        normalized: dict[str, str] = {}
         for key, value in data.items():
             # Use canonical name if it's an alias, otherwise keep original
             canonical_key = field_aliases.get(key, key)
@@ -209,7 +215,7 @@ class Project(BaseModel):
         # Add path_self to the config dict before validation
         cfg["path_self"] = _config_path
         if "name" not in cfg:
-            cfg["name"] = _config_path.stem
+            cfg["name"] = _config_path.parent.stem
 
         # Let Pydantic handle validation and field normalization
         # Pass config_dir through context for path resolution in validators
@@ -221,10 +227,11 @@ class Project(BaseModel):
         If the path is relative to the project file's directory, store it
         relative for better portability. Otherwise, store as absolute path.
         """
-        project_dir = self.path_self.parent
+        resolved_path = path.resolve()
+        resolved_project_dir = self.path_self.resolve().parent
         try:
             # Try to make it relative to the project directory
-            rel_path = path.relative_to(project_dir)
+            rel_path = resolved_path.relative_to(resolved_project_dir)
             return str(rel_path)
         except ValueError:
             # Path is not relative to project_dir, store as-is
@@ -280,6 +287,67 @@ class Project(BaseModel):
         """List of all paths (input + SPARQL inference) - cache checking."""
         return self.paths_all_input + (self.paths_sparql_inference or [])
 
+    @property
+    def namespace(self) -> Namespace:
+        """The IRI Namespace associated with this Project."""
+        # TODO: normalise name to be appropriate for an IRI.
+        return Namespace(PYTHINFER_NS[self.name] + "/")
+
+    @property
+    def provenance_gid(self) -> URIRef:
+        """The IRI to use for the provenance named graph for this Project."""
+        return self.namespace["provenance"]
+
+    def source_file_gid(self, file_path: Path) -> URIRef:
+        """Create a stable identifier for a source file's named graph.
+
+        Uses project name and relative path to create an IRI that is:
+        - Stable across re-parsing
+        - Portable within a project
+        - Informative about the source
+        - (no longer, because URNs don't currently work) Explicitly non-dereferenceable
+
+        Args:
+            file_path: Path to the source file
+
+        Returns:
+            IRI for the named graph, e.g.:
+            http://pythinfer.local/eg0-basic/file/basic-model.ttl
+
+        """
+        # Resolve both paths to their canonical form to handle symlinks and
+        # relative path differences that can occur across different environments
+        resolved_file_path = file_path.resolve()
+        resolved_project_parent = self.path_self.resolve().parent
+
+        try:
+            rel_path = resolved_file_path.relative_to(resolved_project_parent)
+        except ValueError:
+            # File is outside project directory; try to use the original path as-is
+            # to preserve the structure shown in the config file
+            try:
+                # Try with the unresolved path in case it has a meaningful structure
+                rel_path = file_path.relative_to(self.path_self.parent)
+            except ValueError:
+                # If that also fails, just use the file name
+                rel_path = resolved_file_path.name
+
+        # Note, to use a URN, we'd need to replace with colons for URN structure
+        # Use colons to maintain hierarchical structure in URN
+        return self.namespace[f"file/{rel_path}"]
+
+    def inference_gid(self, inference_type: str) -> URIRef:
+        """Create a stable identifier for an inference graph.
+
+        Args:
+            inference_type: Type of inference ('external', 'owl', or 'sparql')
+
+        Returns:
+            IRI for the inference graph, e.g.:
+            http://pythinfer.local/eg0-basic/inferences/owl
+
+        """
+        return self.namespace[f"inferences/{inference_type}"]
 
 def discover_project(start_path: Path, _current_depth: int = 0) -> Path:
     """Discover a pythinfer project by searching for a config file.
