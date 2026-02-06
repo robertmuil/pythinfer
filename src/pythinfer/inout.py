@@ -227,10 +227,11 @@ class Project(BaseModel):
         If the path is relative to the project file's directory, store it
         relative for better portability. Otherwise, store as absolute path.
         """
-        project_dir = self.path_self.parent
+        resolved_path = path.resolve()
+        resolved_project_dir = self.path_self.resolve().parent
         try:
             # Try to make it relative to the project directory
-            rel_path = path.relative_to(project_dir)
+            rel_path = resolved_path.relative_to(resolved_project_dir)
             return str(rel_path)
         except ValueError:
             # Path is not relative to project_dir, store as-is
@@ -314,7 +315,23 @@ class Project(BaseModel):
             http://pythinfer.local/eg0-basic/file/basic-model.ttl
 
         """
-        rel_path = file_path.relative_to(self.path_self.parent)
+        # Resolve both paths to their canonical form to handle symlinks and
+        # relative path differences that can occur across different environments
+        resolved_file_path = file_path.resolve()
+        resolved_project_parent = self.path_self.resolve().parent
+
+        try:
+            rel_path = resolved_file_path.relative_to(resolved_project_parent)
+        except ValueError:
+            # File is outside project directory; try to use the original path as-is
+            # to preserve the structure shown in the config file
+            try:
+                # Try with the unresolved path in case it has a meaningful structure
+                rel_path = file_path.relative_to(self.path_self.parent)
+            except ValueError:
+                # If that also fails, just use the file name
+                rel_path = resolved_file_path.name
+
         # Note, to use a URN, we'd need to replace with colons for URN structure
         # Use colons to maintain hierarchical structure in URN
         return self.namespace[f"file/{rel_path}"]
