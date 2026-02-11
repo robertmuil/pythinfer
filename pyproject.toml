@@ -4,7 +4,7 @@ version = "0.3.0"
 description = "CLI to easily merge multiple RDF files and perform inference (OWL or SPARQL) on the result."
 readme = "README.md"
 authors = [{ name = "Robert Muil", email = "robertmuil@gmail.com" }]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "owlrl>=7.1.4",
     "pydantic>=2.12.4",
