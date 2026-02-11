@@ -1,6 +1,6 @@
 @prefix : <http://example.org/> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
-<inferences_owl> {
+<http://pythinfer.local/eg0-basic/inferences/owl> {
     :Alice foaf:knows :Bob .
 }

@@ -17,28 +17,45 @@ A distinction is made between 'external' and 'internal' files. See below.
 
 (in the below, replace `~/git` and `~/git/pythinfer/example_projects/eg0-basic` with folder paths on your system, of course)
 
-1. Clone the repository:
+1. Install `pythinfer` as a tool:
+
+    ```bash
+    uv tool install pythinfer
+    ```
+
+1. Clone the repository [OPTIONAL - this is just to get the example]:
 
    ```bash
    cd ~/git
    git clone https://github.com/robertmuil/pythinfer.git
    ```
 
-1. Execute it as a tool in your project:
+1. Execute it as a tool in your project (or the example project):
 
     ```bash
-    cd ~/git/pythinfer/example_projects/eg0-basic
-    uvx ~/git/pythinfer query "SELECT * WHERE { ?s ?p ?o } LIMIT 10"
-    uvx ~/git/pythinfer query select_who_knows_whom.rq
+    cd ~/git/pythinfer/example_projects/eg0-basic # or your own project folder
+    uvx pythinfer query "SELECT * WHERE { ?s ?p ?o } LIMIT 10"
+    uvx pythinfer query select_who_knows_whom.rq
     ```
 
     This will create a `pythinfer.yaml` project file in the project folder, merge all RDF files it finds, perform inference, and then execute the SPARQL query against the inferred graph.
+
+1. To use a specific project file, use the `--project` option before the command:
+
+    ```bash
+    uvx pythinfer --project pythinfer_celebrity.yaml query select_who_knows_whom.rq
+    ```
 
 1. Edit the `pythinfer.yaml` file to specify which files to include, try again. Have fun.
 
 ![Demo of executing eg0 in CLI](demo-eg0.gif)
 
 ## Command Line Interface
+
+### Global Options
+
+- `--project` / `-p`: Specify the path to a project configuration file. If not provided, pythinfer will search for `pythinfer.yaml` in the current directory and parent directories, or create a new project if none is found.
+- `--verbose` / `-v`: Enable verbose (DEBUG) logging output.
 
 ### Common Options
 
@@ -345,4 +362,6 @@ The `example_projects` folder contains contrived examples, but this has also bee
 1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
 1. change the distinction from interal/external to local/reference
-1. add support for ASK query
+1. add better output support for ASK query
+1. add option to remove project name from named graphs, for easier specification:
+   1. e.g. `<urn:pythinfer:inferences:owl>` which is easy to remember and specify on command-line.

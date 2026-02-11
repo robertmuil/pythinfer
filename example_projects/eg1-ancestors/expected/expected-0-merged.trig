@@ -4,8 +4,11 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix pythinfer: <http://pythinfer.local/> .
 
-<ancestors-model.ttl> {
+@base <http://pythinfer.local/eg1-ancestors/> .
+
+<file/ancestors-model.ttl> {
     ex:childOf rdfs:label "child of" ;
         owl:inverseOf ex:parentOf .
 
@@ -33,7 +36,7 @@
         rdfs:label "Person" .
 }
 
-<ancestors-data.ttl> {
+<file/ancestors-data.ttl> {
     ex:Alice a ex:Person ;
         ex:parentOf ex:Bob,
             ex:Carol .
@@ -47,4 +50,10 @@
     ex:David a ex:Person .
 
     ex:Eve a ex:Person .
+}
+
+<provenance> {
+    <file/ancestors-data.ttl> a pythinfer:SourceGraph .
+    <file/ancestors-model.ttl> a pythinfer:SourceGraph .
+    <file/../../vocabs-external/skos.ttl> a pythinfer:SourceGraph .
 }

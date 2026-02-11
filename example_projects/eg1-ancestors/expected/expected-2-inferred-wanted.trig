@@ -1,6 +1,7 @@
 @prefix ex: <http://example.org/ancestor/> .
 
-<inferences_owl> {
+@base <http://pythinfer.local/eg1-ancestors/> .
+<inferences/owl> {
     ex:David ex:childOf ex:Bob ;
         ex:descendantOf ex:Alice,
             ex:Bob .

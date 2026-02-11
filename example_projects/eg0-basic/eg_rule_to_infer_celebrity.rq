@@ -1,0 +1,11 @@
+prefix : <http://example.org/>
+prefix foaf: <http://xmlns.com/foaf/0.1/>
+
+CONSTRUCT {
+    ?a foaf:knows :Jamiroquai
+}
+WHERE {
+  ?a foaf:knows :Bob ;
+    foaf:age ?age  .
+  FILTER (?age > 29).
+}

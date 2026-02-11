@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Annotated
 
@@ -19,6 +19,24 @@ from pythinfer.merge import (
 )
 from pythinfer.rdflibplus import DatasetView, graph_lengths
 
+ProjectOption = Annotated[
+    Path | None,
+    typer.Option(
+        "--project",
+        "-p",
+        help="Path to project configuration file (pythinfer.yaml)",
+    ),
+]
+
+VerboseOption = Annotated[
+    bool,
+    typer.Option(
+        "--verbose",
+        "-v",
+        help="Enable verbose (DEBUG) logging output",
+    ),
+]
+
 ExtraExportFormatOption = Annotated[
     list[str] | None,
     typer.Option(
@@ -31,6 +49,9 @@ ExtraExportFormatOption = Annotated[
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
+
+# Context variable to store the project path (thread-safe alternative to global)
+_project_path_var: ContextVar[Path | None] = ContextVar("project_path", default=None)
 
 
 def echo_success(msg: str) -> None:  # noqa: D103 - self-explanatory function
@@ -73,14 +94,11 @@ def configure_logging(*, verbose: bool) -> None:
 @app.callback()
 def main_callback(
     *,
-    verbose: bool = typer.Option(
-        False,  # noqa: FBT003
-        "--verbose",
-        "-v",
-        help="Enable verbose (DEBUG) logging output",
-    ),
+    project: ProjectOption = None,
+    verbose: VerboseOption = False,
 ) -> None:
     """Global options for pythinfer CLI."""
+    _project_path_var.set(project)
     configure_logging(verbose=verbose)
 
 
@@ -108,7 +126,6 @@ def create(
 
 @app.command()
 def merge(
-    config: Path | None = None,
     output: Path | None = None,
     *,
     export_external: bool = False,
@@ -117,14 +134,13 @@ def merge(
     """Merge graphs as specified in the config file and save.
 
     Args:
-        config: path to the project configuration file
         output: path for data to be saved to (defaults to `derived/merged.trig`)
         export_external: whether to include external graphs in output
         extra_export_format: additional export format(s) (besides trig),
                                 can be specified multiple times
 
     """
-    project = load_project(config)
+    project = load_project(_project_path_var.get())
     ds, external_graph_ids = merge_graphs(
         project,
         output=output or True,
@@ -137,7 +153,6 @@ def merge(
 
 @app.command()
 def infer(
-    config: Path | None = None,
     backend: str = "owlrl",
     output: Path | None = None,
     *,
@@ -150,7 +165,6 @@ def infer(
     """Run inference backends on merged graph.
 
     Args:
-        config: path to Project defining the inputs
         backend: OWL inference engine to use
         output: output path for final inferences (None for project-based default)
         include_unwanted_triples: include all valid inferences, even unhelpful
@@ -161,7 +175,7 @@ def infer(
                                 can be specified multiple times
 
     """
-    project = load_project(config)
+    project = load_project(_project_path_var.get())
 
     # Force no_cache when extra export formats requested, otherwise exports won't happen
     if extra_export_format and not no_cache:
@@ -212,7 +226,6 @@ def infer(
 @app.command()
 def query(
     query: str,
-    project: Path | None = None,
     graph: list[str] | None = None,
     *,
     no_cache: bool = False,
@@ -224,7 +237,6 @@ def query(
 
     Args:
         query: path to the query file to execute, or the query string itself
-        project: Path to project file (defaults to project selection process)
         graph: IRI for graph to include (can be specified multiple times)
         no_cache: whether to skip loading from cache and re-run inference
 
@@ -235,7 +247,7 @@ def query(
     else:
         query_contents = str(query)
 
-    ds, _ = infer(project, no_cache=no_cache)
+    ds, _ = infer(no_cache=no_cache)
 
     view = ds
     if graph:

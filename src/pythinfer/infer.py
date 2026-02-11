@@ -9,6 +9,7 @@ from pathlib import Path
 from owlrl import DeductiveClosure
 from owlrl.OWLRL import OWLRL_Semantics
 from rdflib import (
+    DCTERMS,
     OWL,
     RDF,
     RDFS,
@@ -30,11 +31,9 @@ from pythinfer.inout import (
     export_dataset,
     load_sparql_inference_queries,
 )
+from pythinfer.inout import PYTHINFER_NS
 from pythinfer.rdflibplus import DatasetView
 
-IRI_EXTERNAL_INFERENCES: URIRef = URIRef("inferences_external")  # type: ignore[bad-assignment]
-IRI_OWL_INFERENCES: URIRef = URIRef("inferences_owl")  # type: ignore[bad-assignment]
-IRI_SPARQL_INFERENCES: URIRef = URIRef("inferences_sparql")  # type: ignore[bad-assignment]
 
 MAX_REASONING_ROUNDS = 5
 SCRIPT_DIR = Path(__file__).parent
@@ -259,7 +258,7 @@ def filter_triples(
 
 
 def _generate_external_inferences(
-    ds: Dataset, external_graph_ids: list[IdentifiedNode]
+    ds: Dataset, external_graph_ids: list[IdentifiedNode], project: Project
 ) -> Graph:
     """Generate inferences from external vocabularies only (step 2).
 
@@ -269,6 +268,7 @@ def _generate_external_inferences(
     Args:
         ds: Dataset containing all graphs.
         external_graph_ids: List of graph identifiers that are external.
+        project: The project configuration.
 
     Returns:
         Graph containing external inferences.
@@ -286,13 +286,21 @@ def _generate_external_inferences(
     info("  Temporary dataset created with %d triples in default graph", len(temp_ds))
 
     # Create inferences graph in temp dataset (must share same store)
-    temp_inferences = temp_ds.graph(IRI_EXTERNAL_INFERENCES)
+    iri_external = project.inference_gid("external")
+    temp_inferences = temp_ds.graph(iri_external)
+    g_provenance = ds.graph(project.provenance_gid)
 
     apply_owlrl_inference(temp_ds, temp_inferences)
 
-    g_external_inferences = ds.graph(IRI_EXTERNAL_INFERENCES)
+    g_external_inferences = ds.graph(iri_external)
     for s, p, o in temp_inferences:
         g_external_inferences.add((s, p, o))
+
+    # Add provenance metadata for external inference graph
+    g_provenance.add((iri_external, RDF.type, PYTHINFER_NS["InferenceGraph"]))
+    g_provenance.add(
+        (iri_external, PYTHINFER_NS["inferenceEngine"], Literal("owlrl"))
+    )
     info("  External inferences generated: %d triples", len(g_external_inferences))
     return g_external_inferences
 
@@ -406,7 +414,9 @@ def run_inference_backend(
     sparql_queries = load_sparql_inference_queries(project.paths_sparql_inference or [])
 
     # Step 2: Generate external inferences (once - this is the "noise floor")
-    g_external_inferences = _generate_external_inferences(ds, external_graph_ids)
+    g_external_inferences = _generate_external_inferences(
+        ds, external_graph_ids, project
+    )
 
     # Steps 3-5: Iterate full inferences + heuristics until convergence
     info(
@@ -414,8 +424,28 @@ def run_inference_backend(
         MAX_REASONING_ROUNDS,
     )
 
-    g_inferences_owl = ds.graph(IRI_OWL_INFERENCES)
-    g_inferences_sparql = ds.graph(IRI_SPARQL_INFERENCES)
+    iri_owl = project.inference_gid("owl")
+    iri_sparql = project.inference_gid("sparql")
+    g_inferences_owl = ds.graph(iri_owl)
+    g_inferences_sparql = ds.graph(iri_sparql)
+    g_provenance = ds.graph(project.provenance_gid)
+
+    # Add provenance metadata for inference graphs
+    g_provenance.add((iri_owl, RDF.type, PYTHINFER_NS["InferenceGraph"]))
+    g_provenance.add(
+        (iri_owl, PYTHINFER_NS["inferenceEngine"], Literal(project.owl_backend))
+    )
+
+    g_provenance.add(
+        (iri_sparql, RDF.type, PYTHINFER_NS["InferenceGraph"])
+    )
+    g_provenance.add(
+        (
+            iri_sparql,
+            PYTHINFER_NS["inferenceEngine"],
+            Literal("SPARQL CONSTRUCT"),
+        )
+    )
     iteration = 0
     previous_triple_count = len(ds)  # Count triples in entire dataset
 
@@ -491,9 +521,10 @@ def run_inference_backend(
         len(g_inferences_owl) + len(g_inferences_sparql),
     )
 
+    iri_external = project.inference_gid("external")
     all_external_ids: list[IdentifiedNode] = [
         *external_graph_ids,
-        IRI_EXTERNAL_INFERENCES,
+        iri_external,
     ]
 
     output_file = output or project.path_output / f"{INFERRED_WANTED_FILESTEM}.trig"
@@ -501,8 +532,8 @@ def run_inference_backend(
 
     output_ds = DatasetView(
         ds,
-        [IRI_OWL_INFERENCES, IRI_SPARQL_INFERENCES]
-        + ([IRI_EXTERNAL_INFERENCES] if export_external_inferences else []),
+        [iri_owl, iri_sparql]
+        + ([iri_external] if export_external_inferences else []),
     )
 
     export_dataset(

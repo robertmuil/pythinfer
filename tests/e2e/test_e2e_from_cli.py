@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 import pytest
-from rdflib import Dataset
+from rdflib import Dataset, DCTERMS
 from rdflib.compare import graph_diff, isomorphic
 from typer.testing import CliRunner
 
@@ -39,15 +39,11 @@ def test_cli_command(
         if (command == "merge")
         else f"{INFERRED_WANTED_FILESTEM}.trig"
     )
-    expected_file = (
-        "expected_merged.trig"
-        if (command == "merge")
-        else "expected_inferred_wanted.trig"
-    )
+    expected_file = "expected-" + actual_file
 
     # Path to expected and actual output files
-    expected_file_path = project_dir / "derived" / expected_file
-    actual_file_path = project_dir / "derived" / actual_file
+    expected_file_path = project_dir / "expected" / expected_file
+    actual_file_path = project_dir / "derived" / "test_cli_command" / actual_file
 
     # Ensure expected file exists
     assert expected_file_path.exists(), (
@@ -58,16 +54,19 @@ def test_cli_command(
     if actual_file_path.exists():
         actual_file_path.unlink()
 
+    # Make sure intermediate output folder exists
+    actual_file_path.parent.mkdir(parents=True, exist_ok=True)
+
     # Run the command using CliRunner but with proper working directory
     # Save current working directory and change to project directory
     original_cwd = Path.cwd()
+    runner = CliRunner()
+    cmd_args = [command, "--output", str(actual_file_path)]
+    # Disable cache for infer command to ensure fresh runs
+    if command == "infer":
+        cmd_args.append("--no-cache")
     try:
         os.chdir(project_dir)
-        runner = CliRunner()
-        cmd_args = [command, "--output", str(actual_file_path)]
-        # Disable cache for infer command to ensure fresh runs
-        if command == "infer":
-            cmd_args.append("--no-cache")
         result = runner.invoke(app, cmd_args)
     finally:
         os.chdir(original_cwd)
@@ -102,6 +101,11 @@ def test_cli_command(
     for graph_id in expected_graphs:
         expected_graph = expected_ds.graph(graph_id)
         actual_graph = actual_ds.graph(graph_id)
+
+        if graph_id.endswith("provenance"):
+            # Remove source information, as this will differ by execution environment
+            expected_graph.remove((None, DCTERMS.source, None))
+            actual_graph.remove((None, DCTERMS.source, None))
 
         if not isomorphic(expected_graph, actual_graph):
             # Compute the difference to show what's missing/extra
