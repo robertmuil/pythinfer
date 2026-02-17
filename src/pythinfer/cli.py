@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Sequence
 from contextvars import ContextVar
+from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated
 
@@ -46,6 +47,19 @@ ExtraExportFormatOption = Annotated[
         "Can be specified multiple times.",
     ),
 ]
+
+
+def get_version() -> str:
+    """Get the version of pythinfer from package metadata."""
+    return version("pythinfer")
+
+
+def version_callback(*, show_version: bool) -> None:
+    """Handle --version flag."""
+    if show_version:
+        typer.echo(f"pythinfer {get_version()}")
+        raise typer.Exit
+
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
@@ -96,6 +110,15 @@ def main_callback(
     *,
     project: ProjectOption = None,
     verbose: VerboseOption = False,
+    _version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            help="Show version and exit",
+            callback=version_callback,
+            is_eager=True,
+        ),
+    ] = False,
 ) -> None:
     """Global options for pythinfer CLI."""
     _project_path_var.set(project)
