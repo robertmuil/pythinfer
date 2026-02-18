@@ -132,6 +132,7 @@ class Project(BaseModel):
         # Map of alternative spellings to canonical field names
         field_aliases = {
             "data": "paths_data",
+            "local": "paths_data",
             "paths_data": "paths_data",
             "internal-vocabs": "paths_vocab_int",
             "internal_vocabs": "paths_vocab_int",
@@ -139,6 +140,7 @@ class Project(BaseModel):
             "external-vocabs": "paths_vocab_ext",
             "external_vocabs": "paths_vocab_ext",
             "paths_vocab_ext": "paths_vocab_ext",
+            "reference": "paths_vocab_ext",
             "sparql-inference": "paths_sparql_inference",
             "sparql_inference": "paths_sparql_inference",
             "paths_sparql_inference": "paths_sparql_inference",

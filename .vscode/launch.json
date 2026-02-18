@@ -11,10 +11,10 @@
             "program": "src/pythinfer/cli.py",
             "console": "integratedTerminal",
             "args": [
-                "query",
-                "--no-cache",
                 "--project",
                 "example_projects/eg1-ancestors/pythinfer.yaml",
+                "query",
+                "--no-cache",
                 "example_projects/eg1-ancestors/select_people.rq",
             ]
         },
