@@ -142,6 +142,20 @@ g_full = flatten(ds_full)
 
 Because the data is loaded from disk with this API, no function is provided to query the 'project' directly. Instead, the client should call `merge()` or `infer()` once to get the dataset or graph in memory, and then execute queries directly against that.
 
+```python
+
+# Query by loading the dataset first
+ds = project.infer()
+results = ds.query("SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 10")
+for row in results:
+    print(row)
+
+# Or use rdflib's Graph if you don't need the named graph distinctions
+from pythinfer.utils import flatten
+g = flatten(ds)
+results = g.query("SELECT * WHERE { ?s a ?type }")
+```
+
 ## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
