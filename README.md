@@ -83,6 +83,58 @@ A simple helper command should allow easily specifying a query, or queries, and 
 
 In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
 
+## Python API
+
+Although the main use case is likely to be the CLI, it should also be possible to use the library directly from Python code.
+
+The primary entry-point should be an instance of `Project`. This should be initialised with a project specification, and then have methods for merging, inference, and querying.
+
+### Loading a Project
+
+A project can be loaded from a project specification file, or from a project specification dictionary.
+
+```python
+from pythinfer import Project
+
+# Load from file
+project = Project.from_file('path/to/pythinfer.yaml')
+
+# Load from dictionary
+project_spec = {
+    'name': 'Project From Python',
+    'data': ['data/file1.ttl'],
+    'reference': ['vocabs/ref_vocab1.ttl'],
+}
+project = Project.from_dict(project_spec)
+```
+
+### Querying a Project
+
+Once a project is loaded, you can execute SPARQL queries against it. This will automatically trigger merging and inference if it has not already been done, and will execute the query against the latest inferred graph.
+
+```python
+
+# Execute a SPARQL query
+sparql_query = """SELECT ?s ?p ?o
+WHERE { ?s ?p ?o }
+LIMIT 10"""
+results = project.query(sparql_query)
+```
+
+### Merging and Inference
+
+You can also explicitly trigger merging and inference without executing a query, if you want to access the inferred graph directly or perform other operations on it.
+
+```python
+# Perform merging and inference
+project.merge()
+project.infer()
+# Access the full dataset, including inference.
+ds_full = project.get_dataset()
+# Access the full dataset but flattened from quads to triples (i.e. merged named graphs)
+g_full = project.get_graph()
+```
+
 ## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
