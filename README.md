@@ -87,15 +87,15 @@ In principle, the tool could also take care of dependency management so that any
 
 In addition to the CLI, the library can be used directly from Python code.
 
-The primary entry-point is an instance of `Project`. Once initialised, the project can be queried directly, which will trigger merging and inference if it has not already been done. Merging and inference can also be triggered directly if desired.
+The primary entry-point is an instance of `Project`. Once initialised, the project can be used to access the original data and to perform inference and access the full inferred graph.
 
-No state is stored in the `Project` instance itself, it is just a convenient interface. The graphs are loaded and created as-needed, either from source files or from the cached export files, exactly as the CLI operates. In all cases, the data is loaded from disk.
+No state is stored in the `Project` instance itself, it is just a convenient interface. The data is loaded and created as-needed, either from source files or from the exports of inference, exactly as the CLI operates. In all cases, the data is loaded from disk.
 
-This means that a client should keep the resultant dataset or graph itself in memory, rather than make multiple queries against the `Project` instance, to avoid repeated loading from disk.
+This means that a client should keep the resultant dataset or graph itself in memory, rather than making multiple calls to the merge or infer methods of the `Project` instance, to avoid repeated loading from disk.
 
 ### Initialising a Project
 
-A project can be loaded from a project specification file, or directly specified.
+A project can be initialised from a project specification file, or directly specified.
 
 ```python
 from pythinfer import Project
@@ -109,52 +109,38 @@ project = Project.discover()
 # Specify directly in code
 project = Project(
     name='Project From Python',
-    data=['data/file1.ttl'],
+    focus=['data/file1.ttl'],
     reference=['vocabs/ref_vocab1.ttl'],
 )
 ```
 
 All of these return a `pythinfer.Project` instance. The `from_file()` and `discover()` methods will raise a `FileNotFoundError` if no project file is found.
 
-### Querying a Project
-
-SPARQL queries can be executed directly against the `Project` instance. This will automatically trigger merging and inference if it has not already been done, and will execute the query against the full inferred graph.
-
-```python
-
-# Execute a SPARQL query
-results = project.query("""
-SELECT ?s ?p ?o
-WHERE { ?s ?p ?o }
-LIMIT 10
-""")
-```
-
-The `query()` method can also take a path to a file containing a SPARQL query, or a `rdflib.plugins.sparql.processor.prepareQuery` object.
-It returns a `rdflib.plugins.sparql.processor.SPARQLResult` object, which can be iterated over.
-
 ### Merging and Inference
 
-Merging and inference can be triggered without executing a query, if required, to access the inferred graph directly or perform other operations on it.
+Access to the data is through the merge or infer methods, which return the merged and inferred datasets respectively. The inferred data will be loaded directly from disk if the exports are up-to-date, otherwise inference will be performed.
 
 ```python
-# Perform merging of source files
+# Load the source files, returning the merged dataset.
 ds_combined = project.merge()
 
-# Perform inference and return the full resultant dataset.
+# Load the source files and perform inference, returning the full resultant dataset.
 ds_full = project.infer()
-
 ```
 
 `merge()` and `infer()` return a `rdflib.Dataset` containing the merged and inferred data, including named graphs for provenance.
 
-A helper method is also provided to flatten quads to triples (i.e. merge all named graphs) which is a common use-case:
+A helper method, `flatten()` is also provided which returns a `rdflib.Graph` by flattening quads to triples (i.e. merging all named graphs) which is a common pattern to simplify downstream processing.
 
 ```python
-
+from pythinfer.utils import flatten
 # Flatten named graphs to triples
 g_full = flatten(ds_full)
 ```
+
+### Querying the data of a Project
+
+Because the data is loaded from disk with this API, no function is provided to query the 'project' directly. Instead, the client should call `merge()` or `infer()` once to get the dataset or graph in memory, and then execute queries directly against that.
 
 ## Project Specification
 
