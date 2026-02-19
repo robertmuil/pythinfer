@@ -434,7 +434,6 @@ The `example_projects` folder contains contrived examples, but this has also bee
 1. consider using a proper config language like dhal(?) instead of yaml
 1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
-1. change the code to use focus/reference instead of internal/external
 1. add better output support for ASK query
 1. add option to remove project name from named graphs, for easier specification:
    1. e.g. `<urn:pythinfer:inferences:owl>` which is easy to remember and specify on command-line.
