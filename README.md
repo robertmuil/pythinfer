@@ -100,6 +100,8 @@ from pythinfer import Project
 
 # Load and infer in one step from the first project discovered in current folder
 ds = Project.discover().infer()
+
+# Then you can do what you want with the Dataset
 results = ds.query("SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 10")
 for row in results:
     print(row)
@@ -118,7 +120,7 @@ A project can be initialised from a project specification file, or directly spec
 from pythinfer import Project
 
 # Load from a specific file
-project = Project.from_file('path/to/pythinfer.yaml')
+project = Project.from_yaml('path/to/pythinfer.yaml')
 
 # Load from a discovered file (searches current and parent folders)
 project = Project.discover()
@@ -131,7 +133,7 @@ project = Project(
 )
 ```
 
-All of these return a `Project` instance. The `from_file()` and `discover()` methods will raise a `FileNotFoundError` if no project file is found.
+All of these return a `Project` instance. The `from_yaml()` and `discover()` methods will raise a `FileNotFoundError` if no project file is found.
 
 ### Merging and Inference
 
