@@ -47,7 +47,7 @@ After refactoring e2e tests from subprocess to CliRunner, overall coverage incre
 - Applies SPARQL CONSTRUCT queries over a graph
 - **Not hit by e2e tests** because neither `eg0-basic` nor `eg1-ancestors` have SPARQL inference queries configured
 - **Note:** `eg2-projects` example DOES have `infer-related-projects.rq` but it's not referenced in the generated `pythinfer.yaml`
-- Currently only used if `project.paths_sparql_inference` is populated
+- Currently only used if `project.sparql_inference` is populated
 
 #### Blank node filtering edge case (line 162)
 - Graph-based filter checking if undeclared blank nodes should be removed

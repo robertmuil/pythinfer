@@ -112,7 +112,7 @@ class Project(BaseModel):
         name: Name of the project.
             specified directly in code.
         focus: List of paths to focus data files. [Must be > 1]
-        paths_vocab_ext: List of paths to external vocabulary files. [Optional]
+        reference: List of paths to reference data files (prev 'external'). [Optional]
         path_self: Path to the project config file from which this came. May be none if
 
     Note: path_self defaults to a sentinel value of "generated_by_code.nonexistent" in
@@ -130,9 +130,9 @@ class Project(BaseModel):
 
     name: str
     focus: list[Path] = Field(min_length=1)
-    paths_vocab_ext: list[Path] = Field(default_factory=_empty_path_list)
+    reference: list[Path] = Field(default_factory=_empty_path_list)
     owl_backend: str | None = None
-    paths_sparql_inference: list[Path] | None = None
+    sparql_inference: list[Path] | None = None
     path_self: Path  = Field(default_factory=_get_sentinel_project_file)
 
     @model_validator(mode="before")
@@ -144,13 +144,12 @@ class Project(BaseModel):
             "data": "focus",
             "local": "focus",
             "paths_data": "focus",
-            "external-vocabs": "paths_vocab_ext",
-            "external_vocabs": "paths_vocab_ext",
-            "paths_vocab_ext": "paths_vocab_ext",
-            "reference": "paths_vocab_ext",
-            "sparql-inference": "paths_sparql_inference",
-            "sparql_inference": "paths_sparql_inference",
-            "paths_sparql_inference": "paths_sparql_inference",
+            "external-vocabs": "reference",
+            "external_vocabs": "reference",
+            "paths_vocab_ext": "reference",
+            "sparql-inference": "sparql_inference",
+            "sparql_inference": "sparql_inference",
+            "paths_sparql_inference": "sparql_inference",
             "owl-backend": "owl_backend",
         }
 
@@ -164,8 +163,8 @@ class Project(BaseModel):
 
     @field_validator(
         "focus",
-        "paths_vocab_ext",
-        "paths_sparql_inference",
+        "reference",
+        "sparql_inference",
         mode="before",
     )
     @classmethod
@@ -177,8 +176,8 @@ class Project(BaseModel):
 
     @field_validator(
         "focus",
-        "paths_vocab_ext",
-        "paths_sparql_inference",
+        "reference",
+        "sparql_inference",
         mode="after",
     )
     @classmethod
@@ -261,15 +260,15 @@ class Project(BaseModel):
             "name": self.name,
             "focus": [self._path_to_yaml_str(p) for p in self.focus],
         }
-        if self.paths_vocab_ext:
+        if self.reference:
             cfg_dict["external_vocabs"] = [
-                self._path_to_yaml_str(p) for p in self.paths_vocab_ext
+                self._path_to_yaml_str(p) for p in self.reference
             ]
         if self.owl_backend:
             cfg_dict["owl_backend"] = self.owl_backend
-        if self.paths_sparql_inference:
+        if self.sparql_inference:
             cfg_dict["sparql_inference"] = [
-                self._path_to_yaml_str(p) for p in self.paths_sparql_inference
+                self._path_to_yaml_str(p) for p in self.sparql_inference
             ]
         return yaml.dump(cfg_dict)
 
@@ -290,12 +289,12 @@ class Project(BaseModel):
     @property
     def paths_all_input(self) -> list[Path]:
         """List of all input paths (focus + reference)."""
-        return self.focus + self.paths_vocab_ext
+        return self.focus + self.reference
 
     @property
     def paths_all(self) -> list[Path]:
         """List of all paths (input + SPARQL inference) - cache checking."""
-        return self.paths_all_input + (self.paths_sparql_inference or [])
+        return self.paths_all_input + (self.sparql_inference or [])
 
     @property
     def namespace(self) -> Namespace:
@@ -549,8 +548,8 @@ def create_project(
         name=_scan_dir.name,
         path_self=_output_path,
         focus=rdf_files,
-        paths_vocab_ext=[],
-        paths_sparql_inference=sparql_query_files,
+        reference=[],
+        sparql_inference=sparql_query_files,
     )
 
     project_config.to_yaml_file(_output_path)

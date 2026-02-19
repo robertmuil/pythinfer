@@ -411,7 +411,7 @@ def run_inference_backend(
         )
         raise NotImplementedError(msg)
 
-    sparql_queries = load_sparql_inference_queries(project.paths_sparql_inference or [])
+    sparql_queries = load_sparql_inference_queries(project.sparql_inference or [])
 
     # Step 2: Generate external inferences (once - this is the "noise floor")
     g_external_inferences = _generate_external_inferences(

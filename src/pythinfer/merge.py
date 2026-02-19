@@ -43,7 +43,7 @@ def merge_graphs(
     g_provenance = ds.graph(project.provenance_gid)
 
     # Load external vocabulary files (ephemeral - used for inference only)
-    for src in project.paths_vocab_ext:
+    for src in project.reference:
         graph_urn = project.source_file_gid(src)
         g = ds.graph(graph_urn)
         g.parse(src, format="turtle")

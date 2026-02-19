@@ -24,9 +24,9 @@ try:
     p = Project(**valid_config)
     print(f"   Success! Project name: {p.name}")
     print(f"   Data files: {len(p.focus)}")
-    print(f"   External vocabs: {len(p.paths_vocab_ext)}")
+    print(f"   External vocabs: {len(p.reference)}")
     print(f"   OWL backend: {p.owl_backend}")
-    print(f"   SPARQL queries: {len(p.paths_sparql_inference)}")
+    print(f"   SPARQL queries: {len(p.sparql_inference)}")
 except Exception as e:
     print(f"   FAILED: {e}")
 
@@ -107,7 +107,7 @@ try:
     if yaml_path.exists():
         p = Project.from_yaml(yaml_path)
         print(f"   Success! Loaded project: {p.name}")
-        print(f"   External vocabs: {p.paths_vocab_ext}")
+        print(f"   External vocabs: {p.reference}")
     else:
         print("   SKIPPED: example file not found")
 except Exception as e:

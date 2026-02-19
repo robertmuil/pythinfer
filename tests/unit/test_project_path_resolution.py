@@ -225,4 +225,4 @@ external_vocabs:
 
             # Verify all paths are resolved correctly
             assert project.focus[0] == data_file
-            assert project.paths_vocab_ext[0] == ext_vocab_file
+            assert project.reference[0] == ext_vocab_file
