@@ -213,9 +213,9 @@ data:
             project_file = project_dir / "pythinfer.yaml"
             project_yaml = """\
 name: my-project
-data:
+focus:
   - data/data.ttl
-external_vocabs:
+reference:
   - vocab/ext.ttl
 """
             project_file.write_text(project_yaml)

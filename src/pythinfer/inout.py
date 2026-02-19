@@ -261,7 +261,7 @@ class Project(BaseModel):
             "focus": [self._path_to_yaml_str(p) for p in self.focus],
         }
         if self.reference:
-            cfg_dict["external_vocabs"] = [
+            cfg_dict["reference"] = [
                 self._path_to_yaml_str(p) for p in self.reference
             ]
         if self.owl_backend:

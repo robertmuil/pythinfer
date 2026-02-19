@@ -167,22 +167,6 @@ The main function or CLI can then be pointed at the project file to easily switc
 
 ### Project Specification Components
 
-OLD:
-
-```yaml
-- name: (optional)
-- base_folder: <all relative paths are resolved against this> (optional)
-- external_vocabs: a list of patterns specifying reference ontologies
-    - <pattern>: a pattern specifying a specific or set of reference files
-- internal_vocabs: a list of patterns specifying focus ontologies
-    - <pattern>: as above
-- data: a list of patterns specifying data files
-    - <pattern>: as above
-- output: a path to the folder in which to put the output (defaults to parent of 1st data file found)
-```
-
-NEW:
-
 ```yaml
 name: (optional)
 focus:
