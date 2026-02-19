@@ -43,7 +43,7 @@ class TestCreateProjectCommand:
             assert project.path_self.name == PROJECT_FILE_NAME
 
             # Should find all RDF files
-            found_files = {str(p) for p in project.paths_data}
+            found_files = {str(p) for p in project.focus}
             assert (
                 "model.ttl" in found_files
                 or str(ttl_file1.relative_to(tmp_path)) in found_files
@@ -152,7 +152,7 @@ class TestCreateProjectCommand:
                 output_path=tmp_path / PROJECT_FILE_NAME,
             )
 
-            file_names = [f.stem for f in project.paths_data]
+            file_names = [f.stem for f in project.focus]
 
             # Should find files in subdirectories
             assert any("model1" in f for f in file_names) or any(
@@ -192,4 +192,4 @@ class TestCreateProjectCommand:
             project = create_project(output_path=tmp_path / PROJECT_FILE_NAME)
 
             # Should not include files from 'derived' directory
-            assert not any("derived" in str(f) for f in project.paths_data)
+            assert not any("derived" in str(f) for f in project.focus)

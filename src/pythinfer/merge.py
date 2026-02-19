@@ -54,18 +54,8 @@ def merge_graphs(
 
         external_gids.append(g.identifier)
 
-    # Load internal vocabulary files
-    for src in project.paths_vocab_int:
-        graph_urn = project.source_file_gid(src)
-        g = ds.graph(graph_urn)
-        g.parse(src, format="turtle")
-
-        # Add provenance metadata
-        g_provenance.add((graph_urn, RDF.type, PYTHINFER_NS["SourceGraph"]))
-        g_provenance.add((graph_urn, DCTERMS.source, URIRef(src.resolve().as_uri())))
-
     # Load data files
-    for src in project.paths_data:
+    for src in project.focus:
         graph_urn = project.source_file_gid(src)
         g = ds.graph(graph_urn)
         g.parse(src, format="turtle")

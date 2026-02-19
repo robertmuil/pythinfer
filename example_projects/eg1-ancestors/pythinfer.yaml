@@ -4,7 +4,6 @@
 # and can be used for internal testing.
 external_vocabs:
   - ../../vocabs-external/skos.ttl
-internal_vocabs:
-  - ancestors-model.ttl
 data:
   - ancestors-data.ttl
+  - ancestors-model.ttl

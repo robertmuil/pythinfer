@@ -23,8 +23,7 @@ valid_config = {
 try:
     p = Project(**valid_config)
     print(f"   Success! Project name: {p.name}")
-    print(f"   Data files: {len(p.paths_data)}")
-    print(f"   Internal vocabs: {len(p.paths_vocab_int)}")
+    print(f"   Data files: {len(p.focus)}")
     print(f"   External vocabs: {len(p.paths_vocab_ext)}")
     print(f"   OWL backend: {p.owl_backend}")
     print(f"   SPARQL queries: {len(p.paths_sparql_inference)}")
@@ -73,7 +72,6 @@ try:
     print("   FAILED: Should have raised validation error!")
 except Exception as e:
     print(f"   Expected error caught: {type(e).__name__}")
-    print(f"   Missing field: paths_data")
 
 # Test 5: Invalid - empty data list
 print("\n❌ Test 5: Invalid config with empty data list (should fail)")
@@ -96,7 +94,7 @@ try:
     if yaml_path.exists():
         p = Project.from_yaml(yaml_path)
         print(f"   Success! Loaded project: {p.name}")
-        print(f"   Data files: {p.paths_data}")
+        print(f"   Data files: {p.focus}")
     else:
         print("   SKIPPED: example file not found")
 except Exception as e:
