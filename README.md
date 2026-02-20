@@ -9,7 +9,7 @@ CLI to easily merge multiple RDF files, perform inference (OWL or SPARQL), and q
 
 Point this at a selection of RDF files and it will merge them, run inference over them, export the results, and execute a query on them. The results are the original statements together with the *useful* set of inferences (see below under `Inference` for what 'useful' means here).
 
-A distinction is made between 'external' and 'internal' files. See below.
+A distinction is made between 'reference' and 'focus' files. See below.
 
 ## Quick Start
 
@@ -59,7 +59,7 @@ A distinction is made between 'external' and 'internal' files. See below.
 
 ### Common Options
 
-- `--extra-export`: allows specifying extra export formats beyond the default trig. Can be used to 'flatten' quads to triples when exporting (by exporting to ttl or nt as well as trig)
+- `--extra-export`: allows specifying extra export formats beyond the default trig. Can be used to 'strip' quads of their named graph down to triples when exporting (by exporting to ttl or nt)
   - NB: `trig` is always included as an export because it is used for caching
 - ...
 
@@ -83,6 +83,80 @@ A simple helper command should allow easily specifying a query, or queries, and 
 
 In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
 
+## Python API
+
+In addition to the CLI, the library can be used directly from Python code.
+
+The primary entry-point is an instance of `Project`. Once initialised, the project can be used to perform inference and access the full inferred graph, as well as the source data.
+
+No state is stored in the `Project` instance, it is just a convenient interface. The data is loaded and created as-needed, either from source files or from the exports of inference, exactly as the CLI operates. In all cases, the data is loaded from disk.
+
+This means that a client should keep the resultant dataset or graph itself in memory, rather than making multiple calls to the merge or infer methods of the `Project` instance, to avoid repeated loading from disk.
+
+### Quick-start: querying full inferred data
+
+```python
+from pythinfer import Project
+
+# Load and infer in one step from the first project discovered in current folder
+ds = Project.discover().infer()
+
+# Then you can do what you want with the Dataset
+results = ds.query("SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 10")
+for row in results:
+    print(row)
+
+# Strip to a single Graph if named graphs not needed
+from pythinfer.utils import strip
+g = strip(ds)
+results = g.query("SELECT * WHERE { ?s a ?type }")
+```
+
+### Initialising a Project
+
+A project can be initialised from a project specification file, or directly specified.
+
+```python
+from pythinfer import Project
+
+# Load from a specific file
+project = Project.from_yaml('path/to/pythinfer.yaml')
+
+# Load from a discovered file (searches current and parent folders)
+project = Project.discover()
+
+# Specify directly in code
+project = Project(
+    name='Project From Python',
+    focus=['data/file1.ttl'],
+    reference=['vocabs/ref_vocab1.ttl'],
+)
+```
+
+All of these return a `Project` instance. The `from_yaml()` and `discover()` methods will raise a `FileNotFoundError` if no project file is found.
+
+### Merging and Inference
+
+Access to the data is through the merge or infer methods, which return the merged and inferred datasets respectively. The inferred data will be loaded directly from disk if the exports are up-to-date, otherwise inference will be performed.
+
+```python
+# Load the source files, returning the merged dataset.
+ds_combined = project.merge()
+
+# Load the source files and perform inference, returning the full resultant dataset.
+ds_full = project.infer()
+```
+
+`merge()` and `infer()` return a `rdflib.Dataset` containing the merged and inferred data, including named graphs for provenance.
+
+A helper method, `strip()` is also provided which returns a `rdflib.Graph` by stripping quads down to triples (i.e. merging all named graphs) which is commonly done to simplify downstream processing.
+
+```python
+from pythinfer.utils import strip
+# Strip named graphs to triples
+g_full = strip(ds_full)
+```
+
 ## Project Specification
 
 A 'Project' is the specification of which RDF files to process and configuration of how to process them, along with some metadata like a name.
@@ -93,43 +167,25 @@ The main function or CLI can then be pointed at the project file to easily switc
 
 ### Project Specification Components
 
-OLD:
-
-```yaml
-- name: (optional)
-- base_folder: <all relative paths are resolved against this> (optional)
-- external_vocabs: a list of patterns specifying external ontologies
-    - <pattern>: a pattern specifying a specific or set of external files
-- internal_vocabs: a list of patterns specifying internal ontologies
-    - <pattern>: as above
-- data: a list of patterns specifying data files
-    - <pattern>: as above
-- output: a path to the folder in which to put the output (defaults to parent of 1st data file found)
-```
-
-NEW:
-
 ```yaml
 name: (optional)
-data:
+focus:
     - <pattern>: <a pattern specifying a specific or set of files>
     - ...
-    reference:
-        - <pattern>: <a pattern specifying a specific or set of external files>
-        - ...
+reference:
+    - <pattern>: <a pattern specifying a specific or set of 'reference' files>
+    - ...
 output:
     folder: <a path to the folder in which to put the output> (defaults to `<base_folder>/derived`)
 ```
 
-#### External vs Internal (Reference vs. Local)
+#### Reference vs. Focus Data (was External vs. Internal)
 
-External files are treated as ephemeral sources used for inference and then discarded. They are those that are not maintained by the user of the library, and whose axioms can generally be assumed to hold true for any application. They are used to provide inference rules, but are not part of the data being modelled, and they are not generally needed in the output.
+Reference data is treated as ephemeral information used for inference and then discarded. Most commonly it is the vocabulary and data that is not maintained by the user, but whose axioms are assumed to hold true for the application. They are used to augment inference, but are not part of the data being analysed, and so they are not generally needed in the output.
 
 Examples are OWL, RDFS, SKOS, and other standard vocabularies.
 
-Synonyms for 'external' here could be 'transient' or 'reference' or 'catalyst'.
-
-Need better term than 'internal' because it can be data (incl. vocabs and models) which is maintained outside of the project folder itself but desired in the output. Perhaps 'local'.
+Synonyms for 'reference' here could be 'transient' or 'catalyst' or (as was the case) 'external'.
 
 ### Path Resolution
 
@@ -162,7 +218,7 @@ name: My Project
 data:
   - data/file1.ttl
   - data/file2.ttl
-internal_vocabs:
+reference:
   - vocabs/schema.ttl
 ```
 
@@ -207,10 +263,11 @@ The user can also specifically request the creation of a new project file with t
 
 Merging of multiple graphs should preserve the source, ideally using the named graph of a quad.
 
-Merging should also distinguish 3 different types of input:
+Merging should distinguish 2 different types of input:
 
-1. 'external' vocabularies - things like OWL, SKOS, RDFS, which are introduced for inference purposes, but are not maintained by the person using the library, and the axioms of which can generally be assumed to exist for any application.
-1. 'internal' vocabularies - ontologies being developed, vocabularies that are part of the
+1. *Reference* data: things like OWL, SKOS, RDFS, which are introduced for inference purposes, but are not maintained by the person using the library, and the axioms of which can generally be assumed to exist for any application.
+   - the term reference is meant from the perspective of the user / application, not to invoke the notion of 'master' vs. 'reference' data.
+2. *Focus* data: ontologies being developed, vocabularies that are part of the current focus, and the data itself - all of this should always be preserved in the output, and is the 'focus' of the analysis.
 
 ## Inference
 
@@ -251,11 +308,11 @@ Steps:
 
 1. **Load and merge** all input data into a triplestore
     - Maintain provenance of data by named graph
-    - Maintain list of which named graphs are 'external'
+    - Maintain list of which named graphs are 'reference'
     - output:        `merged`
     - consequence:   `current = merged`
-2. **Generate external inferences** by running RDFS/OWL-RL engine over 'external' input data[^1]
-    - output:        `inferences_external_owl`
+2. **Generate reference inferences** by running RDFS/OWL-RL engine over 'reference' input data[^1]
+    - output:        `inferences_reference_owl`
 3. **Generate full inferences** by running RDFS/OWL-RL inference over all data so far[^1]
     - output:        `inferences_full_owl`
     - consequence:   `current += inferences_full_owl`
@@ -264,16 +321,16 @@ Steps:
     - consequence:   `current += inferences_sparql` + `inferences_python`
 5. **Repeat steps 3 through 4** until no new triples are generated, or limit reached
     - consequence:   `combined_full = current`
-6. **Subtract external data and inferences** from the current graph[^4]
-    - consequence:   `current -= (external_data + inferences_external_owl)`
-    - consequence:   `combined_internal = current`
+6. **Subtract reference data and inferences** from the current graph[^4]
+    - consequence:   `current -= (reference_data + inferences_reference_owl)`
+    - consequence:   `combined_focus = current`
 7. Subtract all 'unwanted' inferences from result[^3]
     - consequence:   `combined_wanted = current - inferences_unwanted`
 
 [^1]: inference is backend dependent, and will include the removal of *invalid* triples that may result, e.g. from `owlrl`
 [^2]: See below for heuristics.
 [^3]: unwanted inferences are those that are semantically valid but not useful, see below
-[^4]: this step logically applies, but in the `owlrl` implementation we can simply avoid including the external_owl_inferences graph in the output, since `owlrl` will not generate inferences that already exist.
+[^4]: this step logically applies, but in the `owlrl` implementation we can simply avoid including the reference_owl_inferences graph in the output, since `owlrl` will not generate inferences that already exist.
 
 ### Backends
 
@@ -281,7 +338,7 @@ Steps:
 
 In rdflib, the `owlrl` package should be used.
 
-This package has some foibles. For instance, it generates a slew of unnecessary triples. The easiest way to remove these is to first run inference over all 'external' vocabularies, then combine with the user-provided vocabularies and data, run inference, and then remove all the original inferences from the 'external' vocabularies from the final result. The external vocabularies themselves can also be removed, depending on application.
+This package has some foibles. For instance, it generates a slew of unnecessary triples. The easiest way to remove these is to first run inference over all reference vocabularies, then combine with the user-provided vocabularies and data, run inference, and then remove all the original inferences from the reference vocabularies from the final result. The reference vocabularies themselves can also be removed, depending on application.
 
 Unwanted inferences are generated even when executed over an empty graph.
 
@@ -361,7 +418,6 @@ The `example_projects` folder contains contrived examples, but this has also bee
 1. consider using a proper config language like dhal(?) instead of yaml
 1. check and raise error or at least warning if default_union is set in underlying Dataset of DatasetView
 1. document and/or fix serialisation: canon longTurtle is not great with the way it orders things, so we might need to call out to riot unfortunately.
-1. change the distinction from interal/external to local/reference
 1. add better output support for ASK query
 1. add option to remove project name from named graphs, for easier specification:
    1. e.g. `<urn:pythinfer:inferences:owl>` which is easy to remember and specify on command-line.

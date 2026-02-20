@@ -46,8 +46,8 @@ data:
             project = Project.from_yaml(project_file)
 
             # Verify that paths are resolved to the project directory
-            assert project.paths_data[0] == data1
-            assert project.paths_data[1] == data2
+            assert project.focus[0] == data1
+            assert project.focus[1] == data2
 
     def test_paths_with_subdirectories(self) -> None:
         """Test that relative paths in subdirectories are resolved correctly."""
@@ -89,8 +89,8 @@ data:
             project = Project.from_yaml(project_file)
 
             # Verify paths are correct
-            assert project.paths_data[0] == data_file
-            assert project.paths_data[1] == model_file
+            assert project.focus[0] == data_file
+            assert project.focus[1] == model_file
 
     def test_absolute_paths_remain_unchanged(self) -> None:
         """Test that absolute paths are not modified during loading."""
@@ -120,7 +120,7 @@ data:
             project = Project.from_yaml(project_file)
 
             # Verify absolute path is preserved
-            assert project.paths_data[0] == external_file
+            assert project.focus[0] == external_file
 
     def test_yaml_serialization_uses_relative_paths(self) -> None:
         """Test that YAML output uses relative paths when possible."""
@@ -150,7 +150,7 @@ data:
             project = Project.from_yaml(project_file)
 
             # Get the YAML representation
-            yaml_output = project.to_yaml()
+            yaml_output = project.to_yaml_str()
 
             # The YAML should have relative paths
             assert "data/data.ttl" in yaml_output
@@ -185,7 +185,7 @@ data:
             project = Project.from_yaml(project_file)
 
             # Get the YAML representation
-            yaml_output = project.to_yaml()
+            yaml_output = project.to_yaml_str()
 
             # The YAML should have the absolute path for external files
             assert external_file.as_posix() in yaml_output
@@ -206,8 +206,6 @@ data:
             # Create files
             data_file = data_dir / "data.ttl"
             data_file.touch()
-            int_vocab_file = vocab_dir / "int.ttl"
-            int_vocab_file.touch()
             ext_vocab_file = vocab_dir / "ext.ttl"
             ext_vocab_file.touch()
 
@@ -215,11 +213,9 @@ data:
             project_file = project_dir / "pythinfer.yaml"
             project_yaml = """\
 name: my-project
-data:
+focus:
   - data/data.ttl
-internal_vocabs:
-  - vocab/int.ttl
-external_vocabs:
+reference:
   - vocab/ext.ttl
 """
             project_file.write_text(project_yaml)
@@ -228,6 +224,5 @@ external_vocabs:
             project = Project.from_yaml(project_file)
 
             # Verify all paths are resolved correctly
-            assert project.paths_data[0] == data_file
-            assert project.paths_vocab_int[0] == int_vocab_file
-            assert project.paths_vocab_ext[0] == ext_vocab_file
+            assert project.focus[0] == data_file
+            assert project.reference[0] == ext_vocab_file
