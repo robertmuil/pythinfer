@@ -11,10 +11,8 @@ from pythinfer.inout import (
     discover_project,
 )
 
-# NB: TODO(robert): a lot of these, if not all, are integration-style tests since they
-# involve actual filesystem operations (creating temp dirs/files).
-# Also, a lot of them are testing internal implementation details (like whether they
-# call resolve() or exists()), which is not necessary, but for now it's acceptable.
+# NB: TODO(robert): many tests here are testing internal implementation details
+# (like whether they call resolve() or exists()), which is unnecessary and brittle
 
 
 class TestDiscoverProjectSuccess:

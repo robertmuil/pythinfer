@@ -150,7 +150,7 @@ data:
             project = Project.from_yaml(project_file)
 
             # Get the YAML representation
-            yaml_output = project.to_yaml()
+            yaml_output = project.to_yaml_str()
 
             # The YAML should have relative paths
             assert "data/data.ttl" in yaml_output
@@ -185,7 +185,7 @@ data:
             project = Project.from_yaml(project_file)
 
             # Get the YAML representation
-            yaml_output = project.to_yaml()
+            yaml_output = project.to_yaml_str()
 
             # The YAML should have the absolute path for external files
             assert external_file.as_posix() in yaml_output

@@ -15,9 +15,5 @@ class TestProjectInstantiation:
         assert proj.path_self.stem == "generated_by_code"
         assert proj.path_self.suffix == ".nonexistent"
 
-    # def test_discovery(self) -> None:
-    #     """Test discovery class method."""
-    #     TODO: mock the actual file finding
-    #     proj = Project.discover()
-    #     assert isinstance(proj, Project)
+
 

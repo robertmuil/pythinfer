@@ -120,6 +120,14 @@ class Project(BaseModel):
     output files go, and how the named graph IRIs are minted, and so this avoids a lot
     of special-case code that would be necessary if we allowed path_self to be None.
 
+    Note: we manually implement hash and equality to exclude path_self, because it is
+    not relevant to the identity of the Project. If Pydantic implements a compare=False
+    option for fields in the future, we can switch to that.
+    https://github.com/pydantic/pydantic/discussions/6717
+
+    TODO: We could consider making the file lists sets because the order is irrelevant,
+    and repetition of the same file seems unwanted.
+
     """
 
     model_config = ConfigDict(
@@ -134,6 +142,28 @@ class Project(BaseModel):
     owl_backend: str | None = None
     sparql_inference: list[Path] | None = None
     path_self: Path  = Field(default_factory=_get_sentinel_project_file)
+
+    def __eq__(self, other: object) -> bool:
+        """Compare Projects excluding path_self."""
+        if not isinstance(other, Project):
+            return NotImplemented
+        return (
+            self.name == other.name
+            and self.focus == other.focus
+            and self.reference == other.reference
+            and self.owl_backend == other.owl_backend
+            and self.sparql_inference == other.sparql_inference
+        )
+
+    def __hash__(self) -> int:
+        """Hash based on comparable fields only."""
+        return hash((
+            self.name,
+            tuple(self.focus),
+            tuple(self.reference),
+            self.owl_backend,
+            tuple(self.sparql_inference) if self.sparql_inference else None,
+        ))
 
     @model_validator(mode="before")
     @classmethod
@@ -250,7 +280,7 @@ class Project(BaseModel):
             # Path is not relative to project_dir, store as-is
             return str(path)
 
-    def to_yaml(self) -> str:
+    def to_yaml_str(self) -> str:
         """Serialize project configuration to a YAML string.
 
         Paths are stored relative to the project file directory when possible,
@@ -272,10 +302,10 @@ class Project(BaseModel):
             ]
         return yaml.dump(cfg_dict)
 
-    def to_yaml_file(self, output_path: Path) -> None:
+    def to_yaml(self, output_path: Path) -> None:
         """Write project configuration to a YAML file."""
         with output_path.open("w") as f:
-            f.write(self.to_yaml())
+            f.write(self.to_yaml_str())
 
     @property
     def path_output(self) -> Path:
@@ -552,7 +582,7 @@ def create_project(
         sparql_inference=sparql_query_files,
     )
 
-    project_config.to_yaml_file(_output_path)
+    project_config.to_yaml(_output_path)
 
     logger.info("✅ Created new project file at `%s`", _output_path)
 

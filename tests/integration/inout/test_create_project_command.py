@@ -92,7 +92,7 @@ class TestCreateProjectCommand:
             project_expected = Project.from_yaml(expected_config_path)
 
             # Compare the configurations
-            assert project_generated.to_yaml() == project_expected.to_yaml()
+            assert project_generated.to_yaml_str() == project_expected.to_yaml_str()
 
     def test_create_project_generates_valid_yaml(self) -> None:
         """Test that create_project generates valid YAML that can be loaded."""
