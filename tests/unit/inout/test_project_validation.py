@@ -65,7 +65,7 @@ class TestProjectValidConfiguration:
         assert project.name == "minimal-project"
         assert len(project.focus) == 1
         assert project.reference == []
-        assert project.owl_backend is None
+        assert project.owl_backend == "owlrl"  # Default value
         assert project.sparql_inference is None
 
 
