@@ -5,7 +5,8 @@ from pathlib import Path
 
 from rdflib import DCTERMS, RDF, Dataset, IdentifiedNode, URIRef
 
-from pythinfer.inout import MERGED_FILESTEM, PYTHINFER_NS, Project, export_dataset
+from pythinfer.inout import export_dataset
+from pythinfer.project import MERGED_FILESTEM, PYTHINFER_NS, ProjectSpec
 from pythinfer.rdflibplus import DatasetView
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ info = logger.info
 dbg = debug = logger.debug
 
 def merge_graphs(
-    project: Project,
+    project: ProjectSpec,
     *,
     output: Path | bool = True,
     export_external: bool = False,

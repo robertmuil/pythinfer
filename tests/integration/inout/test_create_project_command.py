@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from pythinfer.inout import PROJECT_FILE_NAME, Project, create_project
+from pythinfer.project import PROJECT_FILE_NAME, ProjectSpec, create_project
 
 
 class TestCreateProjectCommand:
@@ -89,7 +89,7 @@ class TestCreateProjectCommand:
             assert project_generated.path_self.name == PROJECT_FILE_NAME
 
             # Load the expected project specification
-            project_expected = Project.from_yaml(expected_config_path)
+            project_expected = ProjectSpec.from_yaml(expected_config_path)
 
             # Compare the configurations
             assert project_generated.to_yaml_str() == project_expected.to_yaml_str()

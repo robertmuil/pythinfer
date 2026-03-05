@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 from pythinfer.infer import load_cache, run_inference_backend
-from pythinfer.inout import COMBINED_FULL_FILESTEM, load_project
 from pythinfer.merge import merge_graphs
+from pythinfer.project import COMBINED_FULL_FILESTEM, load_project
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 

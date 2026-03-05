@@ -4,12 +4,12 @@ import os
 from pathlib import Path
 
 import pytest
-from rdflib import Dataset, DCTERMS
+from rdflib import DCTERMS, Dataset
 from rdflib.compare import graph_diff, isomorphic
 from typer.testing import CliRunner
 
 from pythinfer.cli import app
-from pythinfer.inout import INFERRED_WANTED_FILESTEM, MERGED_FILESTEM
+from pythinfer.project import INFERRED_WANTED_FILESTEM, MERGED_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 

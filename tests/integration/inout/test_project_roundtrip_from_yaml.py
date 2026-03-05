@@ -3,7 +3,7 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from pythinfer.inout import Project
+from pythinfer.project import ProjectSpec
 
 
 class TestProjectRoundtrip:
@@ -11,7 +11,7 @@ class TestProjectRoundtrip:
 
     def test_roundtrip_basic(self) -> None:
         """Test that we can serialize to YAML, and deserialize back."""
-        proj = Project(
+        proj = ProjectSpec(
             name="test123",
             focus=[Path("blah.ttl")],
             reference=[Path("vocab.ttl")],
@@ -39,7 +39,7 @@ class TestProjectRoundtrip:
             proj.focus = [tmp_folder / p.name for p in proj.focus]
             proj.reference = [tmp_folder / p.name for p in proj.reference]
             proj.to_yaml(tmp_path)
-            proj2 = Project.from_yaml(tmp_path)
+            proj2 = ProjectSpec.from_yaml(tmp_path)
         assert proj2 == proj
 
 
