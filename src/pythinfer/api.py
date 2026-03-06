@@ -40,7 +40,7 @@ class Project(ProjectSpec):
     def load(cls, config_path: Path | None = None) -> "Project":
         """Load a project from a config file, discovering one if not specified.
 
-        If no config file is found, a new project is created in the current
+        If no config file is found or specified, a new project is created in the current
         working directory by scanning for RDF files.
 
         Args:
@@ -51,8 +51,11 @@ class Project(ProjectSpec):
             Loaded Project instance.
 
         """
+        if config_path:
+            return cls.from_yaml(config_path)
+
+        path = discover_project(Path.cwd())
         try:
-            path = config_path or discover_project(Path.cwd())
             return cls.from_yaml(path)
         except FileNotFoundError:
             logger.info(
