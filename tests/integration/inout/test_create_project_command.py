@@ -1,11 +1,12 @@
-"""Integration tests for the create_project command."""
+"""Integration tests for the Project create command."""
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
 
-from pythinfer.project import PROJECT_FILE_NAME, ProjectSpec, create_project
+from pythinfer import Project
+from pythinfer.project import PROJECT_FILE_NAME
 
 
 class TestCreateProjectCommand:
@@ -33,7 +34,7 @@ class TestCreateProjectCommand:
             txt_file.touch()
 
             # Call create_project with explicit scan_directory
-            project = create_project(
+            project = Project.create(
                 scan_directory=tmp_path,
                 output_path=tmp_path / PROJECT_FILE_NAME,
             )
@@ -43,33 +44,26 @@ class TestCreateProjectCommand:
             assert project.path_self.name == PROJECT_FILE_NAME
 
             # Should find all RDF files
-            found_files = {str(p) for p in project.focus}
-            assert (
-                "model.ttl" in found_files
-                or str(ttl_file1.relative_to(tmp_path)) in found_files
-            )
-            assert (
-                "data.ttl" in found_files
-                or str(ttl_file2.relative_to(tmp_path)) in found_files
-            )
-            assert (
-                "vocab.rdf" in found_files
-                or str(rdf_file.relative_to(tmp_path)) in found_files
-            )
+            # Project.create round-trips through YAML, so paths are resolved
+            # to absolute against the config directory.
+            found_names = {p.name for p in project.focus}
+            assert "model.ttl" in found_names
+            assert "data.ttl" in found_names
+            assert "vocab.rdf" in found_names
 
             # Should not include non-RDF files
-            assert not any("readme.txt" in str(f) for f in found_files)
+            assert not any("readme.txt" in str(f) for f in project.focus)
 
     def test_create_project_with_eg0_example(self) -> None:
         """Test create_project using the eg0-basic example project."""
         eg0_path = (
-            Path(__file__).parent.parent.parent / "example_projects" / "eg0-basic"
+            Path(__file__).parent.parent.parent.parent
+            / "example_projects"
+            / "eg0-basic"
         )
 
         # Path to expected output
         expected_config_path = eg0_path / "expected_pythinfer.yaml"
-        if not expected_config_path.exists():
-            pytest.skip("expected_pythinfer.yaml not found in eg0-basic")
 
         with TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
@@ -79,7 +73,7 @@ class TestCreateProjectCommand:
             output_dir.mkdir()
 
             # Call create_project to scan eg0-basic
-            project_generated = create_project(
+            project_generated = Project.create(
                 scan_directory=eg0_path,
                 output_path=output_dir / PROJECT_FILE_NAME,
             )
@@ -89,7 +83,7 @@ class TestCreateProjectCommand:
             assert project_generated.path_self.name == PROJECT_FILE_NAME
 
             # Load the expected project specification
-            project_expected = ProjectSpec.from_yaml(expected_config_path)
+            project_expected = Project.from_yaml(expected_config_path)
 
             # Compare the configurations
             assert project_generated.to_yaml_str() == project_expected.to_yaml_str()
@@ -104,7 +98,7 @@ class TestCreateProjectCommand:
             (tmp_path / "vocab.rdf").touch()
 
             # Create project
-            create_project(
+            Project.create(
                 scan_directory=tmp_path,
                 output_path=tmp_path / PROJECT_FILE_NAME,
             )
@@ -123,13 +117,13 @@ class TestCreateProjectCommand:
 
             # Specify custom output path
             custom_config_path = output_dir / "custom.yaml"
-            project = create_project(
+            project = Project.create(
                 scan_directory=tmp_path,
                 output_path=custom_config_path,
             )
 
             # Should create file at custom location
-            assert project.path_self == custom_config_path
+            assert project.path_self == custom_config_path.resolve()
             assert project.path_self.exists()
 
     def test_create_project_handles_nested_directories(self) -> None:
@@ -147,7 +141,7 @@ class TestCreateProjectCommand:
             (subdir2 / "data1.rdf").touch()
 
             # Create project
-            project = create_project(
+            project = Project.create(
                 scan_directory=tmp_path,
                 output_path=tmp_path / PROJECT_FILE_NAME,
             )
@@ -170,7 +164,7 @@ class TestCreateProjectCommand:
 
             # Should fail with FileNotFoundError
             with pytest.raises(FileNotFoundError):
-                create_project(
+                Project.create(
                     scan_directory=tmp_path,
                     output_path=tmp_path / PROJECT_FILE_NAME,
                 )
@@ -189,7 +183,7 @@ class TestCreateProjectCommand:
             (derived_dir / "inference_output.ttl").touch()
 
             # Create project
-            project = create_project(output_path=tmp_path / PROJECT_FILE_NAME)
+            project = Project.create(output_path=tmp_path / PROJECT_FILE_NAME)
 
             # Should not include files from 'derived' directory
             assert not any("derived" in str(f) for f in project.focus)

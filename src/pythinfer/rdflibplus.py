@@ -198,6 +198,7 @@ class DatasetView(Dataset):
 
     # I think pyright is incorrectly seeing only a specific overload of
     # `Dataset.serialize` and thus incorrectly reporting an incompatible override.
+    # Hmm, ty has same complaint... so perhaps we need to investigate. TODO.
     def serialize(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         destination: str | None = None,

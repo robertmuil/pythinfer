@@ -242,7 +242,11 @@ def filter_triples(
     )
     if to_remove:
         for func, count in removal_counts.items():
-            info("  - %d triples identified by %s", count, func.__name__)
+            info(
+                "  - %d triples identified by %s",
+                count,
+                getattr(func, "__name__", repr(func)),
+            )
         for triple in to_remove:
             graph.remove(triple)
 
@@ -320,8 +324,12 @@ def _run_inference_iteration(
         Tuple of (triples_added_owl, triples_added_sparql).
 
     """
-    assert ds.store == g_inferences_owl.store, "Graphs must share the same store"
-    assert ds.store == g_inferences_sparql.store, "Graphs must share the same store"
+    if ds.store != g_inferences_owl.store:
+        msg = "Graphs must share the same store"
+        raise ValueError(msg)
+    if ds.store != g_inferences_sparql.store:
+        msg = "Graphs must share the same store"
+        raise ValueError(msg)
 
     info("--- Iteration %d ---", iteration)
 

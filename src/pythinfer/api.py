@@ -10,22 +10,20 @@ import from all other modules without circular dependencies.
 import logging
 from pathlib import Path
 
-from rdflib import Dataset, URIRef
-from rdflib.query import Result
+from rdflib import Dataset
 
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
 from pythinfer.project import ProjectSpec, create_project, discover_project
-from pythinfer.rdflibplus import DatasetView
 
 logger = logging.getLogger(__name__)
 
 
 class Project(ProjectSpec):
-    """A pythinfer project with operational merge, infer, and query methods.
+    """A pythinfer project with operational merge and infer methods.
 
     Inherits all configuration, serialisation, and discovery from `ProjectSpec`
-    and adds the ability to execute merge, inference, and query pipelines.
+    and adds the ability to execute merge and inference pipelines.
 
     Usage::
 
@@ -33,7 +31,7 @@ class Project(ProjectSpec):
 
         project = Project.discover()
         ds = project.infer()
-        result = project.query("SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10")
+        result = ds.query("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 10")
     """
 
     @classmethod
@@ -54,8 +52,8 @@ class Project(ProjectSpec):
         if config_path:
             return cls.from_yaml(config_path)
 
-        path = discover_project(Path.cwd())
         try:
+            path = discover_project(Path.cwd())
             return cls.from_yaml(path)
         except FileNotFoundError:
             logger.info(
@@ -117,7 +115,7 @@ class Project(ProjectSpec):
         )
         return ds
 
-    def infer(
+    def infer(  # noqa: PLR0913 - comfortable we need these arguments
         self,
         *,
         backend: str | None = None,
@@ -183,36 +181,3 @@ class Project(ProjectSpec):
         )
 
         return ds
-
-    def query(
-        self,
-        query: str,
-        *,
-        graphs: list[str] | None = None,
-        no_cache: bool = False,
-    ) -> Result:
-        """Run a SPARQL query against the inferred dataset.
-
-        Performs inference (or loads from cache) and then executes the given
-        SPARQL query.  If ``query`` is a path to an existing file, the file
-        contents are read as the query string.
-
-        Args:
-            query: SPARQL query string, or path to a ``.rq`` file.
-            graphs: Restrict the query to specific named graph IRIs.
-            no_cache: Skip cache and re-run inference before querying.
-
-        Returns:
-            The SPARQL query Result.
-
-        """
-        if Path(query).is_file():
-            query = Path(query).read_text()
-
-        ds = self.infer(no_cache=no_cache)
-
-        view: Dataset | DatasetView = ds
-        if graphs:
-            view = DatasetView(ds, [URIRef(g) for g in graphs])
-
-        return view.query(query)

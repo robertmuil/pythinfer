@@ -5,9 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from pythinfer import Project
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
-from pythinfer.project import COMBINED_FULL_FILESTEM, load_project
+from pythinfer.project import COMBINED_FULL_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -40,8 +41,8 @@ class TestCacheIsolation:
         assert celebrity_config.exists(), "pythinfer_celebrity.yaml not found"
 
         # Load both projects
-        default_project = load_project(default_config)
-        celebrity_project = load_project(celebrity_config)
+        default_project = Project.from_yaml(default_config)
+        celebrity_project = Project.from_yaml(celebrity_config)
 
         # Verify they have different output paths based on project file stem
         default_output = default_project.path_output
@@ -63,7 +64,7 @@ class TestCacheIsolation:
         monkeypatch.chdir(eg0_temp_dir)
 
         # Default project inference
-        default_project = load_project(None)  # Uses discovery
+        default_project = Project.load()  # Uses discovery
         default_project.owl_backend = "owlrl"
         default_ds, default_external_ids = merge_graphs(
             default_project,
@@ -84,7 +85,7 @@ class TestCacheIsolation:
         default_count = len(default_ds)
 
         # Celebrity project inference
-        celebrity_project = load_project(Path("pythinfer_celebrity.yaml"))
+        celebrity_project = Project.load(Path("pythinfer_celebrity.yaml"))
         celebrity_project.owl_backend = "owlrl"
         celebrity_ds, celebrity_external_ids = merge_graphs(
             celebrity_project,
@@ -143,7 +144,7 @@ class TestCacheIsolation:
         monkeypatch.chdir(eg0_temp_dir)
 
         # Step 1: Run inference for default project (creates cache)
-        default_project = load_project(None)
+        default_project = Project.load()  # Uses discovery
         default_project.owl_backend = "owlrl"
         default_ds, default_external_ids = merge_graphs(
             default_project,
@@ -169,7 +170,7 @@ class TestCacheIsolation:
 
         # Step 2: Load celebrity project and verify it doesn't use
         # default cache
-        celebrity_project = load_project(Path("pythinfer_celebrity.yaml"))
+        celebrity_project = Project.load(Path("pythinfer_celebrity.yaml"))
         celebrity_cache = load_cache(celebrity_project)
 
         # If cache was incorrectly shared, this assertion would fail

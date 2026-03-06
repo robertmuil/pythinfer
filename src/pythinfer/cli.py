@@ -173,7 +173,7 @@ def merge(
 
 
 @app.command()
-def infer(
+def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious way to reduce
     backend: str = "owlrl",
     output: Path | None = None,
     *,
@@ -305,7 +305,11 @@ def query(
                 result.graph.bind(prefix, namespace)
             echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
     else:
-        echo_neutral(result.serialize().decode())
+        result_bytes = result.serialize() # pyright: ignore[reportUnknownMemberType]
+        if not result_bytes:
+            echo_neutral("Query returned no result.", fg="yellow")
+        else:
+            echo_neutral(result_bytes.decode())
 
     return result
 

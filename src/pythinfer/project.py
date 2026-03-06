@@ -192,7 +192,6 @@ class ProjectSpec(BaseModel):
             cfg = yaml.safe_load(f)
 
         # TODO(robert): handle path patterns.
-        # TODO(robert): validate paths exist.
 
         # Add path_self to the config dict before validation
         cfg["path_self"] = _config_path
@@ -375,27 +374,6 @@ def discover_project(start_path: Path, _current_depth: int = 0) -> Path:
 
     # Recurse to parent directory
     return discover_project(current_path.parent, _current_depth + 1)
-
-
-def load_project(config_path: Path | None) -> ProjectSpec:
-    """Load a pythinfer project specification from a YAML file.
-
-    The config file can either be specified directly, or discovered by searching.
-    If neither yield a result, a new project will be created.
-
-    Args:
-        config_path: Path to the config file, or None to trigger discovery.
-
-    """
-    try:
-        _config_path = config_path or discover_project(Path.cwd())
-        project = ProjectSpec.from_yaml(_config_path)
-    except FileNotFoundError:
-        logger.info(
-            "⚠  No existing project found, creating new project in current directory",
-        )
-        project = create_project(Path.cwd())
-    return project
 
 
 def create_project(
