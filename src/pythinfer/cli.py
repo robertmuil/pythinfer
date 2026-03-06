@@ -13,11 +13,9 @@ from rdflib.query import Result
 from rich import print as rich_print
 from rich.table import Table
 
+from pythinfer.api import Project
 from pythinfer.infer import load_cache, run_inference_backend
-from pythinfer.inout import create_project, load_project
-from pythinfer.merge import (
-    merge_graphs,
-)
+from pythinfer.merge import merge_graphs
 from pythinfer.rdflibplus import DatasetView, graph_lengths
 
 ProjectOption = Annotated[
@@ -143,7 +141,7 @@ def create(
         force: Overwrite existing project file if it exists.
 
     """
-    project = create_project(scan_directory=directory, output_path=output, force=force)
+    project = Project.create(scan_directory=directory, output_path=output, force=force)
     echo_success(f"✓ Created Project named '{project.name}' at: `{project.path_self}`")
 
 
@@ -163,7 +161,7 @@ def merge(
                                 can be specified multiple times
 
     """
-    project = load_project(_project_path_var.get())
+    project = Project.load(_project_path_var.get())
     ds, external_graph_ids = merge_graphs(
         project,
         output=output or True,
@@ -175,7 +173,7 @@ def merge(
 
 
 @app.command()
-def infer(
+def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious way to reduce
     backend: str = "owlrl",
     output: Path | None = None,
     *,
@@ -198,7 +196,7 @@ def infer(
                                 can be specified multiple times
 
     """
-    project = load_project(_project_path_var.get())
+    project = Project.load(_project_path_var.get())
 
     # Force no_cache when extra export formats requested, otherwise exports won't happen
     if extra_export_format and not no_cache:
@@ -229,7 +227,6 @@ def infer(
     )
     echo_dataset_lengths(ds, external_graph_ids)
 
-    # Run inference and get updated external graph IDs (includes inference graphs)
     all_external_ids = run_inference_backend(
         ds,
         external_graph_ids,
@@ -254,9 +251,6 @@ def query(
     no_cache: bool = False,
 ) -> Result:
     """Perform a query, from given path, against the latest inferred file.
-
-    TODO: don't call the infer CLI command
-    TODO: move functionality to module and keep this just CLI
 
     Args:
         query: path to the query file to execute, or the query string itself
@@ -311,7 +305,11 @@ def query(
                 result.graph.bind(prefix, namespace)
             echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
     else:
-        echo_neutral(result.serialize().decode())
+        result_bytes = result.serialize() # pyright: ignore[reportUnknownMemberType]
+        if not result_bytes:
+            echo_neutral("Query returned no result.", fg="yellow")
+        else:
+            echo_neutral(result_bytes.decode())
 
     return result
 

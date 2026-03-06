@@ -9,7 +9,6 @@ from pathlib import Path
 from owlrl import DeductiveClosure
 from owlrl.OWLRL import OWLRL_Semantics
 from rdflib import (
-    DCTERMS,
     OWL,
     RDF,
     RDFS,
@@ -19,21 +18,17 @@ from rdflib import (
     IdentifiedNode,
     Literal,
     Node,
-    URIRef,
 )
 from rdflib.query import ResultRow
 
-from pythinfer.inout import (
+from pythinfer.inout import Query, export_dataset, load_sparql_inference_queries
+from pythinfer.project import (
     COMBINED_FULL_FILESTEM,
     INFERRED_WANTED_FILESTEM,
-    Project,
-    Query,
-    export_dataset,
-    load_sparql_inference_queries,
+    PYTHINFER_NS,
+    ProjectSpec,
 )
-from pythinfer.inout import PYTHINFER_NS
 from pythinfer.rdflibplus import DatasetView
-
 
 MAX_REASONING_ROUNDS = 5
 SCRIPT_DIR = Path(__file__).parent
@@ -247,7 +242,11 @@ def filter_triples(
     )
     if to_remove:
         for func, count in removal_counts.items():
-            info("  - %d triples identified by %s", count, func.__name__)
+            info(
+                "  - %d triples identified by %s",
+                count,
+                getattr(func, "__name__", repr(func)),
+            )
         for triple in to_remove:
             graph.remove(triple)
 
@@ -258,7 +257,7 @@ def filter_triples(
 
 
 def _generate_external_inferences(
-    ds: Dataset, external_graph_ids: list[IdentifiedNode], project: Project
+    ds: Dataset, external_graph_ids: list[IdentifiedNode], project: ProjectSpec
 ) -> Graph:
     """Generate inferences from external vocabularies only (step 2).
 
@@ -325,8 +324,12 @@ def _run_inference_iteration(
         Tuple of (triples_added_owl, triples_added_sparql).
 
     """
-    assert ds.store == g_inferences_owl.store, "Graphs must share the same store"
-    assert ds.store == g_inferences_sparql.store, "Graphs must share the same store"
+    if ds.store != g_inferences_owl.store:
+        msg = "Graphs must share the same store"
+        raise ValueError(msg)
+    if ds.store != g_inferences_sparql.store:
+        msg = "Graphs must share the same store"
+        raise ValueError(msg)
 
     info("--- Iteration %d ---", iteration)
 
@@ -362,7 +365,7 @@ def _run_inference_iteration(
 def run_inference_backend(
     ds: Dataset,
     external_graph_ids: list[IdentifiedNode],
-    project: Project,
+    project: ProjectSpec,
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
@@ -546,7 +549,7 @@ def run_inference_backend(
     return all_external_ids
 
 
-def load_cache(project: Project) -> Dataset | None:
+def load_cache(project: ProjectSpec) -> Dataset | None:
     """Load cached inferred dataset if it exists and is valid.
 
     Valid means that the project's input files have not changed since the cache

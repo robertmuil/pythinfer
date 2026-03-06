@@ -102,14 +102,14 @@ from pythinfer import Project
 ds = Project.discover().infer()
 
 # Then you can do what you want with the Dataset
-results = ds.query("SELECT ?g ?s ?p ?o WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 10")
-for row in results:
-    print(row)
+results = ds.query("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }")
+print(f"Got {len(results)} results from Dataset.")
 
 # Strip to a single Graph if named graphs not needed
-from pythinfer.utils import strip
-g = strip(ds)
-results = g.query("SELECT * WHERE { ?s a ?type }")
+from pythinfer.rdflibplus import reduce
+g = reduce(ds)
+results = g.query("SELECT * WHERE { ?s ?p ?o }")
+print(f"Got {len(results)} results from Graph.")
 ```
 
 ### Initialising a Project
@@ -149,12 +149,11 @@ ds_full = project.infer()
 
 `merge()` and `infer()` return a `rdflib.Dataset` containing the merged and inferred data, including named graphs for provenance.
 
-A helper method, `strip()` is also provided which returns a `rdflib.Graph` by stripping quads down to triples (i.e. merging all named graphs) which is commonly done to simplify downstream processing.
+A helper method, `reduce()` is also provided which returns a `rdflib.Graph` by stripping quads down to triples (i.e. dropping all named graph ids) which is commonly done to simplify downstream processing.
 
 ```python
-from pythinfer.utils import strip
-# Strip named graphs to triples
-g_full = strip(ds_full)
+from pythinfer.rdflibplus import reduce
+g_full = reduce(ds_full)
 ```
 
 ## Project Specification

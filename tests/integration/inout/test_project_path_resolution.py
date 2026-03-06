@@ -3,7 +3,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pythinfer.inout import Project
+from pythinfer.project import ProjectSpec
 
 
 class TestProjectPathResolution:
@@ -43,7 +43,7 @@ data:
             project_file.write_text(project_yaml)
 
             # Load the project from the subdir location
-            project = Project.from_yaml(project_file)
+            project = ProjectSpec.from_yaml(project_file)
 
             # Verify that paths are resolved to the project directory
             assert project.focus[0] == data1
@@ -86,7 +86,7 @@ data:
             project_file.write_text(project_yaml)
 
             # Load the project
-            project = Project.from_yaml(project_file)
+            project = ProjectSpec.from_yaml(project_file)
 
             # Verify paths are correct
             assert project.focus[0] == data_file
@@ -117,7 +117,7 @@ data:
             project_file.write_text(project_yaml)
 
             # Load the project
-            project = Project.from_yaml(project_file)
+            project = ProjectSpec.from_yaml(project_file)
 
             # Verify absolute path is preserved
             assert project.focus[0] == external_file
@@ -147,7 +147,7 @@ data:
             project_file.write_text(original_yaml)
 
             # Load the project
-            project = Project.from_yaml(project_file)
+            project = ProjectSpec.from_yaml(project_file)
 
             # Get the YAML representation
             yaml_output = project.to_yaml_str()
@@ -182,7 +182,7 @@ data:
             project_file.write_text(project_yaml)
 
             # Load the project
-            project = Project.from_yaml(project_file)
+            project = ProjectSpec.from_yaml(project_file)
 
             # Get the YAML representation
             yaml_output = project.to_yaml_str()
@@ -221,7 +221,7 @@ reference:
             project_file.write_text(project_yaml)
 
             # Load the project
-            project = Project.from_yaml(project_file)
+            project = ProjectSpec.from_yaml(project_file)
 
             # Verify all paths are resolved correctly
             assert project.focus[0] == data_file

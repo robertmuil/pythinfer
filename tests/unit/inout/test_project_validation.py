@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from pythinfer.inout import Project
+from pythinfer.project import ProjectSpec
 
 
 class TestProjectValidConfiguration:
@@ -23,7 +23,7 @@ class TestProjectValidConfiguration:
             "sparql-inference": ["query1.sparql"],
         }
 
-        project = Project(**config)
+        project = ProjectSpec(**config)
 
         assert project.name == "test-project"
         assert len(project.focus) == 2
@@ -43,7 +43,7 @@ class TestProjectValidConfiguration:
             "sparql_inference": ["query1.sparql"],
         }
 
-        project = Project(**config)
+        project = ProjectSpec(**config)
 
         assert project.name == "test-project"
         assert len(project.focus) == 1
@@ -60,12 +60,12 @@ class TestProjectValidConfiguration:
             "focus": ["file1.ttl"],
         }
 
-        project = Project(**config)
+        project = ProjectSpec(**config)
 
         assert project.name == "minimal-project"
         assert len(project.focus) == 1
         assert project.reference == []
-        assert project.owl_backend is None
+        assert project.owl_backend == "owlrl"  # Default value
         assert project.sparql_inference is None
 
 
@@ -83,7 +83,7 @@ class TestProjectInvalidConfiguration:
         }
 
         with pytest.raises(ValidationError) as exc_info:
-            Project(**config)
+            ProjectSpec(**config)
 
         assert "unexpected_field" in str(exc_info.value)
 
@@ -96,7 +96,7 @@ class TestProjectInvalidConfiguration:
         }
 
         with pytest.raises(ValidationError) as exc_info:
-            Project(**config)
+            ProjectSpec(**config)
 
         assert "name" in str(exc_info.value)
 
@@ -107,7 +107,7 @@ class TestProjectInvalidConfiguration:
             "focus": ["file1.ttl"],
         }
 
-        project = Project(**config)
+        project = ProjectSpec(**config)
 
         # path_self should have a default sentinel value
         assert project.path_self is not None
@@ -123,7 +123,7 @@ class TestProjectInvalidConfiguration:
         }
 
         with pytest.raises(ValidationError) as exc_info:
-            Project(**config)
+            ProjectSpec(**config)
 
         error_str = str(exc_info.value)
         assert "focus" in error_str
@@ -139,7 +139,7 @@ class TestProjectInvalidConfiguration:
         }
 
         # This should NOT raise - owl_backend currently has no validation
-        project = Project(**config)
+        project = ProjectSpec(**config)
         assert project.owl_backend == "any-string-value"
 
 
@@ -152,7 +152,7 @@ class TestProjectLoadFromYAML:
         if not yaml_path.exists():
             pytest.skip("Example project not found")
 
-        project = Project.from_yaml(yaml_path)
+        project = ProjectSpec.from_yaml(yaml_path)
 
         assert project.name
         assert len(project.focus) > 0
@@ -165,7 +165,7 @@ class TestProjectLoadFromYAML:
         if not yaml_path.exists():
             pytest.skip("Example project not found")
 
-        project = Project.from_yaml(yaml_path)
+        project = ProjectSpec.from_yaml(yaml_path)
 
         assert project.name
         # eg2-projects has external-vocabs defined
@@ -177,7 +177,7 @@ class TestProjectLoadFromYAML:
         if not yaml_path.exists():
             pytest.skip("Example project not found")
 
-        project = Project.from_yaml(yaml_path)
+        project = ProjectSpec.from_yaml(yaml_path)
 
         assert project.name
         assert len(project.focus) > 0
@@ -195,7 +195,7 @@ class TestProjectFieldAliases:
             "data": ["file1.ttl", "file2.ttl"],
         }
 
-        project = Project(**config)
+        project = ProjectSpec(**config)
 
         # Should be accessible via 'focus' attribute (as Path objects)
         assert len(project.focus) == 2
@@ -211,7 +211,7 @@ class TestProjectFieldAliases:
             "local": ["file1.ttl"],
         }
 
-        project = Project(**config)
+        project = ProjectSpec(**config)
 
         # Should be accessible via 'focus' attribute
         assert len(project.focus) == 1
@@ -227,7 +227,7 @@ class TestProjectFieldAliases:
             "external-vocabs": ["vocab1.ttl", "vocab2.ttl"],
         }
 
-        project = Project(**config)
+        project = ProjectSpec(**config)
 
         # Should be accessible via 'reference' attribute (as Path objects)
         assert len(project.reference) == 2

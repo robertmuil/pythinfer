@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from pythinfer.inout import (
+from pythinfer.project import (
     MAX_DISCOVERY_SEARCH_DEPTH,
     PROJECT_FILE_NAME,
     discover_project,
