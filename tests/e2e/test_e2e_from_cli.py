@@ -1,6 +1,5 @@
 """End-to-end tests for the merge and infer commands."""
 
-import os
 from pathlib import Path
 
 import pytest
@@ -27,6 +26,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 def test_cli_command(
     project_name: str,
     command: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test that CLI commands produce expected output for example projects."""
     project_dir = PROJECT_ROOT / "example_projects" / project_name
@@ -58,18 +58,13 @@ def test_cli_command(
     actual_file_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Run the command using CliRunner but with proper working directory
-    # Save current working directory and change to project directory
-    original_cwd = Path.cwd()
+    monkeypatch.chdir(project_dir)
     runner = CliRunner()
     cmd_args = [command, "--output", str(actual_file_path)]
     # Disable cache for infer command to ensure fresh runs
     if command == "infer":
         cmd_args.append("--no-cache")
-    try:
-        os.chdir(project_dir)
-        result = runner.invoke(app, cmd_args)
-    finally:
-        os.chdir(original_cwd)
+    result = runner.invoke(app, cmd_args)
 
     # Check the command succeeded
     assert result.exit_code == 0, (
