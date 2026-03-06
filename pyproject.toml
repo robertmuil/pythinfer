@@ -39,7 +39,11 @@ ignore = ["COM812", "D203", "D213"]
 
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]
+"tests/*" = [
+    "S101",
+    "PLR2004",  #  Magic numbers
+    "D103",  # Missing docstring: just clutters tests
+    ]
 "scripts/*" = ["T201"]
 
 [dependency-groups]

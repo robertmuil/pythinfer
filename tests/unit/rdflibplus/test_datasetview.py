@@ -1,8 +1,7 @@
 """Test DatasetView."""
 
-# ruff: noqa: D103, PLR2004
 import pytest
-from rdflib import Dataset, Graph, Literal, Namespace, URIRef
+from rdflib import Dataset, Graph, Literal, Namespace
 
 from pythinfer.rdflibplus import DatasetView
 

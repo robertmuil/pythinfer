@@ -6,13 +6,14 @@ The Project data model and project management functions (discovery, loading,
 creation) live in pythinfer.project. They are re-exported here for backward
 compatibility.
 """
-
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from rdflib import Dataset, Graph
+from rdflib import Dataset
+
+from pythinfer.rdflibplus import reduce
 
 logger = logging.getLogger(__name__)
 
@@ -56,23 +57,17 @@ def export_dataset(
 
     exts = [format_to_ext.get(f.lower(), f.lower()) for f in (formats or ["trig"])]
 
-    have_non_quad_format = any(f not in ("trig", "trix", "nquads") for f in exts)
-
-    # For non-quad formats, we'll need to merge Dataset into a single Graph
-    combined_graph = Graph()
-    if have_non_quad_format:
-        # Iterate over quads - this works with DatasetView naturally
-        for s, p, o, _ in dataset.quads():
-            combined_graph.add((s, p, o))
-
+    combined_graph = None
     for ext in exts:
         fmt_output_file = output_file.with_suffix(f".{ext}")
 
-        # For quad-aware formats (trig) use Dataset directly, otherwise
-        # combine into single Graph first
         if ext in ("trig", "trix", "nquads"):
+            # For quad-aware formats (trig etc.) use Dataset directly...
             dataset.serialize(destination=str(fmt_output_file), format=ext, canon=True)
         else:
+            # ...otherwise reduce Dataset first into a single Graph (only do it once)
+            if combined_graph is None:
+                combined_graph = reduce(dataset)
             _fmt = ext if (ext != "rdf") else "xml"
             combined_graph.serialize(
                 destination=str(fmt_output_file), format=_fmt, canon=True

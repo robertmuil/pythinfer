@@ -258,3 +258,25 @@ def graph_lengths(ds: Dataset) -> dict[IdentifiedNode, int]:
     for g in ds.graphs():
         lengths[g.identifier] = len(g)
     return lengths
+
+
+def reduce(ds: Dataset) -> Graph:
+    """Reduce a Dataset to a single Graph by copying all triples from all graphs.
+
+    Reduction of a Dataset to a Graph is primarily the reduction of a set of quads to a
+    set of triples. According to the [RDF 1.1 specification](https://www.w3.org/TR/rdf11-mt/#dfn-merge)
+    there are two possibilities for this reduction, which are distinguished in their
+    handling of blank nodes.
+
+    The 'merge' approach treats blank nodes across graphs as identical if they are
+    syntactically identical (`:b1` == `:b1`), while the 'union' approach treats them as
+    separate. This function currently implements the 'merge' approach, which is
+    almost certainly what users want when they reduce a single Dataset.
+
+
+    This works with DatasetView also by dint of the View's overridden quads() method.
+    """
+    g = Graph()
+    for s, p, o, _ in ds.quads():
+        g.add((s, p, o))
+    return g
