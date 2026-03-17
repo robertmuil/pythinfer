@@ -184,3 +184,32 @@ class TestCacheIsolation:
                 f"({default_triple_count}), but got fewer. "
                 f"This suggests the wrong cache is being used."
             )
+
+    def test_load_cache_for_project_generated_in_code(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Cache loading should work for a Project instantiated in Python code."""
+        # Use a clean cwd so generated path_self points to a new file.
+        monkeypatch.chdir(tmp_path)
+
+        eg0_dir = PROJECT_ROOT / "example_projects" / "eg0-basic"
+        project = Project(
+            name="generated-in-code",
+            focus=[eg0_dir / "basic-data.ttl"],
+            reference=[eg0_dir / "basic-model.ttl"],
+            owl_backend="owlrl",
+        )
+
+        # First run creates outputs and cache files.
+        project.infer(no_cache=True)
+
+        # The generated project should have been persisted for cache validation.
+        assert project.path_self.exists()
+
+        cache = load_cache(project)
+        assert cache is not None
+        assert len(cache) > 0
+
+        # Second run should load from cache path successfully.
+        ds_cached = project.infer()
+        assert len(ds_cached) == len(cache)

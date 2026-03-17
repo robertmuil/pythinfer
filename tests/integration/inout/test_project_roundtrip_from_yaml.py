@@ -18,8 +18,6 @@ class TestProjectRoundtrip:
             owl_backend="owlrl",
         )
         assert proj.name == "test123"
-        assert proj.path_self.stem == "generated_by_code"
-        assert proj.path_self.suffix == ".nonexistent"
         assert set(proj.focus) == {Path("blah.ttl")}
         assert set(proj.reference) == {Path("vocab.ttl")}
         assert proj.owl_backend == "owlrl"
@@ -28,7 +26,6 @@ class TestProjectRoundtrip:
         with NamedTemporaryFile("w+", suffix=".yaml", delete=True) as tmpfile:
             tmp_path = Path(tmpfile.name).absolute()
             tmp_folder = tmp_path.parent
-            # You can use tmp_path as a temporary file path here if needed
 
             # Loading back from yaml will resolve relative paths to absolute paths
             # relative to the project directory which here means the temporary folder.
