@@ -68,9 +68,10 @@ def merge_graphs(
     if output:
         if isinstance(output, bool):
             output_file = project.path_output / f"{MERGED_FILESTEM}.trig"
-            output_file.parent.mkdir(parents=True, exist_ok=True)
         else:
             output_file = output
+
+        project.persist_if_absent()
 
         output_ds = ds if export_external else DatasetView(ds, external_gids).invert()
 

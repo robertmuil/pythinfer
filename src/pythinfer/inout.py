@@ -38,6 +38,8 @@ def export_dataset(
                 Examples: ["trig"], ["ttl"], ["ttl", "xml", "n3"], etc.
 
     """
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
     # Determine file extension based on format
     format_to_ext = {
         "ttl": "ttl",
