@@ -170,7 +170,7 @@ def merge(
 
 
 @app.command()
-def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious way to reduce
+def infer(
     backend: str = "owlrl",
     output: Path | None = None,
     *,

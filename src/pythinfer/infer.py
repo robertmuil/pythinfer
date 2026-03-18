@@ -23,8 +23,8 @@ from rdflib.query import ResultRow
 
 from pythinfer.inout import Query, export_dataset, load_sparql_inference_queries
 from pythinfer.project import (
-    COMBINED_FULL_FILESTEM,
-    INFERRED_WANTED_FILESTEM,
+    COMBINED_FILESTEM,
+    INFERRED_FILESTEM,
     PYTHINFER_NS,
     ProjectSpec,
 )
@@ -515,8 +515,8 @@ def run_inference_backend(
         iri_external,
     ]
 
-    if True: # TODO: only export the focus data and inferences.
-        output_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+    if True: # TODO@robertmuil: only export the focus data and inferences.
+        output_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         export_dataset(
@@ -525,7 +525,7 @@ def run_inference_backend(
             formats=["trig", *(extra_export_formats or [])],
         )
 
-    output_file = output or project.path_output / f"{INFERRED_WANTED_FILESTEM}.trig"
+    output_file = output or project.path_output / f"{INFERRED_FILESTEM}.trig"
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     output_ds = DatasetView(ds, [iri_owl, iri_sparql])
@@ -546,7 +546,7 @@ def load_cache(project: ProjectSpec) -> Dataset | None:
     Valid means that the project's input files have not changed since the cache
     was created.
 
-    The cache file is the COMBINED_FULL file in the project's output folder.
+    The cache file is the COMBINED file in the project's output folder.
 
     We set the default_union of the Dataset to True here, because the cached
     file contains named graphs. This ensures that queries over the Dataset
@@ -560,7 +560,7 @@ def load_cache(project: ProjectSpec) -> Dataset | None:
         Dataset if cache file exists AND IS VALID, else None.
 
     """
-    cache_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+    cache_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
     if not cache_file.exists():
         return None
 
