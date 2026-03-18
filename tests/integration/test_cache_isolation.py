@@ -69,7 +69,6 @@ class TestCacheIsolation:
         default_ds, default_external_ids = merge_graphs(
             default_project,
             output=True,
-            export_external=False,
             extra_export_formats=None,
         )
         run_inference_backend(
@@ -79,7 +78,6 @@ class TestCacheIsolation:
             None,
             include_unwanted_triples=False,
             export_full=True,
-            export_external_inferences=False,
             extra_export_formats=None,
         )
         default_count = len(default_ds)
@@ -90,7 +88,6 @@ class TestCacheIsolation:
         celebrity_ds, celebrity_external_ids = merge_graphs(
             celebrity_project,
             output=True,
-            export_external=False,
             extra_export_formats=None,
         )
         run_inference_backend(
@@ -100,7 +97,6 @@ class TestCacheIsolation:
             None,
             include_unwanted_triples=False,
             export_full=True,
-            export_external_inferences=False,
             extra_export_formats=None,
         )
         celebrity_count = len(celebrity_ds)
@@ -149,7 +145,6 @@ class TestCacheIsolation:
         default_ds, default_external_ids = merge_graphs(
             default_project,
             output=True,
-            export_external=False,
         )
         run_inference_backend(
             default_ds,
@@ -158,7 +153,6 @@ class TestCacheIsolation:
             None,
             include_unwanted_triples=False,
             export_full=True,
-            export_external_inferences=False,
         )
 
         # Verify default cache was created

@@ -370,7 +370,6 @@ def run_inference_backend(
     *,
     include_unwanted_triples: bool = False,
     export_full: bool = True,
-    export_external_inferences: bool = False,
     extra_export_formats: list[str] | None = None,
 ) -> list[IdentifiedNode]:
     """Run inference backend on merged graph using OWL-RL semantics.
@@ -396,7 +395,6 @@ def run_inference_backend(
         include_unwanted_triples: If True, do not filter unwanted triples.
         export_full: export a file with the full set of inputs and inferences
             - this can be used for caching and for diagnostics
-        export_external_inferences: when exporting inferences, include external graphs
         extra_export_formats: export formats in addition to trig e.g., ["ttl", "jsonld"]
 
     Returns:
@@ -533,11 +531,7 @@ def run_inference_backend(
     output_file = output or project.path_output / f"{INFERRED_WANTED_FILESTEM}.trig"
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    output_ds = DatasetView(
-        ds,
-        [iri_owl, iri_sparql]
-        + ([iri_external] if export_external_inferences else []),
-    )
+    output_ds = DatasetView(ds, [iri_owl, iri_sparql])
 
     export_dataset(
         output_ds,

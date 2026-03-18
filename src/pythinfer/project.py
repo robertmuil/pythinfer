@@ -38,6 +38,7 @@ MAX_DISCOVERY_SEARCH_DEPTH = 10
 MERGED_FILESTEM = "0-merged"
 COMBINED_FULL_FILESTEM = "1-combined-full"
 INFERRED_WANTED_FILESTEM = "2-inferred-wanted"
+COMBINED_WANTED_FILESTEM = "2-combined-wanted"
 
 
 def _get_sentinel_project_file() -> Path:
