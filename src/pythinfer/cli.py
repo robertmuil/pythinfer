@@ -175,7 +175,6 @@ def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious wa
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
-    export_full: bool = True,
     no_cache: bool = False,
     extra_export_format: ExtraExportFormatOption = None,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
@@ -185,7 +184,6 @@ def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious wa
         backend: OWL inference engine to use
         output: output path for final inferences (None for project-based default)
         include_unwanted_triples: include all valid inferences, even unhelpful
-        export_full: export full file with inputs as well as inferences
         no_cache: skip cache and re-run inference
         extra_export_format: additional export format(s) (besides trig),
                                 can be specified multiple times
@@ -227,7 +225,6 @@ def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious wa
         project,
         output,
         include_unwanted_triples=include_unwanted_triples,
-        export_full=export_full,
         extra_export_formats=extra_export_format,
     )
     echo_success(f"Inference complete. {len(ds)} total triples in dataset")

@@ -369,7 +369,6 @@ def run_inference_backend(
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
-    export_full: bool = True,
     extra_export_formats: list[str] | None = None,
 ) -> list[IdentifiedNode]:
     """Run inference backend on merged graph using OWL-RL semantics.
@@ -393,8 +392,6 @@ def run_inference_backend(
         project: The project configuration to use (includes backend and other settings).
         output: Path to export inferences to, or None for project default
         include_unwanted_triples: If True, do not filter unwanted triples.
-        export_full: export a file with the full set of inputs and inferences
-            - this can be used for caching and for diagnostics
         extra_export_formats: export formats in addition to trig e.g., ["ttl", "jsonld"]
 
     Returns:
@@ -501,16 +498,6 @@ def run_inference_backend(
 
         assert triples_overlapping == 0  # noqa: S101
 
-    if export_full:
-        output_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-
-        export_dataset(
-            ds,
-            output_file,
-            formats=["trig", *(extra_export_formats or [])],
-        )
-
     if not include_unwanted_triples:
         # Step 7: Subtract unwanted inferences
         info("Step 7: Filtering unwanted inferences...")
@@ -527,6 +514,16 @@ def run_inference_backend(
         *external_graph_ids,
         iri_external,
     ]
+
+    if True: # TODO: only export the focus data and inferences.
+        output_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        export_dataset(
+            ds,
+            output_file,
+            formats=["trig", *(extra_export_formats or [])],
+        )
 
     output_file = output or project.path_output / f"{INFERRED_WANTED_FILESTEM}.trig"
     output_file.parent.mkdir(parents=True, exist_ok=True)

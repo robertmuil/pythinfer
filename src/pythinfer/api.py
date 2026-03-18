@@ -112,13 +112,12 @@ class Project(ProjectSpec):
         )
         return ds
 
-    def infer(  # noqa: PLR0913 - comfortable we need these arguments
+    def infer(
         self,
         *,
         backend: str | None = None,
         output: Path | None = None,
         include_unwanted_triples: bool = False,
-        export_full: bool = True,
         no_cache: bool = False,
         extra_export_formats: list[str] | None = None,
     ) -> Dataset:
@@ -135,8 +134,6 @@ class Project(ProjectSpec):
                 project default.
             include_unwanted_triples: Keep all valid inferences, including
                 unhelpful ones that are normally filtered.
-            export_full: Write a combined file with all inputs and inferences
-                (used for caching and diagnostics).
             no_cache: Skip cache and re-run the full pipeline.  Automatically
                 set when ``extra_export_formats`` is provided.
             extra_export_formats: Additional export formats beyond trig
@@ -169,7 +166,6 @@ class Project(ProjectSpec):
             self,
             output,
             include_unwanted_triples=include_unwanted_triples,
-            export_full=export_full,
             extra_export_formats=extra_export_formats,
         )
 

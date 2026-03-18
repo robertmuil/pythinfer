@@ -77,7 +77,6 @@ class TestCacheIsolation:
             default_project,
             None,
             include_unwanted_triples=False,
-            export_full=True,
             extra_export_formats=None,
         )
         default_count = len(default_ds)
@@ -96,7 +95,6 @@ class TestCacheIsolation:
             celebrity_project,
             None,
             include_unwanted_triples=False,
-            export_full=True,
             extra_export_formats=None,
         )
         celebrity_count = len(celebrity_ds)
@@ -152,7 +150,6 @@ class TestCacheIsolation:
             default_project,
             None,
             include_unwanted_triples=False,
-            export_full=True,
         )
 
         # Verify default cache was created
