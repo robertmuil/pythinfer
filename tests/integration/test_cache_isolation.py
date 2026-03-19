@@ -8,7 +8,7 @@ import pytest
 from pythinfer import Project
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
-from pythinfer.project import COMBINED_FULL_FILESTEM
+from pythinfer.project import COMBINED_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -110,10 +110,10 @@ class TestCacheIsolation:
 
         # Verify cache files exist in separate directories
         default_cache = (
-            default_project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+            default_project.path_output / f"{COMBINED_FILESTEM}.trig"
         )
         celebrity_cache = (
-            celebrity_project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+            celebrity_project.path_output / f"{COMBINED_FILESTEM}.trig"
         )
 
         assert default_cache.exists(), (

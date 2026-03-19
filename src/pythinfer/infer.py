@@ -515,15 +515,15 @@ def run_inference_backend(
         iri_external,
     ]
 
-    if True: # TODO@robertmuil: only export the focus data and inferences.
-        output_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        export_dataset(
-            ds,
-            output_file,
-            formats=["trig", *(extra_export_formats or [])],
-        )
+    output_ds = DatasetView(ds, all_external_ids).invert()
+    export_dataset(
+        output_ds,
+        output_file,
+        formats=["trig", *(extra_export_formats or [])],
+    )
 
     output_file = output or project.path_output / f"{INFERRED_FILESTEM}.trig"
     output_file.parent.mkdir(parents=True, exist_ok=True)
