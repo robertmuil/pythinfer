@@ -18,8 +18,6 @@ typings/**/*.pyi
 
 # Project-specific ignores
 example_projects/*/derived/*
-!example_projects/*/derived/expected*
-example_projects/eg0-basic/derived/expected_pythinfer/*
 example_projects/eg0-basic/pythinfer.yaml
 pythinfer.bak*.yaml
 demo-*.mov
