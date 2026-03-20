@@ -36,8 +36,8 @@ PROJECT_FILE_NAME = "pythinfer.yaml"
 MAX_DISCOVERY_SEARCH_DEPTH = 10
 
 MERGED_FILESTEM = "0-merged"
-COMBINED_FULL_FILESTEM = "1-combined-full"
-INFERRED_WANTED_FILESTEM = "2-inferred-wanted"
+INFERRED_FILESTEM = "1-inferred"
+COMBINED_FILESTEM = "2-combined"
 
 
 def _get_new_project_path_for_generation() -> Path:
@@ -286,7 +286,7 @@ class ProjectSpec(BaseModel):
     @property
     def namespace(self) -> Namespace:
         """The IRI Namespace associated with this Project."""
-        # TODO: normalise name to be appropriate for an IRI.
+        # TODO@robertmuil: normalise name to be appropriate for an IRI.
         return Namespace(PYTHINFER_NS[self.name] + "/")
 
     @property

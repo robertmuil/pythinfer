@@ -8,7 +8,7 @@ from rdflib.compare import graph_diff, isomorphic
 from typer.testing import CliRunner
 
 from pythinfer.cli import app
-from pythinfer.project import INFERRED_WANTED_FILESTEM, MERGED_FILESTEM
+from pythinfer.project import INFERRED_FILESTEM, MERGED_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -37,7 +37,7 @@ def test_cli_command(
     actual_file = (
         f"{MERGED_FILESTEM}.trig"
         if (command == "merge")
-        else f"{INFERRED_WANTED_FILESTEM}.trig"
+        else f"{INFERRED_FILESTEM}.trig"
     )
     expected_file = "expected-" + actual_file
 

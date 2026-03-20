@@ -23,8 +23,8 @@ from rdflib.query import ResultRow
 
 from pythinfer.inout import Query, export_dataset, load_sparql_inference_queries
 from pythinfer.project import (
-    COMBINED_FULL_FILESTEM,
-    INFERRED_WANTED_FILESTEM,
+    COMBINED_FILESTEM,
+    INFERRED_FILESTEM,
     PYTHINFER_NS,
     ProjectSpec,
 )
@@ -369,8 +369,6 @@ def run_inference_backend(
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
-    export_full: bool = True,
-    export_external_inferences: bool = False,
     extra_export_formats: list[str] | None = None,
 ) -> list[IdentifiedNode]:
     """Run inference backend on merged graph using OWL-RL semantics.
@@ -394,9 +392,6 @@ def run_inference_backend(
         project: The project configuration to use (includes backend and other settings).
         output: Path to export inferences to, or None for project default
         include_unwanted_triples: If True, do not filter unwanted triples.
-        export_full: export a file with the full set of inputs and inferences
-            - this can be used for caching and for diagnostics
-        export_external_inferences: when exporting inferences, include external graphs
         extra_export_formats: export formats in addition to trig e.g., ["ttl", "jsonld"]
 
     Returns:
@@ -503,16 +498,6 @@ def run_inference_backend(
 
         assert triples_overlapping == 0  # noqa: S101
 
-    if export_full:
-        output_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
-        project.persist_if_absent()
-
-        export_dataset(
-            ds,
-            output_file,
-            formats=["trig", *(extra_export_formats or [])],
-        )
-
     if not include_unwanted_triples:
         # Step 7: Subtract unwanted inferences
         info("Step 7: Filtering unwanted inferences...")
@@ -530,14 +515,19 @@ def run_inference_backend(
         iri_external,
     ]
 
-    output_file = output or project.path_output / f"{INFERRED_WANTED_FILESTEM}.trig"
+    output_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
     project.persist_if_absent()
 
-    output_ds = DatasetView(
-        ds,
-        [iri_owl, iri_sparql]
-        + ([iri_external] if export_external_inferences else []),
+    output_ds = DatasetView(ds, all_external_ids).invert()
+    export_dataset(
+        output_ds,
+        output_file,
+        formats=["trig", *(extra_export_formats or [])],
     )
+
+    output_file = output or project.path_output / f"{INFERRED_FILESTEM}.trig"
+
+    output_ds = DatasetView(ds, [iri_owl, iri_sparql])
 
     export_dataset(
         output_ds,
@@ -555,7 +545,7 @@ def load_cache(project: ProjectSpec) -> Dataset | None:
     Valid means that the project's input files have not changed since the cache
     was created.
 
-    The cache file is the COMBINED_FULL file in the project's output folder.
+    The cache file is the COMBINED file in the project's output folder.
 
     We set the default_union of the Dataset to True here, because the cached
     file contains named graphs. This ensures that queries over the Dataset
@@ -569,7 +559,7 @@ def load_cache(project: ProjectSpec) -> Dataset | None:
         Dataset if cache file exists AND IS VALID, else None.
 
     """
-    cache_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+    cache_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
     if not cache_file.exists():
         return None
 

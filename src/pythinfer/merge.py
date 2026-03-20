@@ -17,7 +17,6 @@ def merge_graphs(
     project: ProjectSpec,
     *,
     output: Path | bool = True,
-    export_external: bool = False,
     extra_export_formats: list[str] | None = None,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
     """Merge graphs: preserve named graphs for each input.
@@ -30,7 +29,6 @@ def merge_graphs(
     Args:
         project:    Project defining what files to merge and which are external
         output:     False for no persistence, True for default, or an explicit Path
-        export_external:  whether to include external graphs when exporting
         extra_export_formats: export format(s) in addition to trig (e.g., ["ttl"])
 
     Returns:
@@ -73,7 +71,7 @@ def merge_graphs(
 
         project.persist_if_absent()
 
-        output_ds = ds if export_external else DatasetView(ds, external_gids).invert()
+        output_ds = DatasetView(ds, external_gids).invert()
 
         export_dataset(
             output_ds,

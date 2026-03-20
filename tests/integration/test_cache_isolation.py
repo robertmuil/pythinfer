@@ -8,7 +8,7 @@ import pytest
 from pythinfer import Project
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
-from pythinfer.project import COMBINED_FULL_FILESTEM
+from pythinfer.project import COMBINED_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -69,7 +69,6 @@ class TestCacheIsolation:
         default_ds, default_external_ids = merge_graphs(
             default_project,
             output=True,
-            export_external=False,
             extra_export_formats=None,
         )
         run_inference_backend(
@@ -78,8 +77,6 @@ class TestCacheIsolation:
             default_project,
             None,
             include_unwanted_triples=False,
-            export_full=True,
-            export_external_inferences=False,
             extra_export_formats=None,
         )
         default_count = len(default_ds)
@@ -90,7 +87,6 @@ class TestCacheIsolation:
         celebrity_ds, celebrity_external_ids = merge_graphs(
             celebrity_project,
             output=True,
-            export_external=False,
             extra_export_formats=None,
         )
         run_inference_backend(
@@ -99,8 +95,6 @@ class TestCacheIsolation:
             celebrity_project,
             None,
             include_unwanted_triples=False,
-            export_full=True,
-            export_external_inferences=False,
             extra_export_formats=None,
         )
         celebrity_count = len(celebrity_ds)
@@ -116,10 +110,10 @@ class TestCacheIsolation:
 
         # Verify cache files exist in separate directories
         default_cache = (
-            default_project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+            default_project.path_output / f"{COMBINED_FILESTEM}.trig"
         )
         celebrity_cache = (
-            celebrity_project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
+            celebrity_project.path_output / f"{COMBINED_FILESTEM}.trig"
         )
 
         assert default_cache.exists(), (
@@ -149,7 +143,6 @@ class TestCacheIsolation:
         default_ds, default_external_ids = merge_graphs(
             default_project,
             output=True,
-            export_external=False,
         )
         run_inference_backend(
             default_ds,
@@ -157,8 +150,6 @@ class TestCacheIsolation:
             default_project,
             None,
             include_unwanted_triples=False,
-            export_full=True,
-            export_external_inferences=False,
         )
 
         # Verify default cache was created
