@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 import pytest
 
 from pythinfer import Project
-from pythinfer.project import PROJECT_FILE_NAME
+from pythinfer.project import PROJECT_FILE_NAME, create_project
 
 
 class TestCreateProjectCommand:
@@ -187,3 +187,81 @@ class TestCreateProjectCommand:
 
             # Should not include files from 'derived' directory
             assert not any("derived" in str(f) for f in project.focus)
+
+    def test_create_project_refuses_overwrite_without_force(self) -> None:
+        """create_project should fail if output exists and force is False."""
+        with TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            output_path = tmp_path / PROJECT_FILE_NAME
+            output_path.write_text("name: existing\nfocus: [a.ttl]\n")
+
+            with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+                create_project(scan_directory=tmp_path, output_path=output_path)
+
+    def test_create_project_force_creates_backup(self) -> None:
+        """create_project should backup existing output when force=True."""
+        with TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            (tmp_path / "data.ttl").touch()
+
+            output_path = tmp_path / PROJECT_FILE_NAME
+            output_path.write_text("name: old\nfocus: [old.ttl]\n")
+
+            created = create_project(
+                scan_directory=tmp_path,
+                output_path=output_path,
+                force=True,
+            )
+
+            assert created.path_self == output_path
+            assert output_path.exists()
+            assert output_path.with_suffix(".bak0.yaml").exists()
+
+    def test_create_project_force_fails_when_backup_slots_exhausted(self) -> None:
+        """create_project should fail if .bak0-.bak99 already exist."""
+        with TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            output_path = tmp_path / PROJECT_FILE_NAME
+            output_path.write_text("name: old\nfocus: [old.ttl]\n")
+
+            for i in range(100):
+                output_path.with_suffix(f".bak{i}.yaml").write_text("busy")
+
+            with pytest.raises(FileExistsError, match="Too many backup files"):
+                create_project(
+                    scan_directory=tmp_path,
+                    output_path=output_path,
+                    force=True,
+                )
+
+    def test_create_project_defaults_scan_directory_to_cwd(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """If scan_directory is None, create_project should use current directory."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "data.ttl").touch()
+
+        created = create_project()
+
+        assert created.path_self == (tmp_path / PROJECT_FILE_NAME).resolve()
+        assert created.path_self.exists()
+
+    def test_create_project_collects_sparql_queries_sorted(self) -> None:
+        """infer*.rq files should be collected and stored in sorted order."""
+        with TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            (tmp_path / "data.ttl").touch()
+            (tmp_path / "infer-z.rq").touch()
+            (tmp_path / "infer-a.rq").touch()
+
+            project = create_project(
+                scan_directory=tmp_path,
+                output_path=tmp_path / PROJECT_FILE_NAME,
+            )
+
+            assert project.sparql_inference == [
+                Path("infer-a.rq"),
+                Path("infer-z.rq"),
+            ]

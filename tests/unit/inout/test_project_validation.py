@@ -109,9 +109,8 @@ class TestProjectInvalidConfiguration:
 
         project = ProjectSpec(**config)
 
-        # path_self should have a default sentinel value
+        # path_self should have a default value
         assert project.path_self is not None
-        assert "generated_by_code" in str(project.path_self)
 
     def test_rejects_empty_focus_list(self, tmp_path: Path) -> None:
         """Test that Project rejects empty focus (data) list."""

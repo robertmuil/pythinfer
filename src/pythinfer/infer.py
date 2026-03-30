@@ -505,7 +505,7 @@ def run_inference_backend(
 
     if export_full:
         output_file = project.path_output / f"{COMBINED_FULL_FILESTEM}.trig"
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+        project.persist_if_absent()
 
         export_dataset(
             ds,
@@ -531,7 +531,7 @@ def run_inference_backend(
     ]
 
     output_file = output or project.path_output / f"{INFERRED_WANTED_FILESTEM}.trig"
-    output_file.parent.mkdir(parents=True, exist_ok=True)
+    project.persist_if_absent()
 
     output_ds = DatasetView(
         ds,
