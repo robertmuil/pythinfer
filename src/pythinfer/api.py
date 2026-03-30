@@ -88,7 +88,6 @@ class Project(ProjectSpec):
         self,
         *,
         output: Path | bool = True,
-        export_external: bool = False,
         extra_export_formats: list[str] | None = None,
     ) -> Dataset:
         """Merge source files as specified in the project configuration.
@@ -99,7 +98,6 @@ class Project(ProjectSpec):
         Args:
             output: False to skip persistence, True for project default path,
                 or an explicit Path.
-            export_external: Include external (reference) graphs in exported file.
             extra_export_formats: Additional export formats beyond trig
                 (e.g., ``["ttl", "jsonld"]``).
 
@@ -110,19 +108,16 @@ class Project(ProjectSpec):
         ds, _ = merge_graphs(
             self,
             output=output,
-            export_external=export_external,
             extra_export_formats=extra_export_formats,
         )
         return ds
 
-    def infer(  # noqa: PLR0913 - comfortable we need these arguments
+    def infer(
         self,
         *,
         backend: str | None = None,
         output: Path | None = None,
         include_unwanted_triples: bool = False,
-        export_full: bool = True,
-        export_external: bool = False,
         no_cache: bool = False,
         extra_export_formats: list[str] | None = None,
     ) -> Dataset:
@@ -135,13 +130,10 @@ class Project(ProjectSpec):
         Args:
             backend: Inference engine to use (default: project config, typically
                 ``"owlrl"``).  Overrides ``self.owl_backend`` for this run.
-            output: Path for the inferred-wanted export file, or None for the
+            output: Path for the export file(s), or None for the
                 project default.
             include_unwanted_triples: Keep all valid inferences, including
                 unhelpful ones that are normally filtered.
-            export_full: Write a combined file with all inputs and inferences
-                (used for caching and diagnostics).
-            export_external: Include external graphs and inferences in exports.
             no_cache: Skip cache and re-run the full pipeline.  Automatically
                 set when ``extra_export_formats`` is provided.
             extra_export_formats: Additional export formats beyond trig
@@ -162,7 +154,6 @@ class Project(ProjectSpec):
         ds, external_graph_ids = merge_graphs(
             self,
             output=True,
-            export_external=export_external,
             extra_export_formats=extra_export_formats,
         )
 
@@ -175,8 +166,6 @@ class Project(ProjectSpec):
             self,
             output,
             include_unwanted_triples=include_unwanted_triples,
-            export_full=export_full,
-            export_external_inferences=export_external,
             extra_export_formats=extra_export_formats,
         )
 

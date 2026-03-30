@@ -149,14 +149,12 @@ def create(
 def merge(
     output: Path | None = None,
     *,
-    export_external: bool = False,
     extra_export_format: ExtraExportFormatOption = None,
 ) -> None:
     """Merge graphs as specified in the config file and save.
 
     Args:
         output: path for data to be saved to (defaults to `derived/merged.trig`)
-        export_external: whether to include external graphs in output
         extra_export_format: additional export format(s) (besides trig),
                                 can be specified multiple times
 
@@ -165,7 +163,6 @@ def merge(
     ds, external_graph_ids = merge_graphs(
         project,
         output=output or True,
-        export_external=export_external,
         extra_export_formats=extra_export_format,
     )
     echo_success(f"Merged graphs from `{project.path_self}`")
@@ -173,13 +170,11 @@ def merge(
 
 
 @app.command()
-def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious way to reduce
+def infer(
     backend: str = "owlrl",
     output: Path | None = None,
     *,
     include_unwanted_triples: bool = False,
-    export_full: bool = True,
-    export_external: bool = False,
     no_cache: bool = False,
     extra_export_format: ExtraExportFormatOption = None,
 ) -> tuple[Dataset, list[IdentifiedNode]]:
@@ -189,8 +184,6 @@ def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious wa
         backend: OWL inference engine to use
         output: output path for final inferences (None for project-based default)
         include_unwanted_triples: include all valid inferences, even unhelpful
-        export_full: export full file with inputs as well as inferences
-        export_external: include external graphs and inferences in exports
         no_cache: skip cache and re-run inference
         extra_export_format: additional export format(s) (besides trig),
                                 can be specified multiple times
@@ -218,7 +211,6 @@ def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious wa
     ds, external_graph_ids = merge_graphs(
         project,
         output=True,
-        export_external=export_external,
         extra_export_formats=extra_export_format,
     )
     project.owl_backend = backend
@@ -233,8 +225,6 @@ def infer(  # noqa: PLR0913 - comfortable we need these arguments, no obvious wa
         project,
         output,
         include_unwanted_triples=include_unwanted_triples,
-        export_full=export_full,
-        export_external_inferences=export_external,
         extra_export_formats=extra_export_format,
     )
     echo_success(f"Inference complete. {len(ds)} total triples in dataset")

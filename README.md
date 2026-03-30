@@ -71,11 +71,15 @@ Invoked automatically if another command is used and no project file exists alre
 
 ### `pythinfer merge`
 
+Loads all data into a single Dataset, which is also persisted as `derived/0-merged.trig`.
+
 Largely a helper command, not likely to need direct invocation.
 
 ### `pythinfer infer`
 
 Perform merging and inference as per the project specification, and export the resulting graphs to the output folder.
+
+Results persisted as `derived/1-combined-full.trig` and `derived/2-inferred-wanted.trig` which are used as cache.
 
 ### `pythinfer query`
 
@@ -137,7 +141,7 @@ All of these return a `Project` instance. The `from_yaml()` and `discover()` met
 
 ### Merging and Inference
 
-Access to the data is through the merge or infer methods, which return the merged and inferred datasets respectively. The inferred data will be loaded directly from disk if the exports are up-to-date, otherwise inference will be performed.
+Access to the data is through the merge or infer methods, which return the merged and inferred datasets respectively. The inferred data will be loaded directly from disk if the exports under `derived/` are up-to-date, otherwise inference will be performed.
 
 ```python
 # Load the source files, returning the merged dataset.
@@ -244,12 +248,12 @@ The project selection process is:
 
 ### Project Discovery
 
-If a project file is not explicitly specified, `pythinfer` should operate like `git` or `uv` - it should search for a `pythinfer.yaml` file in the current directory, and then in parent directories up to a limit.
+If a project file is not explicitly specified, `pythinfer` operates like `git` or `uv` in that it searches for a `pythinfer.yaml` file in the current directory, and then in parent directories up to a limit.
 
-The limit on ancestors should be:
+The limit on parent directories to search is:
 
 1. don't traverse below `$HOME` if that is in the ancestral line
-1. don't go beyond 10 folders
+1. don't go beyond 10 parent folders
 1. don't traverse across file systems
 
 ### Project Creation
@@ -260,17 +264,17 @@ The user can also specifically request the creation of a new project file with t
 
 ## Merging
 
-Merging of multiple graphs should preserve the source, ideally using the named graph of a quad.
+Merging of multiple data files preserves the source, using the named graph of the quads.
 
-Merging should distinguish 2 different types of input:
+Merging distinguishes 2 types of input:
 
 1. *Reference* data: things like OWL, SKOS, RDFS, which are introduced for inference purposes, but are not maintained by the person using the library, and the axioms of which can generally be assumed to exist for any application.
-   - the term reference is meant from the perspective of the user / application, not to invoke the notion of 'master' vs. 'reference' data.
-2. *Focus* data: ontologies being developed, vocabularies that are part of the current focus, and the data itself - all of this should always be preserved in the output, and is the 'focus' of the analysis.
+   - the term reference is meant from the perspective of the user / application, much like the traditional notion of 'reference' data being that which is maintained elsewhere, as opposed to 'master' data.
+2. *Focus* data: the graph data being developed, vocabularies (including ontologies) that are part of the current focus, as well as instance data - all of this should always be preserved in the output, and is the 'focus' of the inference.
 
 ## Inference
 
-By default an efficient OWL rule subset should be used, like OWL-RL.
+By default an efficient OWL rule subset should be used, currently OWL-RL.
 
 ### Invalid inferences
 
@@ -278,18 +282,18 @@ Some inferences, at least in `owlrl`, may be invalid in RDF - for instance, a tr
 
 ### Unwanted inferences
 
-In addition to the actually invalid inferences, many inferences are banal. For instance, every instance could be considered to be the `owl:sameAs` itself. This is semantically valid but useless to express as an explicit triple.
+In addition to the invalid inferences, many inferences are value-less. For example, every instance could be considered to be the `owl:sameAs` itself. This is semantically valid but useless to express as an explicit triple.
 
-Several classes of these unwanted inferences can be removed by this package. Some can be removed per-triple during inference, others need to be removed by considering the whole graph.
+Several classes of these unwanted inferences can be removed by this package. Some can be removed per-triple during inference, others need to be removed afterwards by considering the whole graph.
 
 #### Per-triple unwanted inferences
 
-These are unwanted inferences that can be identified by looking at each triple in isolation. Examples:
+These are unwanted inferences that can be identified by looking at each triple in isolation:
 
+1. redundant reflexives, such as `ex:thing owl:sameAs ex:thing`
+1. many declarations relating to `owl:Thing`, e.g. `ex:thing rdf:type owl:Thing`
+1. declarations that `owl:Nothing` is a subclass of another class (NB: the inverse is *not* unwanted as it indicates a contradiction)
 1. triples with an empty string as object
-2. redundant reflexives, such as `ex:thing owl:sameAs ex:thing`
-3. many declarations relating to `owl:Thing`, e.g. `ex:thing rdf:type owl:Thing`
-4. declarations that `owl:Nothing` is a subclass of another class (NB: the inverse is *not* unwanted as it indicates a contradiction)
 
 #### Whole-graph unwanted inferences
 
@@ -299,7 +303,7 @@ These are unwanted inferences that can only be identified by considering the who
    - blank nodes are often used for complex subClass or range or domain expressions
    - where this occurs but the declaration of the blank node is not included in the final output, the blank node is useless and we are better off removing any triples that refer to it
    - a good example of this is `skos:member` which uses blank nodes to express that the domain and range are the *union* of `skos:Concept` and `skos:Collection`
-   - for now, blank node 'declaration' is defined as any triple where the blank node is the subject
+   - for now, a blank node 'declaration' is defined as any triple where the blank node is the subject
 
 ### Inference Process
 
@@ -310,26 +314,25 @@ Steps:
     - Maintain list of which named graphs are 'reference'
     - output:        `merged`
     - consequence:   `current = merged`
-2. **Generate reference inferences** by running RDFS/OWL-RL engine over 'reference' input data[^1]
+2. **Generate reference inferences** by running RDFS/OWL-RL inference over 'reference' input data
+    - Note that inference is backend dependent, and will include the removal of *invalid* triples that may result, e.g. from `owlrl`.
     - output:        `inferences_reference_owl`
-3. **Generate full inferences** by running RDFS/OWL-RL inference over all data so far[^1]
+3. **Generate full inferences** by running RDFS/OWL-RL inference over all data so far
+    - See Note for Step 2.
     - output:        `inferences_full_owl`
     - consequence:   `current += inferences_full_owl`
-4. **Run heuristics**[^2] over all data
+4. **Run heuristics** over all data
     - output:        `inferences_sparql` + `inferences_python`
     - consequence:   `current += inferences_sparql` + `inferences_python`
 5. **Repeat steps 3 through 4** until no new triples are generated, or limit reached
     - consequence:   `combined_full = current`
-6. **Subtract reference data and inferences** from the current graph[^4]
+6. **Subtract reference data and reference inferences** from the current graph
+    - Note: this step logically applies, but in the `owlrl` implementation we can simply avoid including the reference_owl_inferences graph in the output, since `owlrl` will not generate inferences that already exist.
     - consequence:   `current -= (reference_data + inferences_reference_owl)`
     - consequence:   `combined_focus = current`
-7. Subtract all 'unwanted' inferences from result[^3]
+7. **Subtract all 'unwanted' inferences** from result
+    - Note: unwanted inferences are those that are semantically valid but not useful, see below.
     - consequence:   `combined_wanted = current - inferences_unwanted`
-
-[^1]: inference is backend dependent, and will include the removal of *invalid* triples that may result, e.g. from `owlrl`
-[^2]: See below for heuristics.
-[^3]: unwanted inferences are those that are semantically valid but not useful, see below
-[^4]: this step logically applies, but in the `owlrl` implementation we can simply avoid including the reference_owl_inferences graph in the output, since `owlrl` will not generate inferences that already exist.
 
 ### Backends
 
