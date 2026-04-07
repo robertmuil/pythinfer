@@ -21,7 +21,12 @@ from rdflib import (
 )
 from rdflib.query import ResultRow
 
-from pythinfer.inout import Query, export_dataset, load_sparql_inference_queries
+from pythinfer.inout import (
+    Query,
+    export_dataset,
+    export_provenance,
+    load_sparql_inference_queries,
+)
 from pythinfer.project import (
     COMBINED_FILESTEM,
     INFERRED_FILESTEM,
@@ -518,11 +523,19 @@ def run_inference_backend(
     output_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
     project.persist_if_absent()
 
-    output_ds = DatasetView(ds, all_external_ids).invert()
+    # Export combined output (cache file) - includes provenance
     export_dataset(
-        output_ds,
+        ds,
         output_file,
         formats=["trig", *(extra_export_formats or [])],
+        exclude_graphs=[*all_external_ids],
+    )
+
+    # Export provenance separately
+    provenance_file = output_file.with_stem(f"{output_file.stem}-provenance")
+    export_provenance(
+        ds.graph(project.provenance_gid),
+        provenance_file,
     )
 
     output_file = output or project.path_output / f"{INFERRED_FILESTEM}.trig"

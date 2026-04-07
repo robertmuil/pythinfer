@@ -1,0 +1,12 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix pythinfer: <http://pythinfer.local/> .
+
+@base <http://pythinfer.local/eg0-basic/file/> .
+
+
+<basic-data.ttl> a pythinfer:SourceGraph ;
+    dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg0-basic/basic-data.ttl> ;
+    .
+<basic-model.ttl> a pythinfer:SourceGraph ;
+    dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg0-basic/basic-model.ttl> ;
+    .

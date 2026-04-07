@@ -51,9 +51,3 @@
 
     ex:Eve a ex:Person .
 }
-
-<provenance> {
-    <file/ancestors-data.ttl> a pythinfer:SourceGraph .
-    <file/ancestors-model.ttl> a pythinfer:SourceGraph .
-    <file/../../vocabs-external/skos.ttl> a pythinfer:SourceGraph .
-}

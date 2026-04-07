@@ -11,9 +11,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from rdflib import Dataset
+from rdflib import Dataset, Graph, IdentifiedNode
 
-from pythinfer.rdflibplus import reduce
+from pythinfer.rdflibplus import DatasetView, reduce
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ def export_dataset(
     dataset: Dataset,
     output_file: Path,
     formats: list[str] | None = None,
+    exclude_graphs: list[IdentifiedNode] | None = None,
 ) -> None:
     """Export a Dataset or Graph to file(s) in specified format(s).
 
@@ -36,9 +37,15 @@ def export_dataset(
         output_file: Path template for output files (determines base name and directory)
         formats: List of export formats (default: ["trig"]).
                 Examples: ["trig"], ["ttl"], ["ttl", "xml", "n3"], etc.
+        exclude_graphs: List of graph identifiers to exclude from export (default: None).
+                If provided, only graphs NOT in this list will be exported.
 
     """
     output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Filter dataset if exclude_graphs is provided
+    if exclude_graphs:
+        dataset = DatasetView(dataset, exclude_graphs).invert()
 
     # Determine file extension based on format
     format_to_ext = {
@@ -76,6 +83,23 @@ def export_dataset(
             )
 
         logger.info("Exported %d triples to %s", len(dataset), fmt_output_file)
+
+
+def export_provenance(
+    g: Graph,
+    output_file: Path,
+) -> None:
+    """Export the provenance graph to a TTL file.
+
+    Args:
+        g: The Graph to export provenance from
+        output_file: Path template for output files (determines base name and directory)
+        formats: List of export formats (default: ["trig"]).
+                Examples: ["trig"], ["ttl"], ["ttl", "xml", "n3"], etc.
+
+    """
+    g.serialize(destination=str(output_file), format="ttl", canon=True)
+
 
 
 @dataclass
