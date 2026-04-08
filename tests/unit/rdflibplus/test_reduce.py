@@ -8,8 +8,8 @@ from pythinfer.rdflibplus import DatasetView, reduce
 def test_reduce() -> None:
     """Test that reduce works."""
     ds = Dataset()
-    g1 = Graph(ds.store, ds.identifier + "g1")
-    g2 = Graph(ds.store, ds.identifier + "g2")
+    g1 = Graph(ds.store, "g1")
+    g2 = Graph(ds.store, "g2")
     ex = Namespace("http://example.org/")
     g1.add((ex.s1, ex.p1, Literal("o1")))
     g1.add((ex.s2, ex.p2, Literal("o2")))
