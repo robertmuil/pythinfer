@@ -75,7 +75,7 @@ def merge_graphs(
             ds,
             output_file,
             formats=["trig", *(extra_export_formats or [])],
-            exclude_graphs=[project.provenance_gid],
+            exclude_graphs=[project.provenance_gid, *external_gids],
         )
 
         # Export provenance separately
