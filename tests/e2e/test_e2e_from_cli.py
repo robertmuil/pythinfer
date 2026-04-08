@@ -128,22 +128,20 @@ def test_cli_command(
         )
 
     # --- Check provenance file ---
-    expected_provenance_path = project_dir / "expected" / "expected-0-provenance.ttl"
+    expected_provenance_filename = (
+        "expected-0-merged-provenance.ttl"
+        if command == "merge"
+        else "expected-1-inferred-provenance.ttl"
+    )
+    expected_provenance_path = project_dir / "expected" / expected_provenance_filename
     assert expected_provenance_path.exists(), (
         f"Expected provenance file not found: {expected_provenance_path}"
     )
 
-    # Determine actual provenance file path based on command
-    if command == "merge":
-        # merge writes provenance next to its output
-        actual_provenance_path = actual_file_path.with_stem(
-            f"{actual_file_path.stem}-provenance"
-        )
-    else:
-        # infer writes merge-step provenance to default project output dir
-        actual_provenance_path = (
-            project_dir / "derived" / "pythinfer" / f"{MERGED_FILESTEM}-provenance.trig"
-        )
+    # Determine actual provenance file path
+    actual_provenance_path = actual_file_path.with_stem(
+        f"{actual_file_path.stem}-provenance"
+    ).with_suffix(".ttl")
 
     assert actual_provenance_path.exists(), (
         f"Provenance file not created: {actual_provenance_path}"
@@ -158,19 +156,8 @@ def test_cli_command(
     expected_prov_graph.parse(data=expected_prov_text, format="turtle")
 
     # Load actual provenance (trig format, extract the provenance named graph)
-    actual_prov_ds = Dataset()
-    actual_prov_ds.parse(actual_provenance_path, format="trig")
-
-    # The provenance graph is the only named graph in the provenance file
-    actual_prov_graphs = [
-        g for g in actual_prov_ds.graphs()
-        if str(g.identifier) != "urn:x-rdflib:default"
-    ]
-    assert len(actual_prov_graphs) == 1, (
-        f"Expected exactly one named graph in provenance file, "
-        f"got: {[g.identifier for g in actual_prov_graphs]}"
-    )
-    actual_prov_graph = actual_prov_graphs[0]
+    actual_prov_graph = Graph()
+    actual_prov_graph.parse(actual_provenance_path, format="turtle")
 
     _assert_graphs_isomorphic(
         expected_prov_graph,

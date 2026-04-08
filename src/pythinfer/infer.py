@@ -434,16 +434,9 @@ def run_inference_backend(
     g_provenance.add(
         (iri_owl, PYTHINFER_NS["inferenceEngine"], Literal(project.owl_backend))
     )
-
+    g_provenance.add((iri_sparql, RDF.type, PYTHINFER_NS["InferenceGraph"]))
     g_provenance.add(
-        (iri_sparql, RDF.type, PYTHINFER_NS["InferenceGraph"])
-    )
-    g_provenance.add(
-        (
-            iri_sparql,
-            PYTHINFER_NS["inferenceEngine"],
-            Literal("SPARQL CONSTRUCT"),
-        )
+        (iri_sparql, PYTHINFER_NS["inferenceEngine"], Literal("SPARQL CONSTRUCT"))
     )
     previous_triple_count = len(ds)  # Count triples in entire dataset
 
@@ -518,18 +511,12 @@ def run_inference_backend(
     output_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
     project.persist_if_absent()
 
-    # Export combined output (cache file) - includes provenance
+    # Export combined output (cache file) - includes provenance in the dataset
     export_dataset(
         ds,
         output_file,
         formats=["trig", *(extra_export_formats or [])],
         exclude_graphs=[*all_external_ids],
-    )
-
-    # Export provenance separately
-    export_provenance(
-        ds.graph(project.provenance_gid),
-        output_file,
     )
 
     output_file = output or project.path_output / f"{INFERRED_FILESTEM}.trig"
@@ -540,6 +527,12 @@ def run_inference_backend(
         output_ds,
         output_file,
         formats=["trig", *(extra_export_formats or [])],
+    )
+
+    # Export provenance separately
+    export_provenance(
+        g_provenance,
+        output_file,
     )
 
     # Return all external graph IDs (originals plus external inferences)
