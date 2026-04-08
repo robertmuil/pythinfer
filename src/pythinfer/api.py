@@ -88,6 +88,7 @@ class Project(ProjectSpec):
         self,
         *,
         output: Path | bool = True,
+        include_provenance: bool = False,
         extra_export_formats: list[str] | None = None,
     ) -> Dataset:
         """Merge source files as specified in the project configuration.
@@ -98,6 +99,8 @@ class Project(ProjectSpec):
         Args:
             output: False to skip persistence, True for project default path,
                 or an explicit Path.
+            include_provenance: If True, keep the provenance named graph in
+                the returned Dataset.  Defaults to False.
             extra_export_formats: Additional export formats beyond trig
                 (e.g., ``["ttl", "jsonld"]``).
 
@@ -110,6 +113,8 @@ class Project(ProjectSpec):
             output=output,
             extra_export_formats=extra_export_formats,
         )
+        if not include_provenance:
+            ds.remove_graph(self.provenance_gid)
         return ds
 
     def infer(
@@ -117,6 +122,7 @@ class Project(ProjectSpec):
         *,
         backend: str | None = None,
         output: Path | None = None,
+        include_provenance: bool = False,
         include_unwanted_triples: bool = False,
         no_cache: bool = False,
         extra_export_formats: list[str] | None = None,
@@ -132,6 +138,8 @@ class Project(ProjectSpec):
                 ``"owlrl"``).  Overrides ``self.owl_backend`` for this run.
             output: Path for the export file(s), or None for the
                 project default.
+            include_provenance: If True, keep the provenance named graph in
+                the returned Dataset.  Defaults to False.
             include_unwanted_triples: Keep all valid inferences, including
                 unhelpful ones that are normally filtered.
             no_cache: Skip cache and re-run the full pipeline.  Automatically
@@ -149,6 +157,8 @@ class Project(ProjectSpec):
 
         ds = None if no_cache else load_cache(self)
         if ds is not None:
+            if not include_provenance:
+                ds.remove_graph(self.provenance_gid)
             return ds
 
         ds, external_graph_ids = merge_graphs(
@@ -169,4 +179,6 @@ class Project(ProjectSpec):
             extra_export_formats=extra_export_formats,
         )
 
+        if not include_provenance:
+            ds.remove_graph(self.provenance_gid)
         return ds
