@@ -7,7 +7,6 @@ from rdflib import DCTERMS, RDF, Dataset, IdentifiedNode, URIRef
 
 from pythinfer.inout import export_dataset, export_provenance
 from pythinfer.project import MERGED_FILESTEM, PYTHINFER_NS, ProjectSpec
-from pythinfer.rdflibplus import DatasetView
 
 logger = logging.getLogger(__name__)
 info = logger.info
@@ -80,10 +79,9 @@ def merge_graphs(
         )
 
         # Export provenance separately
-        provenance_file = output_file.with_stem(f"{output_file.stem}-provenance")
         export_provenance(
             ds.graph(project.provenance_gid),
-            provenance_file,
+            output_file,
         )
 
     return ds, external_gids

@@ -527,10 +527,9 @@ def run_inference_backend(
     )
 
     # Export provenance separately
-    provenance_file = output_file.with_stem(f"{output_file.stem}-provenance")
     export_provenance(
         ds.graph(project.provenance_gid),
-        provenance_file,
+        output_file,
     )
 
     output_file = output or project.path_output / f"{INFERRED_FILESTEM}.trig"
