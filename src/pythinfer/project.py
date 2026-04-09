@@ -446,13 +446,12 @@ def create_project(
     # Ensure output directory exists
     _output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Find all RDF files, excluding the 'derived' directory
+    # Find all RDF files, excluding the 'derived' and 'expected' folders
     rdf_files: list[Path] = []
     for rdf_ext in ("*.ttl", "*.rdf"):
-        # Search recursively but exclude 'derived' directory
         for rdf_file in _scan_dir.rglob(rdf_ext):
-            # Skip files in 'derived' directory
-            if "derived" in rdf_file.parts:
+            # Skip files in 'derived' or 'expected' directories
+            if "derived" in rdf_file.parts or "expected" in rdf_file.parts:
                 continue
             # Store relative paths from scan directory
             rel_path = rdf_file.relative_to(_scan_dir)

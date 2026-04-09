@@ -1,0 +1,15 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix pythinfer: <http://pythinfer.local/> .
+
+@base <http://pythinfer.local/eg1-ancestors/> .
+
+
+<file/../../vocabs-external/skos.ttl> a pythinfer:SourceGraph ;
+    dcterms:source <file:///$PROJ_FOLDER/pythinfer/vocabs-external/skos.ttl> ;
+    .
+<file/ancestors-data.ttl> a pythinfer:SourceGraph ;
+    dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg1-ancestors/ancestors-data.ttl> ;
+    .
+<file/ancestors-model.ttl> a pythinfer:SourceGraph ;
+    dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg1-ancestors/ancestors-model.ttl> ;
+    .

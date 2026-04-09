@@ -52,6 +52,11 @@ dev = ["pytest>=9.0.1", "pytest-cov>=7.0.0"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+filterwarnings = [
+    "ignore:Dataset\\.contexts is deprecated:DeprecationWarning",
+    "ignore:Dataset\\.default_context is deprecated:DeprecationWarning",
+    "ignore:ConjunctiveGraph is deprecated:DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["src/pythinfer"]

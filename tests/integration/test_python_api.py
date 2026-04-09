@@ -60,6 +60,22 @@ class TestProjectMerge:
         ds = discovered_project.merge()
         assert len(list(ds.graphs())) > 0
 
+    def test_merge_excludes_provenance_by_default(
+        self, discovered_project: Project
+    ) -> None:
+        """merge() should not include the provenance graph by default."""
+        ds = discovered_project.merge()
+        graph_ids = {g.identifier for g in ds.graphs()}
+        assert discovered_project.provenance_gid not in graph_ids
+
+    def test_merge_includes_provenance_when_requested(
+        self, discovered_project: Project
+    ) -> None:
+        """merge(include_provenance=True) should keep the provenance graph."""
+        ds = discovered_project.merge(include_provenance=True)
+        graph_ids = {g.identifier for g in ds.graphs()}
+        assert discovered_project.provenance_gid in graph_ids
+
 
 class TestProjectInfer:
     """Test Project.infer() method."""
@@ -84,6 +100,22 @@ class TestProjectInfer:
         ds_merged = discovered_project.merge()
         ds_inferred = discovered_project.infer()
         assert len(ds_inferred) > len(ds_merged)
+
+    def test_infer_excludes_provenance_by_default(
+        self, discovered_project: Project
+    ) -> None:
+        """infer() should not include the provenance graph by default."""
+        ds = discovered_project.infer()
+        graph_ids = {g.identifier for g in ds.graphs()}
+        assert discovered_project.provenance_gid not in graph_ids
+
+    def test_infer_includes_provenance_when_requested(
+        self, discovered_project: Project
+    ) -> None:
+        """infer(include_provenance=True) should keep the provenance graph."""
+        ds = discovered_project.infer(include_provenance=True)
+        graph_ids = {g.identifier for g in ds.graphs()}
+        assert discovered_project.provenance_gid in graph_ids
 
 
 class TestQueryOnInferredDataset:

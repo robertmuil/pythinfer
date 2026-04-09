@@ -1,15 +1,8 @@
 @prefix ex: <http://example.org/ancestor/> .
 
 @base <http://pythinfer.local/eg1-ancestors/> .
+
 <inferences/owl> {
-    ex:David ex:childOf ex:Bob ;
-        ex:descendantOf ex:Alice,
-            ex:Bob .
-
-    ex:Eve ex:childOf ex:Carol ;
-        ex:descendantOf ex:Alice,
-            ex:Carol .
-
     ex:Bob ex:ancestorOf ex:David ;
         ex:childOf ex:Alice ;
         ex:descendantOf ex:Alice .
@@ -18,11 +11,18 @@
         ex:childOf ex:Alice ;
         ex:descendantOf ex:Alice .
 
+    ex:David ex:childOf ex:Bob ;
+        ex:descendantOf ex:Alice,
+            ex:Bob .
+
+    ex:Eve ex:childOf ex:Carol ;
+        ex:descendantOf ex:Alice,
+            ex:Carol .
+
     ex:Alice ex:ancestorOf ex:Bob,
             ex:Carol,
             ex:David,
-            ex:Eve .
-
-    ex:Alice ex:grandparentOf ex:David,
+            ex:Eve ;
+        ex:grandparentOf ex:David,
             ex:Eve .
 }

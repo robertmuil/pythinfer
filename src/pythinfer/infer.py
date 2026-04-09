@@ -21,7 +21,12 @@ from rdflib import (
 )
 from rdflib.query import ResultRow
 
-from pythinfer.inout import Query, export_dataset, load_sparql_inference_queries
+from pythinfer.inout import (
+    Query,
+    export_dataset,
+    export_provenance,
+    load_sparql_inference_queries,
+)
 from pythinfer.project import (
     COMBINED_FILESTEM,
     INFERRED_FILESTEM,
@@ -309,7 +314,6 @@ def _run_inference_iteration(
     g_inferences_owl: Graph,
     g_inferences_sparql: Graph,
     sparql_queries: list[Query],
-    iteration: int,
 ) -> tuple[int, int]:
     """Run one iteration of inference (steps 3-4).
 
@@ -318,7 +322,6 @@ def _run_inference_iteration(
         g_inferences_owl: Graph to accumulate OWL inferences into.
         g_inferences_sparql: Graph to accumulate SPARQL inferences into.
         sparql_queries: List of SPARQL CONSTRUCT queries for heuristics.
-        iteration: Current iteration number (for logging).
 
     Returns:
         Tuple of (triples_added_owl, triples_added_sparql).
@@ -330,8 +333,6 @@ def _run_inference_iteration(
     if ds.store != g_inferences_sparql.store:
         msg = "Graphs must share the same store"
         raise ValueError(msg)
-
-    info("--- Iteration %d ---", iteration)
 
     # Step 3: Generate full inferences over current state
     info("  Step 3: Running OWL-RL inference over current state...")
@@ -433,25 +434,18 @@ def run_inference_backend(
     g_provenance.add(
         (iri_owl, PYTHINFER_NS["inferenceEngine"], Literal(project.owl_backend))
     )
-
+    g_provenance.add((iri_sparql, RDF.type, PYTHINFER_NS["InferenceGraph"]))
     g_provenance.add(
-        (iri_sparql, RDF.type, PYTHINFER_NS["InferenceGraph"])
+        (iri_sparql, PYTHINFER_NS["inferenceEngine"], Literal("SPARQL CONSTRUCT"))
     )
-    g_provenance.add(
-        (
-            iri_sparql,
-            PYTHINFER_NS["inferenceEngine"],
-            Literal("SPARQL CONSTRUCT"),
-        )
-    )
-    iteration = 0
     previous_triple_count = len(ds)  # Count triples in entire dataset
 
-    while iteration < MAX_REASONING_ROUNDS:
-        iteration += 1
+    for iteration in range(MAX_REASONING_ROUNDS):
+
+        info("--- Iteration %d ---", iteration)
 
         triples_added_owl, triples_added_sparql = _run_inference_iteration(
-            ds, g_inferences_owl, g_inferences_sparql, sparql_queries, iteration
+            ds, g_inferences_owl, g_inferences_sparql, sparql_queries
         )
 
         # Check for convergence
@@ -470,8 +464,7 @@ def run_inference_backend(
             break
 
         previous_triple_count = current_triple_count
-
-    if iteration >= MAX_REASONING_ROUNDS:
+    else:
         logger.warning("  Maximum iterations (%d) reached", MAX_REASONING_ROUNDS)
 
     info(
@@ -518,11 +511,12 @@ def run_inference_backend(
     output_file = project.path_output / f"{COMBINED_FILESTEM}.trig"
     project.persist_if_absent()
 
-    output_ds = DatasetView(ds, all_external_ids).invert()
+    # Export combined output (cache file) - includes provenance in the dataset
     export_dataset(
-        output_ds,
+        ds,
         output_file,
         formats=["trig", *(extra_export_formats or [])],
+        exclude_graphs=[*all_external_ids],
     )
 
     output_file = output or project.path_output / f"{INFERRED_FILESTEM}.trig"
@@ -533,6 +527,12 @@ def run_inference_backend(
         output_ds,
         output_file,
         formats=["trig", *(extra_export_formats or [])],
+    )
+
+    # Export provenance separately
+    export_provenance(
+        g_provenance,
+        output_file,
     )
 
     # Return all external graph IDs (originals plus external inferences)

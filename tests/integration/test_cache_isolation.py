@@ -203,4 +203,8 @@ class TestCacheIsolation:
 
         # Second run should load from cache path successfully.
         ds_cached = project.infer()
-        assert len(ds_cached) == len(cache)
+        # infer() strips provenance by default; cache includes it.
+        # Use include_provenance=True for a fair comparison.
+        ds_cached_with_prov = project.infer(include_provenance=True)
+        assert len(ds_cached_with_prov) == len(cache)
+        assert len(ds_cached) < len(cache)

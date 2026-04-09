@@ -1,8 +1,6 @@
 @prefix : <http://example.org/> .
-@prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix pythinfer: <http://pythinfer.local/> .
 
 @base <http://pythinfer.local/eg0-basic/> .
 
@@ -18,13 +16,4 @@
 
 <file/basic-model.ttl> {
     foaf:knows a owl:SymmetricProperty .
-}
-
-<provenance> {
-    <file/basic-data.ttl> a pythinfer:SourceGraph ;
-        dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg0-basic/basic-data.ttl> ;
-        .
-    <file/basic-model.ttl> a pythinfer:SourceGraph ;
-        dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg0-basic/basic-model.ttl> ;
-        .
 }

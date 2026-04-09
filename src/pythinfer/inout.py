@@ -11,37 +11,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from rdflib import Dataset
+from rdflib import Dataset, Graph, IdentifiedNode
 
-from pythinfer.rdflibplus import reduce
+from pythinfer.rdflibplus import DatasetView, reduce
 
 logger = logging.getLogger(__name__)
 
-
-def export_dataset(
-    dataset: Dataset,
-    output_file: Path,
-    formats: list[str] | None = None,
-) -> None:
-    """Export a Dataset or Graph to file(s) in specified format(s).
-
-    Exports to one or more formats. For each format, the output file path stem
-    is used with the appropriate file extension determined by the format.
-
-    For non-quad-aware formats, the Dataset is merged into a single Graph before export,
-    while trig/trix/nquads formats natively support multiple named graphs.
-
-    Args:
-        dataset: The Dataset or Graph object to export
-        output_file: Path template for output files (determines base name and directory)
-        formats: List of export formats (default: ["trig"]).
-                Examples: ["trig"], ["ttl"], ["ttl", "xml", "n3"], etc.
-
-    """
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-
-    # Determine file extension based on format
-    format_to_ext = {
+FORMAT_TO_EXT = {
         "ttl": "ttl",
         "turtle": "ttl",
         "xml": "rdf",
@@ -57,7 +33,37 @@ def export_dataset(
         "json-ld": "json-ld",
     }
 
-    exts = [format_to_ext.get(f.lower(), f.lower()) for f in (formats or ["trig"])]
+def export_dataset(
+    dataset: Dataset,
+    output_file: Path,
+    formats: list[str] | None = None,
+    exclude_graphs: Sequence[IdentifiedNode] = (),
+) -> None:
+    """Export a Dataset or Graph to file(s) in specified format(s).
+
+    Exports to one or more formats. For each format, the output file path stem
+    is used with the appropriate file extension determined by the format.
+
+    For non-quad-aware formats, the Dataset is merged into a single Graph before export,
+    while trig/trix/nquads formats natively support multiple named graphs.
+
+    Args:
+        dataset: The Dataset or Graph object to export
+        output_file: Path template for output files (determines base name and directory)
+        formats: List of export formats (default: ["trig"]).
+                Examples: ["trig"], ["ttl"], ["ttl", "xml", "n3"], etc.
+        exclude_graphs: Graph identifiers to exclude from export (default: none).
+                If provided, only graphs NOT in this list will be exported.
+
+    """
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Filter dataset if exclude_graphs is provided
+    if exclude_graphs:
+        dataset = DatasetView(dataset, exclude_graphs).invert()
+
+    # Determine file extension based on format
+    exts = [FORMAT_TO_EXT.get(f.lower(), f.lower()) for f in (formats or ["trig"])]
 
     combined_graph = None
     for ext in exts:
@@ -76,6 +82,36 @@ def export_dataset(
             )
 
         logger.info("Exported %d triples to %s", len(dataset), fmt_output_file)
+
+
+def export_provenance(
+    g: Graph,
+    main_file: Path,
+    formats: Sequence[str] = ["ttl"],
+) -> None:
+    """Export the provenance graph based on the file path of the main export.
+
+    Provenance is expected to always accompany a main export. It is exported separately
+    to avoid surprising consumers with extra triples in the main export which are not
+    part of the original input data nor can be inferred from it.
+
+    Args:
+        g: The Graph to export provenance from
+        main_file: Path template for output files (determines base name and directory)
+        formats: List of export formats (default: ["ttl"]).
+                Examples: ["trig"], ["ttl"], ["ttl", "xml", "n3"], etc.
+
+    """
+    main_file.parent.mkdir(parents=True, exist_ok=True)
+
+    exts = [FORMAT_TO_EXT.get(f.lower(), f.lower()) for f in formats]
+    for ext in exts:
+        provenance_file = main_file.with_stem(
+            f"{main_file.stem}-provenance"
+        ).with_suffix("." + ext)
+        g.serialize(destination=str(provenance_file), format=ext, canon=True)
+
+        logger.info("Exported %d triples of provenance to %s", len(g), provenance_file)
 
 
 @dataclass

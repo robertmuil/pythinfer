@@ -1,0 +1,19 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix pythinfer: <http://pythinfer.local/> .
+
+@base <http://pythinfer.local/eg2-projects/> .
+
+<file/projects-data.ttl> a pythinfer:SourceGraph ;
+    dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg2-projects/projects-data.ttl> .
+
+<file/projects-model.ttl> a pythinfer:SourceGraph ;
+    dcterms:source <file:///$PROJ_FOLDER/pythinfer/example_projects/eg2-projects/projects-model.ttl> .
+
+<inferences/external> a pythinfer:InferenceGraph ;
+    pythinfer:inferenceEngine "owlrl" .
+
+<inferences/owl> a pythinfer:InferenceGraph ;
+    pythinfer:inferenceEngine "owlrl" .
+
+<inferences/sparql> a pythinfer:InferenceGraph ;
+    pythinfer:inferenceEngine "SPARQL CONSTRUCT" .

@@ -5,9 +5,8 @@ from pathlib import Path
 
 from rdflib import DCTERMS, RDF, Dataset, IdentifiedNode, URIRef
 
-from pythinfer.inout import export_dataset
+from pythinfer.inout import export_dataset, export_provenance
 from pythinfer.project import MERGED_FILESTEM, PYTHINFER_NS, ProjectSpec
-from pythinfer.rdflibplus import DatasetView
 
 logger = logging.getLogger(__name__)
 info = logger.info
@@ -71,12 +70,18 @@ def merge_graphs(
 
         project.persist_if_absent()
 
-        output_ds = DatasetView(ds, external_gids).invert()
-
+        # Export main output without provenance
         export_dataset(
-            output_ds,
+            ds,
             output_file,
             formats=["trig", *(extra_export_formats or [])],
+            exclude_graphs=[project.provenance_gid, *external_gids],
+        )
+
+        # Export provenance separately
+        export_provenance(
+            ds.graph(project.provenance_gid),
+            output_file,
         )
 
     return ds, external_gids

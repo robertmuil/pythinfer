@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from rdflib import DCTERMS, Dataset
+from rdflib import Dataset, Graph
 from rdflib.compare import graph_diff, isomorphic
 from typer.testing import CliRunner
 
@@ -11,6 +11,30 @@ from pythinfer.cli import app
 from pythinfer.project import INFERRED_FILESTEM, MERGED_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+def _assert_graphs_isomorphic(expected_graph: Graph, actual_graph: Graph,
+                               label: str) -> None:
+    """Assert two graphs are isomorphic, with a detailed diff on failure."""
+    if isomorphic(expected_graph, actual_graph):
+        return
+
+    in_both, in_expected_only, in_actual_only = graph_diff(
+        expected_graph,
+        actual_graph,
+    )
+
+    error_msg = [
+        f"{label}:",
+        f"\nTriples in both graphs: {len(in_both)}",
+        f"\nTriples only in expected ({len(in_expected_only)}):",
+    ]
+    if len(in_expected_only) > 0:
+        error_msg.append(in_expected_only.serialize(format="turtle"))
+    error_msg.append(f"\nTriples only in actual ({len(in_actual_only)}):")
+    if len(in_actual_only) > 0:
+        error_msg.append(in_actual_only.serialize(format="turtle"))
+    pytest.fail("\n".join(error_msg))
 
 
 @pytest.mark.parametrize(
@@ -97,28 +121,46 @@ def test_cli_command(
         expected_graph = expected_ds.graph(graph_id)
         actual_graph = actual_ds.graph(graph_id)
 
-        if graph_id.endswith("provenance"):
-            # Remove source information, as this will differ by execution environment
-            expected_graph.remove((None, DCTERMS.source, None))
-            actual_graph.remove((None, DCTERMS.source, None))
+        _assert_graphs_isomorphic(
+            expected_graph,
+            actual_graph,
+            f"Graphs with identifier {graph_id} are not isomorphic",
+        )
 
-        if not isomorphic(expected_graph, actual_graph):
-            # Compute the difference to show what's missing/extra
-            in_both, in_expected_only, in_actual_only = graph_diff(
-                expected_graph,
-                actual_graph,
-            )
+    # --- Check provenance file ---
+    expected_provenance_filename = (
+        "expected-0-merged-provenance.ttl"
+        if command == "merge"
+        else "expected-1-inferred-provenance.ttl"
+    )
+    expected_provenance_path = project_dir / "expected" / expected_provenance_filename
+    assert expected_provenance_path.exists(), (
+        f"Expected provenance file not found: {expected_provenance_path}"
+    )
 
-            error_msg = [
-                f"Graphs with identifier {graph_id} are not isomorphic:",
-                f"\nTriples in both graphs: {len(in_both)}",
-                f"\nTriples only in expected ({len(in_expected_only)}):",
-            ]
-            if len(in_expected_only) > 0:
-                error_msg.append(in_expected_only.serialize(format="turtle"))
+    # Determine actual provenance file path
+    actual_provenance_path = actual_file_path.with_stem(
+        f"{actual_file_path.stem}-provenance"
+    ).with_suffix(".ttl")
 
-            error_msg.append(f"\nTriples only in actual ({len(in_actual_only)}):")
-            if len(in_actual_only) > 0:
-                error_msg.append(in_actual_only.serialize(format="turtle"))
+    assert actual_provenance_path.exists(), (
+        f"Provenance file not created: {actual_provenance_path}"
+    )
 
-            pytest.fail("\n".join(error_msg))
+    # Load expected provenance, substituting $PROJ_FOLDER with actual path
+    proj_folder = str(PROJECT_ROOT.parent).lstrip("/")
+    expected_prov_text = expected_provenance_path.read_text()
+    expected_prov_text = expected_prov_text.replace("$PROJ_FOLDER", proj_folder)
+
+    expected_prov_graph = Graph()
+    expected_prov_graph.parse(data=expected_prov_text, format="turtle")
+
+    # Load actual provenance (trig format, extract the provenance named graph)
+    actual_prov_graph = Graph()
+    actual_prov_graph.parse(actual_provenance_path, format="turtle")
+
+    _assert_graphs_isomorphic(
+        expected_prov_graph,
+        actual_prov_graph,
+        "Provenance graphs are not isomorphic",
+    )
