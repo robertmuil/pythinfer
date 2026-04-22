@@ -58,10 +58,10 @@ with tempfile.TemporaryDirectory() as tmpdir:
         print("✅ Infer command succeeded")
 
     # Check output files
-    combined_trig = derived_dir / "1-combined-full.trig"
-    combined_jsonld = derived_dir / "1-combined-full.json-ld"
-    inferred_trig = derived_dir / "2-inferred-wanted.trig"
-    inferred_jsonld = derived_dir / "2-inferred-wanted.json-ld"
+    combined_trig = derived_dir / "2-combined.trig"
+    combined_jsonld = derived_dir / "2-combined.json-ld"
+    inferred_trig = derived_dir / "1-inferred.trig"
+    inferred_jsonld = derived_dir / "1-inferred.json-ld"
 
     print(f"  Combined TRIG file exists: {combined_trig.exists()}")
     print(f"  Combined JSONLD file exists: {combined_jsonld.exists()}")
@@ -92,8 +92,8 @@ with tempfile.TemporaryDirectory() as tmpdir:
         print("✅ Infer command (without extra format) succeeded")
 
     derived_dir2 = test_project2 / "derived"
-    jsonld_file = derived_dir2 / "2-inferred-wanted.json-ld"
-    trig_file = derived_dir2 / "2-inferred-wanted.trig"
+    jsonld_file = derived_dir2 / "1-inferred.json-ld"
+    trig_file = derived_dir2 / "1-inferred.trig"
 
     print(f"  TRIG file exists: {trig_file.exists()}")
     print(f"  JSONLD file exists: {jsonld_file.exists()}")

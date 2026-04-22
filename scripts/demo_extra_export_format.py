@@ -48,10 +48,10 @@ with tempfile.TemporaryDirectory() as tmpdir:
     output_files = [
         "0-merged.trig",
         "0-merged.n3",
-        "1-combined-full.trig",
-        "1-combined-full.n3",
-        "2-inferred-wanted.trig",
-        "2-inferred-wanted.n3",
+        "1-inferred.trig",
+        "1-inferred.n3",
+        "2-combined.trig",
+        "2-combined.n3",
     ]
 
     for filename in output_files:
