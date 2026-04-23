@@ -380,3 +380,45 @@ ex:Thing a ex:Class .
         assert "reference" in updated
         assert len(updated["reference"]) == 1
         assert updated["custom_key"] == "should be preserved"
+
+    def test_cli_appends_to_aliased_reference_key(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """CLI appends to existing aliased key (e.g. external-vocabs) instead of creating a separate reference key."""
+        monkeypatch.chdir(tmp_path)
+
+        imported = tmp_path / "vocab.ttl"
+        _write_ttl(imported, """\
+@prefix ex: <http://example.org/> .
+ex:Thing a ex:Class .
+""")
+        import_url = imported.resolve().as_uri()
+
+        model = tmp_path / "model.ttl"
+        _write_ttl(model, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/ont> owl:imports <{import_url}> .
+""")
+
+        data = tmp_path / "data.ttl"
+        _write_ttl(data, """\
+@prefix ex: <http://example.org/> .
+ex:a a ex:Thing .
+""")
+
+        # Use external-vocabs alias in the YAML
+        project_file = tmp_path / "pythinfer.yaml"
+        project_file.write_text(
+            "name: test\nfocus:\n- data.ttl\nexternal-vocabs:\n- model.ttl\n"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["-p", str(project_file), "resolve-imports"])
+
+        assert result.exit_code == 0
+        assert "Resolved 1 import(s)" in result.output
+
+        updated = yaml.safe_load(project_file.read_text())
+        # Should append to external-vocabs, not create a new reference key
+        assert "external-vocabs" in updated
+        assert "reference" not in updated
+        assert "model.ttl" in updated["external-vocabs"]
+        assert len(updated["external-vocabs"]) == 2

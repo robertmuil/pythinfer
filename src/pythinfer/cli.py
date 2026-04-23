@@ -183,7 +183,12 @@ def resolve_imports(
         raw = yaml.safe_load(f)
 
     project_dir = project.path_self.parent
-    existing_refs = [str(r) for r in raw.get("reference", [])]
+
+    # Find which key the YAML already uses for references (may be an alias)
+    _reference_aliases = ("reference", "external-vocabs", "external_vocabs", "paths_vocab_ext")
+    ref_key = next((k for k in _reference_aliases if k in raw), "reference")
+
+    existing_refs = [str(r) for r in raw.get(ref_key, [])]
     for local_path in resolved.values():
         try:
             rel = str(local_path.relative_to(project_dir))
@@ -191,7 +196,7 @@ def resolve_imports(
             rel = str(local_path)
         if rel not in existing_refs:
             existing_refs.append(rel)
-    raw["reference"] = existing_refs
+    raw[ref_key] = existing_refs
 
     with project.path_self.open("w") as f:
         yaml.dump(raw, f)
