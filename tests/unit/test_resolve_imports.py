@@ -1,11 +1,14 @@
 """Unit tests for owl:imports resolution."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
 from rdflib import OWL, Graph, Namespace, URIRef
+from typer.testing import CliRunner
 
+from pythinfer.cli import app
 from pythinfer.project import ProjectSpec
 from pythinfer.resolve_imports import _sanitize_url_to_filename, resolve_imports
 
@@ -185,3 +188,195 @@ ex:Thing a ex:Class .
         result2 = resolve_imports(project, download_dir=download_dir)
         assert cached_path.stat().st_mtime == mtime_before
         assert len(result2) == 1
+
+    def test_skips_unfetchable_url(self, tmp_path: Path) -> None:
+        """Unfetchable URLs are skipped with a warning, not an error."""
+        data = tmp_path / "data.ttl"
+        _write_ttl(data, """\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/ont> owl:imports <http://does-not-exist.invalid/ontology> .
+""")
+
+        project = ProjectSpec(
+            name="test",
+            focus=[data],
+            path_self=tmp_path / "pythinfer.yaml",
+        )
+        result = resolve_imports(project, download_dir=tmp_path / "imports")
+
+        assert result == {}
+        assert not (tmp_path / "imports" / "url-mapping.yaml").exists()
+
+    def test_duplicate_import_url_across_files(self, tmp_path: Path) -> None:
+        """Same owl:imports URL in multiple files is resolved only once."""
+        imported = tmp_path / "vocab.ttl"
+        _write_ttl(imported, """\
+@prefix ex: <http://example.org/> .
+ex:Thing a ex:Class .
+""")
+        import_url = imported.resolve().as_uri()
+
+        data1 = tmp_path / "data1.ttl"
+        _write_ttl(data1, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/ont1> owl:imports <{import_url}> .
+""")
+        data2 = tmp_path / "data2.ttl"
+        _write_ttl(data2, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/ont2> owl:imports <{import_url}> .
+""")
+
+        project = ProjectSpec(
+            name="test",
+            focus=[data1, data2],
+            path_self=tmp_path / "pythinfer.yaml",
+        )
+        result = resolve_imports(project, download_dir=tmp_path / "imports")
+
+        assert len(result) == 1
+
+    def test_no_mapping_file_when_no_imports(self, tmp_path: Path) -> None:
+        """No url-mapping.yaml is created when there are no imports."""
+        data = tmp_path / "data.ttl"
+        _write_ttl(data, """\
+@prefix ex: <http://example.org/> .
+ex:a ex:b ex:c .
+""")
+        project = ProjectSpec(
+            name="test",
+            focus=[data],
+            path_self=tmp_path / "pythinfer.yaml",
+        )
+        resolve_imports(project, download_dir=tmp_path / "imports")
+
+        assert not (tmp_path / "imports" / "url-mapping.yaml").exists()
+
+    def test_skips_already_resolved_url_from_closure(self, tmp_path: Path) -> None:
+        """A URL discovered via closure that was already resolved is skipped."""
+        # shared is imported by both level1a and level1b
+        shared = tmp_path / "shared.ttl"
+        _write_ttl(shared, """\
+@prefix ex: <http://example.org/> .
+ex:Shared a ex:Class .
+""")
+        shared_url = shared.resolve().as_uri()
+
+        level1a = tmp_path / "a.ttl"
+        _write_ttl(level1a, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/a> owl:imports <{shared_url}> .
+""")
+        level1b = tmp_path / "b.ttl"
+        _write_ttl(level1b, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/b> owl:imports <{shared_url}> .
+""")
+
+        # data imports both a and b, which both import shared
+        data = tmp_path / "data.ttl"
+        url_a = level1a.resolve().as_uri()
+        url_b = level1b.resolve().as_uri()
+        _write_ttl(data, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/ont> owl:imports <{url_a}> , <{url_b}> .
+""")
+
+        project = ProjectSpec(
+            name="test",
+            focus=[data],
+            path_self=tmp_path / "pythinfer.yaml",
+        )
+        result = resolve_imports(project, download_dir=tmp_path / "imports")
+
+        # shared_url should appear once despite being discovered from both a and b
+        assert len(result) == 3
+        assert shared_url in result
+
+    def test_imports_from_reference_files(self, tmp_path: Path) -> None:
+        """owl:imports in reference files are also resolved."""
+        imported = tmp_path / "deep.ttl"
+        _write_ttl(imported, """\
+@prefix ex: <http://example.org/> .
+ex:Deep a ex:Class .
+""")
+        import_url = imported.resolve().as_uri()
+
+        ref = tmp_path / "ref.ttl"
+        _write_ttl(ref, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/ref> owl:imports <{import_url}> .
+""")
+
+        data = tmp_path / "data.ttl"
+        _write_ttl(data, """\
+@prefix ex: <http://example.org/> .
+ex:a a ex:Thing .
+""")
+
+        project = ProjectSpec(
+            name="test",
+            focus=[data],
+            reference=[ref],
+            path_self=tmp_path / "pythinfer.yaml",
+        )
+        result = resolve_imports(project, download_dir=tmp_path / "imports")
+
+        assert len(result) == 1
+        assert import_url in result
+
+
+class TestResolveImportsCLI:
+    def test_cli_no_imports(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """CLI reports when no imports are found."""
+        monkeypatch.chdir(tmp_path)
+        data = tmp_path / "data.ttl"
+        _write_ttl(data, """\
+@prefix ex: <http://example.org/> .
+ex:a ex:b ex:c .
+""")
+        project_file = tmp_path / "pythinfer.yaml"
+        project_file.write_text(yaml.dump({"name": "test", "focus": ["data.ttl"]}))
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["-p", str(project_file), "resolve-imports"])
+
+        assert result.exit_code == 0
+        assert "No owl:imports found" in result.output
+
+    def test_cli_resolves_and_updates_yaml(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """CLI resolves imports and updates the project YAML file."""
+        monkeypatch.chdir(tmp_path)
+
+        imported = tmp_path / "vocab.ttl"
+        _write_ttl(imported, """\
+@prefix ex: <http://example.org/> .
+ex:Thing a ex:Class .
+""")
+        import_url = imported.resolve().as_uri()
+
+        data = tmp_path / "data.ttl"
+        _write_ttl(data, f"""\
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+<http://example.org/ont> owl:imports <{import_url}> .
+""")
+
+        # Include an extra key to verify it is preserved
+        project_file = tmp_path / "pythinfer.yaml"
+        project_file.write_text(yaml.dump({
+            "name": "test",
+            "focus": ["data.ttl"],
+            "custom_key": "should be preserved",
+        }))
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["-p", str(project_file), "resolve-imports"])
+
+        assert result.exit_code == 0
+        assert "Resolved 1 import(s)" in result.output
+
+        # Verify YAML was updated with reference and extra key preserved
+        updated = yaml.safe_load(project_file.read_text())
+        assert "reference" in updated
+        assert len(updated["reference"]) == 1
+        assert updated["custom_key"] == "should be preserved"
