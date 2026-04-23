@@ -154,7 +154,7 @@ def resolve_imports(
         try:
             g = _fetch_rdf(url)
         except Exception:
-            logger.warning("Failed to download: %s", url)
+            logger.warning("Failed to download: %s", url, exc_info=True)
             continue
 
         download_dir.mkdir(parents=True, exist_ok=True)
