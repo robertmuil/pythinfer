@@ -8,7 +8,7 @@ from rdflib.compare import graph_diff, isomorphic
 from typer.testing import CliRunner
 
 from pythinfer.cli import app
-from pythinfer.project import INFERRED_FILESTEM, MERGED_FILESTEM
+from pythinfer.project import COMBINED_FILESTEM, INFERRED_FILESTEM, MERGED_FILESTEM
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -164,3 +164,99 @@ def test_cli_command(
         actual_prov_graph,
         "Provenance graphs are not isomorphic",
     )
+
+
+def test_merge_with_extra_export_format(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that 'merge -x ttl' produces both .trig and .ttl output files."""
+    import shutil
+
+    project_dir = PROJECT_ROOT / "example_projects" / "eg0-basic"
+    test_project = tmp_path / "test_project"
+    shutil.copytree(project_dir, test_project)
+
+    monkeypatch.chdir(test_project)
+    runner = CliRunner()
+    result = runner.invoke(app, ["merge", "-x", "ttl"])
+
+    assert result.exit_code == 0, (
+        f"merge -x ttl failed with exit code {result.exit_code}:\n{result.stdout}"
+    )
+
+    derived_dir = test_project / "derived" / "pythinfer"
+    trig_file = derived_dir / f"{MERGED_FILESTEM}.trig"
+    ttl_file = derived_dir / f"{MERGED_FILESTEM}.ttl"
+
+    assert trig_file.exists(), f"Expected trig file not created: {trig_file}"
+    assert ttl_file.exists(), f"Expected ttl file not created: {ttl_file}"
+    assert trig_file.stat().st_size > 0, "Trig file is empty"
+    assert ttl_file.stat().st_size > 0, "TTL file is empty"
+
+
+def test_infer_with_extra_export_format(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that 'infer -x json-ld' produces extra .json-ld output files."""
+    import shutil
+
+    project_dir = PROJECT_ROOT / "example_projects" / "eg0-basic"
+    test_project = tmp_path / "test_project"
+    shutil.copytree(project_dir, test_project)
+
+    monkeypatch.chdir(test_project)
+    runner = CliRunner()
+    result = runner.invoke(app, ["infer", "--no-cache", "-x", "json-ld"])
+
+    assert result.exit_code == 0, (
+        f"infer -x json-ld failed with exit code {result.exit_code}:\n{result.stdout}"
+    )
+
+    derived_dir = test_project / "derived" / "pythinfer"
+
+    inferred_trig = derived_dir / f"{INFERRED_FILESTEM}.trig"
+    inferred_jsonld = derived_dir / f"{INFERRED_FILESTEM}.json-ld"
+    combined_trig = derived_dir / f"{COMBINED_FILESTEM}.trig"
+    combined_jsonld = derived_dir / f"{COMBINED_FILESTEM}.json-ld"
+
+    assert inferred_trig.exists(), f"Expected inferred trig not created: {inferred_trig}"
+    assert inferred_jsonld.exists(), f"Expected inferred json-ld not created: {inferred_jsonld}"
+    assert combined_trig.exists(), f"Expected combined trig not created: {combined_trig}"
+    assert combined_jsonld.exists(), f"Expected combined json-ld not created: {combined_jsonld}"
+    assert inferred_jsonld.stat().st_size > 0, "Inferred json-ld file is empty"
+    assert combined_jsonld.stat().st_size > 0, "Combined json-ld file is empty"
+
+
+def test_infer_without_extra_export_produces_no_extra_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that 'infer' without -x does not produce extra format files."""
+    import shutil
+
+    project_dir = PROJECT_ROOT / "example_projects" / "eg0-basic"
+    test_project = tmp_path / "test_project"
+    shutil.copytree(project_dir, test_project)
+
+    monkeypatch.chdir(test_project)
+    runner = CliRunner()
+    result = runner.invoke(app, ["infer", "--no-cache"])
+
+    assert result.exit_code == 0, (
+        f"infer failed with exit code {result.exit_code}:\n{result.stdout}"
+    )
+
+    derived_dir = test_project / "derived" / "pythinfer"
+
+    # Trig files should exist
+    assert (derived_dir / f"{INFERRED_FILESTEM}.trig").exists()
+
+    # No extra format files should exist
+    extra_extensions = [".ttl", ".json-ld", ".xml", ".n3"]
+    for ext in extra_extensions:
+        extra_file = derived_dir / f"{INFERRED_FILESTEM}{ext}"
+        assert not extra_file.exists(), (
+            f"Unexpected extra format file created: {extra_file}"
+        )
