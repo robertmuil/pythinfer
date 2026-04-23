@@ -154,7 +154,8 @@ def merge(
     """Merge graphs as specified in the config file and save.
 
     Args:
-        output: path for data to be saved to (defaults to `derived/merged.trig`)
+        output: path for data to be saved to
+                 (defaults to `derived/<project_file_stem>/0-merged.trig`)
         extra_export_format: additional export format(s) (besides trig),
                                 can be specified multiple times
 

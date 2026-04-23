@@ -71,7 +71,7 @@ Invoked automatically if another command is used and no project file exists alre
 
 ### `pythinfer merge`
 
-Loads all data into a single Dataset, which is also persisted as `derived/0-merged.trig`.
+Loads all data into a single Dataset, which is also persisted as `derived/<project_file_stem>/0-merged.trig`.
 
 Largely a helper command, not likely to need direct invocation.
 
@@ -79,7 +79,7 @@ Largely a helper command, not likely to need direct invocation.
 
 Perform merging and inference as per the project specification, and export the resulting graphs to the output folder.
 
-Results persisted as `derived/1-combined-full.trig` and `derived/2-inferred-wanted.trig` which are used as cache.
+Results persisted as `derived/<project_file_stem>/1-inferred.trig` and `derived/<project_file_stem>/2-combined.trig`, and the latter is used as cache.
 
 ### `pythinfer query`
 
@@ -141,7 +141,7 @@ All of these return a `Project` instance. The `from_yaml()` and `discover()` met
 
 ### Merging and Inference
 
-Access to the data is through the merge or infer methods, which return the merged and inferred datasets respectively. The inferred data will be loaded directly from disk if the exports under `derived/` are up-to-date, otherwise inference will be performed.
+Access to the data is through the merge or infer methods, which return the merged and inferred datasets respectively. The inferred data will be loaded directly from disk if the exports under `derived/<project_file_stem>/` are up-to-date, otherwise inference will be performed.
 
 ```python
 # Load the source files, returning the merged dataset.
@@ -151,7 +151,7 @@ ds_combined = project.merge()
 ds_full = project.infer()
 ```
 
-`merge()` and `infer()` return a `rdflib.Dataset` containing the merged and inferred data, including named graphs for provenance.
+`merge()` and `infer()` return a `rdflib.Dataset` containing the merged and inferred data, optionally including named graphs for provenance.
 
 A helper method, `reduce()` is also provided which returns a `rdflib.Graph` by stripping quads down to triples (i.e. dropping all named graph ids) which is commonly done to simplify downstream processing.
 
@@ -172,14 +172,16 @@ The main function or CLI can then be pointed at the project file to easily switc
 
 ```yaml
 name: (optional)
+owl_backend: (optional, default 'owlrl')
 focus:
-    - <pattern>: <a pattern specifying a specific or set of files>
+    - <pattern>: <path to a 'focus' file>
     - ...
 reference:
-    - <pattern>: <a pattern specifying a specific or set of 'reference' files>
+    - <pattern>: <path to a 'reference' file>
     - ...
-output:
-    folder: <a path to the folder in which to put the output> (defaults to `<base_folder>/derived`)
+sparql_inference:
+    - <pattern>: <path to a SPARQL CONSTRUCT query file>
+    - ...
 ```
 
 #### Reference vs. Focus Data (was External vs. Internal)
@@ -218,7 +220,7 @@ Your `pythinfer.yaml` can use relative paths:
 
 ```yaml
 name: My Project
-data:
+focus:
   - data/file1.ttl
   - data/file2.ttl
 reference:
@@ -230,7 +232,7 @@ These paths will be resolved relative to the directory containing `pythinfer.yam
 You can also use absolute paths if needed:
 
 ```yaml
-data:
+focus:
   - /home/user/my_project/data/file1.ttl
 ```
 
@@ -254,11 +256,10 @@ The limit on parent directories to search is:
 
 1. don't traverse below `$HOME` if that is in the ancestral line
 1. don't go beyond 10 parent folders
-1. don't traverse across file systems
 
 ### Project Creation
 
-If a project is not provided by the user or discovered from the folder structure, a new project sepecification will be created automatically by scanning the current folder for RDF files. If some RDF files are found, subsidiary files such as SPARQL queries for inference are also sought and a new project specification is created. This new spec will be saved to the current folder.
+If a project is not provided by the user or discovered from the folder structure, a new project specification will be created automatically by scanning the current folder for RDF files. If some RDF files are found, subsidiary files such as SPARQL queries for inference are also sought and a new project specification is created. This new spec will be saved to the current folder.
 
 The user can also specifically request the creation of a new project file with the `create` command.
 

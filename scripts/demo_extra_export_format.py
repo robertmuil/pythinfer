@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
         text=True,
     )
 
-    derived_dir = test_project / "derived"
+    derived_dir = test_project / "derived" / "pythinfer"
     for f in sorted(derived_dir.glob("0-merged.*")):
         size = f.stat().st_size
         print(f"  ✓ Created {f.name:<30} ({size:>6} bytes)")
@@ -48,10 +48,10 @@ with tempfile.TemporaryDirectory() as tmpdir:
     output_files = [
         "0-merged.trig",
         "0-merged.n3",
-        "1-combined-full.trig",
-        "1-combined-full.n3",
-        "2-inferred-wanted.trig",
-        "2-inferred-wanted.n3",
+        "1-inferred.trig",
+        "1-inferred.n3",
+        "2-combined.trig",
+        "2-combined.n3",
     ]
 
     for filename in output_files:
@@ -76,7 +76,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
         text=True,
     )
 
-    derived_dir2 = test_project2 / "derived"
+    derived_dir2 = test_project2 / "derived" / "pythinfer"
     for f in sorted(derived_dir2.glob("0-merged.*")):
         size = f.stat().st_size
         print(f"  ✓ {f.name:<30} ({size:>6} bytes)")
