@@ -1,6 +1,7 @@
 """pythinfer CLI entry point."""
 
 import logging
+import sys
 from collections.abc import Sequence
 from contextvars import ContextVar
 from importlib.metadata import version
@@ -246,6 +247,15 @@ def query(
     graph: list[str] | None = None,
     *,
     no_cache: bool = False,
+    output_format: Annotated[
+        str | None,
+        typer.Option(
+            "--output-format",
+            "-f",
+            help="Output format for SELECT results (e.g., 'csv', 'json', 'xml', 'txt'). "
+            "If not set, uses a rich table for terminals and csv otherwise.",
+        ),
+    ] = None,
 ) -> Result:
     """Perform a query, from given path, against the latest inferred file.
 
@@ -253,6 +263,7 @@ def query(
         query: path to the query file to execute, or the query string itself
         graph: IRI for graph to include (can be specified multiple times)
         no_cache: whether to skip loading from cache and re-run inference
+        output_format: serialization format for SELECT results (csv, json, xml, txt)
 
     """
     if Path(query).is_file():
@@ -279,19 +290,24 @@ def query(
             msg = "Query returned no variables."
             raise ValueError(msg)
 
-        # Create a Rich table from query results
-        table = Table(show_header=True, header_style="bold yellow")
+        if not output_format and sys.stdout.isatty():
+            # Create a Rich table from query results
+            table = Table(show_header=True, header_style="bold yellow")
 
-        # Add columns from result variables
-        for var in result.vars:
-            table.add_column(str(var))
+            # Add columns from result variables
+            for var in result.vars:
+                table.add_column(str(var))
 
-        # Add rows from bindings
-        for binding in result.bindings:
-            row = [binding[var].n3(ds.namespace_manager) for var in result.vars]
-            table.add_row(*row)
+            # Add rows from bindings
+            for binding in result.bindings:
+                row = [binding[var].n3(ds.namespace_manager) for var in result.vars]
+                table.add_row(*row)
 
-        rich_print(table)
+            rich_print(table)
+        else:
+            fmt = output_format or "csv"
+            result_bytes = result.serialize(format=fmt) # pyright: ignore[reportUnknownMemberType]
+            typer.echo(result_bytes, nl=False)
     elif result.type in ("CONSTRUCT", "DESCRIBE"):
         echo_success(
             f"Query returned {len(result.graph) if result.graph else 0} triples:"
