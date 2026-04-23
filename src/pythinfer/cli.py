@@ -1,6 +1,4 @@
 """pythinfer CLI entry point."""
-from click import echo
-
 import logging
 import sys
 from collections.abc import Sequence
@@ -11,6 +9,7 @@ from typing import Annotated
 
 import typer
 from rdflib import Dataset, IdentifiedNode, URIRef
+from rdflib.namespace import NamespaceManager
 from rdflib.query import Result
 from rich import print as rich_print
 from rich.table import Table
@@ -242,6 +241,86 @@ def infer(
     return ds, all_external_ids
 
 
+def _display_select_result(
+    result: Result,
+    namespace_manager: NamespaceManager,
+    *,
+    output_format: str | None = None,
+) -> None:
+    echo_success(f"Retrieved {len(result.bindings)} rows")
+
+    if not result.vars:
+        msg = "Query returned no variables."
+        raise ValueError(msg)
+
+    if not output_format and sys.stdout.isatty():
+        # Create a Rich table from query results
+        table = Table(show_header=True, header_style="bold yellow")
+
+        # Add columns from result variables
+        for var in result.vars:
+            table.add_column(str(var))
+
+        # Add rows from bindings
+        for binding in result.bindings:
+            row = [binding[var].n3(namespace_manager) for var in result.vars]
+            table.add_row(*row)
+
+        rich_print(table)
+    else:
+        fmt = output_format or "csv"
+        result_bytes = result.serialize(format=fmt) # pyright: ignore[reportUnknownMemberType]
+        typer.echo(result_bytes, nl=False)
+
+
+def _display_construct_result(
+    result: Result, namespace_manager: NamespaceManager,
+) -> None:
+    echo_success(
+        f"Query returned {len(result.graph) if result.graph else 0} triples:"
+    )
+    if result.graph:
+        # Bind all namespaces from the dataset to preserve prefixes
+        for prefix, namespace in namespace_manager.namespaces():
+            result.graph.bind(prefix, namespace)
+        typer.echo(result.graph.serialize(format="turtle"))
+
+
+def _display_ask_result(result: Result) -> None:
+    if not sys.stdout.isatty():
+        typer.echo(str(result.askAnswer))
+    else:
+        typer.secho(
+            str(result.askAnswer),
+            fg=typer.colors.GREEN if result.askAnswer else typer.colors.RED,
+            bold=True
+        )
+
+
+def _display_query_result(
+    result: Result,
+    namespace_manager: NamespaceManager,
+    num_triples: int,
+    *,
+    output_format: str | None = None,
+) -> None:
+    """Display query results to the terminal."""
+    echo_neutral(f"Executed {result.type} query against {num_triples} triples:")
+    if result.type == "SELECT":
+        _display_select_result(result, namespace_manager, output_format=output_format)
+    elif result.type in ("CONSTRUCT", "DESCRIBE"):
+        _display_construct_result(result, namespace_manager)
+    elif result.type in ("ASK"):
+        _display_ask_result(result)
+    else:
+        echo_warning(f"Unknown query result type: {result.type}")
+        result_bytes = result.serialize() # pyright: ignore[reportUnknownMemberType]
+        if not result_bytes:
+            echo_important("Query returned no result.", bold=True)
+        else:
+            typer.echo(result_bytes.decode())
+
+
 @app.command()
 def query(
     query: str,
@@ -253,7 +332,7 @@ def query(
         typer.Option(
             "--output-format",
             "-f",
-            help="Output format for SELECT results (e.g., 'csv', 'json', 'xml', 'txt'). "
+            help="Output format for SELECT results (e.g., 'csv', 'json', 'xml', 'txt')."
             "If not set, uses a rich table for terminals and csv otherwise.",
         ),
     ] = None,
@@ -283,57 +362,9 @@ def query(
 
     result = view.query(query_contents)
 
-    echo_neutral(f"Executed {result.type} query against {len(view)} triples:")
-    if result.type == "SELECT":
-        echo_success(f"Retrieved {len(result.bindings)} rows")
-
-        if not result.vars:
-            msg = "Query returned no variables."
-            raise ValueError(msg)
-
-        if not output_format and sys.stdout.isatty():
-            # Create a Rich table from query results
-            table = Table(show_header=True, header_style="bold yellow")
-
-            # Add columns from result variables
-            for var in result.vars:
-                table.add_column(str(var))
-
-            # Add rows from bindings
-            for binding in result.bindings:
-                row = [binding[var].n3(ds.namespace_manager) for var in result.vars]
-                table.add_row(*row)
-
-            rich_print(table)
-        else:
-            fmt = output_format or "csv"
-            result_bytes = result.serialize(format=fmt) # pyright: ignore[reportUnknownMemberType]
-            typer.echo(result_bytes, nl=False)
-    elif result.type in ("CONSTRUCT", "DESCRIBE"):
-        echo_success(
-            f"Query returned {len(result.graph) if result.graph else 0} triples:"
-        )
-        if result.graph:
-            # Bind all namespaces from the dataset to preserve prefixes
-            for prefix, namespace in ds.namespace_manager.namespaces():
-                result.graph.bind(prefix, namespace)
-            typer.echo(result.graph.serialize(format="turtle"))
-    elif result.type in ("ASK"):
-        if not sys.stdout.isatty():
-            typer.echo(str(result.askAnswer))
-        else:
-            typer.secho(
-                str(result.askAnswer),
-                fg=typer.colors.GREEN if result.askAnswer else typer.colors.RED,
-                bold=True
-            )
-    else:
-        echo_warning(f"Unknown query result type: {result.type}")
-        result_bytes = result.serialize() # pyright: ignore[reportUnknownMemberType]
-        if not result_bytes:
-            echo_important("Query returned no result.", bold=True)
-        else:
-            typer.echo(result_bytes.decode())
+    _display_query_result(
+        result, ds.namespace_manager, len(view), output_format=output_format,
+    )
 
     return result
 
