@@ -33,6 +33,12 @@ FORMAT_TO_EXT = {
         "json-ld": "json-ld",
     }
 
+QUAD_EXTENSIONS = frozenset({".trig", ".trix", ".nq", ".nquads"})
+
+def is_quad_file(path: Path) -> bool:
+    """Return True if the file extension indicates a quad-aware (graph-aware) format."""
+    return path.suffix.lower() in QUAD_EXTENSIONS
+
 def export_dataset(
     dataset: Dataset,
     output_file: Path,
