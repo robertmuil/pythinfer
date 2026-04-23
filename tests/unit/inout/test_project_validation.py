@@ -72,20 +72,20 @@ class TestProjectValidConfiguration:
 class TestProjectInvalidConfiguration:
     """Test invalid Project configurations that should raise ValidationError."""
 
-    def test_rejects_unexpected_field(self, tmp_path: Path) -> None:
-        """Test that Project rejects config with unexpected fields."""
+    def test_ignores_unexpected_field(self, tmp_path: Path) -> None:
+        """Test that Project silently ignores unrecognised fields."""
         config_path = tmp_path / "test.yaml"
         config = {
             "name": "test-project",
             "path_self": config_path,
             "focus": ["file1.ttl"],
-            "unexpected_field": "this should cause an error",
+            "unexpected_field": "this should be ignored",
         }
 
-        with pytest.raises(ValidationError) as exc_info:
-            ProjectSpec(**config)
+        project = ProjectSpec(**config)
 
-        assert "unexpected_field" in str(exc_info.value)
+        assert project.name == "test-project"
+        assert not hasattr(project, "unexpected_field")
 
     def test_rejects_missing_required_name(self, tmp_path: Path) -> None:
         """Test that Project requires 'name' field."""
