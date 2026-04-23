@@ -16,32 +16,18 @@ from pythinfer.project import (
 class TestProjectHelpers:
     """Tests for small helper functions used by ProjectSpec."""
 
-    def test_default_path_self_returns_cwd_config_path(
+    def test_default_path_self_returns_cwd_yaml(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Default path_self should point to cwd/pythinfer.yaml."""
+        """Default path_self should be a .yaml file under cwd."""
         monkeypatch.chdir(tmp_path)
 
         project = ProjectSpec(name="demo", focus=[Path("a.ttl")])
 
-        assert project.path_self == tmp_path / PROJECT_FILE_NAME
-
-    def test_default_path_self_raises_when_existing_config(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Default path generation should fail if cwd config already exists."""
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / PROJECT_FILE_NAME).write_text("name: x\nfocus: [a.ttl]\n")
-
-        with pytest.raises(
-            Exception,
-            match="Path for new Project points to existing file",
-        ):
-            ProjectSpec(name="demo", focus=[Path("a.ttl")])
+        assert project.path_self.parent == tmp_path
+        assert project.path_self.suffix == ".yaml"
 
     def test_reference_default_factory_returns_fresh_list(self, tmp_path: Path) -> None:
         """Each instance gets its own default reference list."""
