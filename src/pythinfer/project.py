@@ -59,7 +59,8 @@ class ProjectSpec(BaseModel):
         name: Name of the project.
             specified directly in code.
         focus: List of paths to focus data files. [Must be > 1]
-        reference: List of paths to reference data files (prev 'external'). [Optional]
+        reference: List of paths to reference data files. [Optional]
+        sparql_inference: List of paths to SPARQL CONSTRUCT queries for inference. [Optional]
         path_self: Path to the project config file from which this came.
 
     Note: path_self defaults to pythinfer.yaml in the current working directory because

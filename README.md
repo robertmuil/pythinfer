@@ -120,6 +120,8 @@ print(f"Got {len(results)} results from Graph.")
 
 A project can be initialised from a project specification file, or directly specified.
 
+The `path_self` argument is used to point to a file that is used for cache invalidation, so if the project is being directly specified, then a path to a real file can be given so that the cache still works. This file might be a config file in its own right, from which the pythinfer specification was derived, or it might be the source code file itself.
+
 ```python
 from pythinfer import Project
 
@@ -135,6 +137,20 @@ project = Project(
     focus=['data/file1.ttl'],
     reference=['vocabs/ref_vocab1.ttl'],
 )
+
+# Specify directly in code, but derived from another config file
+
+        cfg_file = "config.json"
+        myconfig = load_special_config(cfg_file)
+        project = Project(name="RDF part of {myconfig['title']}",
+                          focus=myconfig["rdf_input_files"],
+                          path_self=cfg_file)
+
+# Specify directly, and point to source code for cache invalidation
+# One can even point to the source file, if the packaging / installation
+# of the downstream package allows access to it at run-time:
+    ...
+    path_self=__path__)
 ```
 
 All of these return a `Project` instance. The `from_yaml()` and `discover()` methods will raise a `FileNotFoundError` if no project file is found.

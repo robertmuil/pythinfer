@@ -25,13 +25,32 @@ class Project(ProjectSpec):
     Inherits all configuration, serialisation, and discovery from `ProjectSpec`
     and adds the ability to execute merge and inference pipelines.
 
-    Usage::
+    This is the primary end-point of the API.
+
+    Usage when loading from file::
 
         from pythinfer import Project
 
         project = Project.discover()
         ds = project.infer()
         result = ds.query("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 10")
+
+    NB: if using this directly from code, rather than loading from a file,
+    then `path_self` can be set to a path manually. This tells pythinfer to
+    check that file for cache invalidation, so is useful if the specification
+    does indeed come from a file, just not a typical `pythinfer.yaml` file.
+
+    Usage when creating directly from code, via another config::
+
+        from pythinfer import Project
+
+        cfg_file = "config.json"
+        myconfig = load_special_config(cfg_file)
+        project = Project(name="RDF part of {myconfig['title']}",
+                          focus=myconfig["rdf_input_files"],
+                          path_self=cfg_file)
+        ...
+
     """
 
     @classmethod
