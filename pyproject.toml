@@ -41,6 +41,7 @@ ignore = ["COM812", "D203", "D213"]
 "tests/*" = [
     "S101",
     "PLR2004",  #  Magic numbers
+    "D102", # Missing docstring in public method: just clutters tests
     "D103",  # Missing docstring: just clutters tests
     ]
 "scripts/*" = ["T201"]

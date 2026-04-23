@@ -5,7 +5,7 @@ from pathlib import Path
 
 from rdflib import DCTERMS, RDF, Dataset, IdentifiedNode, URIRef
 
-from pythinfer.inout import export_dataset, export_provenance
+from pythinfer.inout import export_dataset, export_provenance, is_quad_file
 from pythinfer.project import MERGED_FILESTEM, PYTHINFER_NS, ProjectSpec
 
 logger = logging.getLogger(__name__)
@@ -43,24 +43,51 @@ def merge_graphs(
     # Load external vocabulary files (ephemeral - used for inference only)
     for src in project.reference:
         graph_urn = project.source_file_gid(src)
-        g = ds.graph(graph_urn)
-        g.parse(src, format="turtle")
 
-        # Add provenance metadata to the graph
-        g_provenance.add((graph_urn, RDF.type, PYTHINFER_NS["SourceGraph"]))
-        g_provenance.add((graph_urn, DCTERMS.source, URIRef(src.resolve().as_uri())))
+        if is_quad_file(src):
+            # For graph-aware formats, parse directly into dataset to
+            # preserve the named graph structure from the file.
+            existing_gids = {g.identifier for g in ds.graphs()}
+            ds.parse(src)
+            new_gids = {g.identifier for g in ds.graphs()} - existing_gids
+            for gid in new_gids:
+                g_provenance.add((gid, RDF.type, PYTHINFER_NS["SourceGraph"]))
+                g_provenance.add((gid, DCTERMS.source, URIRef(src.resolve().as_uri())))
+                external_gids.append(gid)
+        else:
+            g = ds.graph(graph_urn)
+            g.parse(src)
 
-        external_gids.append(g.identifier)
+            # Add provenance metadata to the graph
+            g_provenance.add((graph_urn, RDF.type, PYTHINFER_NS["SourceGraph"]))
+            g_provenance.add(
+                (graph_urn, DCTERMS.source, URIRef(src.resolve().as_uri()))
+            )
+
+            external_gids.append(g.identifier)
 
     # Load data files
     for src in project.focus:
         graph_urn = project.source_file_gid(src)
-        g = ds.graph(graph_urn)
-        g.parse(src, format="turtle")
 
-        # Add provenance metadata
-        g_provenance.add((graph_urn, RDF.type, PYTHINFER_NS["SourceGraph"]))
-        g_provenance.add((graph_urn, DCTERMS.source, URIRef(src.resolve().as_uri())))
+        if is_quad_file(src):
+            # For graph-aware formats, parse directly into dataset to
+            # preserve the named graph structure from the file.
+            existing_gids = {g.identifier for g in ds.graphs()}
+            ds.parse(src)
+            new_gids = {g.identifier for g in ds.graphs()} - existing_gids
+            for gid in new_gids:
+                g_provenance.add((gid, RDF.type, PYTHINFER_NS["SourceGraph"]))
+                g_provenance.add((gid, DCTERMS.source, URIRef(src.resolve().as_uri())))
+        else:
+            g = ds.graph(graph_urn)
+            g.parse(src)
+
+            # Add provenance metadata
+            g_provenance.add((graph_urn, RDF.type, PYTHINFER_NS["SourceGraph"]))
+            g_provenance.add(
+                (graph_urn, DCTERMS.source, URIRef(src.resolve().as_uri()))
+            )
 
     if output:
         if isinstance(output, bool):

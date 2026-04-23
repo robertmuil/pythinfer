@@ -395,7 +395,7 @@ def create_project(
     """Create a new Project specification by scanning directory for RDF files.
 
     Scans the specified directory (or current working directory) for RDF files
-    (with .ttl or .rdf extensions) and creates a new Project specification listing them.
+    and creates a new Project specification listing them.
 
     This Project specification will be saved as `output_path` which defaults to
     `pythinfer.yaml` in the scan_directory.
@@ -446,7 +446,16 @@ def create_project(
 
     # Find all RDF files, excluding the 'derived' and 'expected' folders
     rdf_files: list[Path] = []
-    for rdf_ext in ("*.ttl", "*.rdf"):
+    for rdf_ext in (
+        "*.ttl",
+        "*.rdf",
+        "*.trig",
+        "*.n3",
+        "*.nt",
+        "*.nq",
+        "*.jsonld",
+        "*.owl",
+    ):
         for rdf_file in _scan_dir.rglob(rdf_ext):
             # Skip files in 'derived' or 'expected' directories
             if "derived" in rdf_file.parts or "expected" in rdf_file.parts:

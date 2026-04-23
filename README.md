@@ -430,7 +430,6 @@ The `example_projects` folder contains contrived examples, but this has also bee
 ## Next Steps
 
 1. implement pattern support for input files
-1. check this handles non-turtle input files ok
 1. allow Python-coded inference rules (e.g. for path-traversal or network analytics)
     - also use of text / linguistic analysis would be a good motivation (e.g. infer that two projects are related if they share similar topics based on text analysis of abstracts)
 1. implement base_folder support - perhaps more generally support for specification of any folder variables...
