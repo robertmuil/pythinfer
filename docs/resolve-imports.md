@@ -60,6 +60,8 @@ Downloaded files are named by sanitizing the source URL:
 
 The scheme is: `{netloc}_{path_slug}.ttl`, where non-alphanumeric characters in the path are replaced with underscores.
 
+In theory, two different URLs could map to the same filename (e.g. `http://example.org/a/b` and `http://example.org/a_b`). In practice this is extremely unlikely with real ontology URLs. If it were to present a problem (it would yield incorrect content for one of the URLs), a hash of the full filename could be added to the sanitised filename.
+
 ## Download directory
 
 By default, downloads are saved to an `imports/` directory next to the project file. You can override this with `--download-dir`. The directory is created if it does not exist.
