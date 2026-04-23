@@ -132,9 +132,6 @@ def resolve_imports(
     for filepath in project.focus + project.reference:
         pending |= _collect_import_urls(filepath)
 
-    # Filter out URLs that already have local files in the download dir
-    existing_files = {p.stem: p for p in download_dir.glob("*.ttl")} if download_dir.exists() else {}
-
     while pending:
         url = pending.pop()
         if url in resolved:
