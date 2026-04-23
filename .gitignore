@@ -15,6 +15,7 @@ typings/**/*.pyi
 # IDE settings
 .vscode/settings.json
 *.code-workspace
+.*.sw?
 
 # Project-specific ignores
 example_projects/eg0-basic/pythinfer.yaml

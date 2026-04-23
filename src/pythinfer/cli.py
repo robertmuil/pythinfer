@@ -17,6 +17,7 @@ from rich.table import Table
 from pythinfer.api import Project
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
+from pythinfer.resolve_imports import resolve_imports as _resolve_imports
 from pythinfer.rdflibplus import DatasetView, graph_lengths
 
 ProjectOption = Annotated[
@@ -151,6 +152,56 @@ def create(
     """
     project = Project.create(scan_directory=directory, output_path=output, force=force)
     echo_success(f"✓ Created Project named '{project.name}' at: `{project.path_self}`")
+
+
+@app.command()
+def resolve_imports(
+    download_dir: Path | None = None,
+) -> None:
+    """Resolve owl:imports statements and download imported ontologies.
+
+    Scans project data files for owl:imports, downloads the referenced
+    ontologies to local files, and adds them to the project's reference list.
+    Resolves the full import closure (imports of imports).
+
+    Args:
+        download_dir: Directory to save downloaded files
+                       (default: imports/ next to the project file).
+
+    """
+    import yaml
+
+    project = Project.load(_project_path_var.get())
+    resolved = _resolve_imports(project, download_dir=download_dir)
+
+    if not resolved:
+        echo_neutral("No owl:imports found to resolve.")
+        return
+
+    # Update the YAML file directly to preserve extra keys
+    with project.path_self.open() as f:
+        raw = yaml.safe_load(f)
+
+    project_dir = project.path_self.parent
+    existing_refs = [str(r) for r in raw.get("reference", [])]
+    for local_path in resolved.values():
+        try:
+            rel = str(local_path.relative_to(project_dir))
+        except ValueError:
+            rel = str(local_path)
+        if rel not in existing_refs:
+            existing_refs.append(rel)
+    raw["reference"] = existing_refs
+
+    with project.path_self.open("w") as f:
+        yaml.dump(raw, f)
+
+    echo_success(
+        f"Resolved {len(resolved)} import(s), "
+        f"project updated: `{project.path_self}`"
+    )
+    for url, path in sorted(resolved.items()):
+        echo_neutral(f"  {url} -> {path}")
 
 
 @app.command()

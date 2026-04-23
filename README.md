@@ -69,6 +69,20 @@ Create a new project specification file in the current folder by scanning for RD
 
 Invoked automatically if another command is used and no project file exists already.
 
+### `pythinfer resolve-imports`
+
+Finds any `owl:imports` statements in the given data files, resolves the URLs, downloads the content to local files, and adds the downloaded files to the project specification.
+
+Intended for standalone usage, or as a utility for the `create` command, because resolving URLs at query time will introduce a requirement for network connectivity, time-outs, and caching challenges.
+
+The full import closure is resolved: in other words, imports from files that are imported are included.
+
+Downloaded content is saved locally and so is quick and reliable to access in further processing steps, but also the cache of content works because the local file's timestamps can be checked.
+
+The command saves a mapping of URL (from the owl:imports statement) to local file path.
+
+See [detailed documentation](docs/resolve-imports.md) for usage, file naming, and examples.
+
 ### `pythinfer merge`
 
 Loads all data into a single Dataset, which is also persisted as `derived/<project_file_stem>/0-merged.trig`.
