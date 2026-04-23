@@ -66,11 +66,19 @@ logger = logging.getLogger(__name__)
 _project_path_var: ContextVar[Path | None] = ContextVar("project_path", default=None)
 
 
+# These are just convenience templates for consistent output formatting
+# Output diagnostics to stderr to leave stdout for pipe output (e.g., query results)
 def echo_success(msg: str) -> None:  # noqa: D103 - self-explanatory function
-    typer.secho(msg, fg=typer.colors.GREEN)
+    typer.secho(msg, fg=typer.colors.GREEN, err=True)
 
+def echo_neutral(msg: str) -> None:  # noqa: D103 - self-explanatory function
+    typer.secho(msg, err=True)
 
-echo_neutral = typer.secho
+def echo_warning(msg: str) -> None:  # noqa: D103 - self-explanatory function
+    typer.secho(msg, fg=typer.colors.YELLOW, err=True)
+
+def echo_important(msg: str, *, bold: bool = False) -> None:  # noqa: D103 - self-explanatory function
+    typer.secho(msg, fg=typer.colors.CYAN, bold=bold, err=True)
 
 
 def echo_dataset_lengths(ds: Dataset, external_gids: Sequence[IdentifiedNode]) -> None:
@@ -79,17 +87,16 @@ def echo_dataset_lengths(ds: Dataset, external_gids: Sequence[IdentifiedNode]) -
     ext_len = sum(len(ds.graph(gid)) for gid in external_gids)
     internal_len = len(ds) - ext_len
 
-    typer.secho(
+    echo_neutral(
         "Graph Types:"
         f"\n\t   TOTAL: {len(ds): 4d}"
         f"\n\texternal: {ext_len: 4d}"
         f"\n\tinternal: {internal_len: 4d}",
-        fg=typer.colors.YELLOW,
     )
-    typer.secho("Named Graphs:", fg=typer.colors.YELLOW)
-    typer.secho(f"{'Graph':60s} Length", fg=typer.colors.YELLOW, bold=True)
+    echo_important("Named Graphs:")
+    echo_important(f"{'Graph':60s} Length", bold=True)
     for gid, length in graph_lengths(ds).items():
-        typer.secho(f"{gid.n3():60s} {length: 4d}", fg=typer.colors.YELLOW)
+        echo_important(f"{gid.n3():60s} {length: 4d}")
 
 
 def configure_logging(*, verbose: bool) -> None:
@@ -194,9 +201,8 @@ def infer(
 
     # Force no_cache when extra export formats requested, otherwise exports won't happen
     if extra_export_format and not no_cache:
-        typer.secho(
+        echo_warning(
             "Warning: --extra-export-format requires fresh export; ignoring cache.",
-            fg=typer.colors.YELLOW,
         )
         no_cache = True
 
@@ -294,13 +300,13 @@ def query(
             # Bind all namespaces from the dataset to preserve prefixes
             for prefix, namespace in ds.namespace_manager.namespaces():
                 result.graph.bind(prefix, namespace)
-            echo_neutral(result.graph.serialize(format="turtle"), fg="yellow")
+            typer.echo(result.graph.serialize(format="turtle"))
     else:
         result_bytes = result.serialize() # pyright: ignore[reportUnknownMemberType]
         if not result_bytes:
-            echo_neutral("Query returned no result.", fg="yellow")
+            echo_important("Query returned no result.", bold=True)
         else:
-            echo_neutral(result_bytes.decode())
+            typer.echo(result_bytes.decode())
 
     return result
 
