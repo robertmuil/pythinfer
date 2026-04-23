@@ -139,14 +139,12 @@ project = Project(
 )
 
 # Specify directly in code, but derived from another config file
+cfg_file = "config.json"
+myconfig = load_special_config(cfg_file)
+project = Project(name="RDF part of {myconfig['title']}",
+                  focus=myconfig["rdf_input_files"],
+                  path_self=cfg_file)
 
-        cfg_file = "config.json"
-        myconfig = load_special_config(cfg_file)
-        project = Project(name="RDF part of {myconfig['title']}",
-                          focus=myconfig["rdf_input_files"],
-                          path_self=cfg_file)
-
-# Specify directly, and point to source code for cache invalidation
 # One can even point to the source file, if the packaging / installation
 # of the downstream package allows access to it at run-time:
     ...
