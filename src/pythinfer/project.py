@@ -80,7 +80,7 @@ class ProjectSpec(BaseModel):
     """
 
     model_config = ConfigDict(
-        extra="forbid",  # This rejects unexpected keys
+        extra="ignore",  # Allow superset config files from downstream programs
         arbitrary_types_allowed=True,  # Allows Path objects
     )
 
