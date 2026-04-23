@@ -40,7 +40,7 @@ pythinfer resolve-imports --download-dir /path/to/cache
 
 1. **Scan** -- All files listed in the project's `focus` and `reference` fields are parsed. Every `owl:imports` object URL is collected.
 
-2. **Download** -- Each URL is fetched using rdflib's `Graph.parse()`, which performs HTTP content negotiation for RDF formats. The downloaded graph is serialized as Turtle to a local file in the download directory. URLs whose local file already exists are skipped, so re-running the command is cheap. Delete a cached file to force a re-download.
+2. **Download** -- Each URL is fetched using `curl`, which inherits the system's proxy configuration, SSL trust store, and redirect handling. An `Accept` header requests RDF formats (Turtle, RDF/XML, etc.) so vocabulary servers return machine-readable content. The downloaded graph is serialized as Turtle to a local file in the download directory. URLs whose local file already exists are skipped, so re-running the command is cheap. Delete a cached file to force a re-download.
 
 3. **Closure** -- Downloaded files are themselves scanned for further `owl:imports` statements. This continues until the full transitive closure is resolved. A URL that has already been resolved is never visited again, so circular import chains terminate naturally.
 

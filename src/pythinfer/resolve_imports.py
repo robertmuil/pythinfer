@@ -2,6 +2,8 @@
 
 import logging
 import re
+import subprocess
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -11,6 +13,16 @@ from rdflib import OWL, Graph
 from pythinfer.project import ProjectSpec
 
 logger = logging.getLogger(__name__)
+
+# RDF content types in preference order for Accept header negotiation
+_RDF_ACCEPT = (
+    "text/turtle, "
+    "application/rdf+xml;q=0.9, "
+    "application/n-triples;q=0.8, "
+    "application/ld+json;q=0.7, "
+    "text/n3;q=0.6, "
+    "*/*;q=0.1"
+)
 
 
 def _sanitize_url_to_filename(url: str) -> str:
@@ -24,6 +36,64 @@ def _sanitize_url_to_filename(url: str) -> str:
     slug = re.sub(r"[^\w.-]", "_", slug)
     slug = re.sub(r"_+", "_", slug)
     return f"{slug}.ttl"
+
+
+def _fetch_rdf(url: str) -> Graph:
+    """Fetch RDF from a URL using curl for reliable proxy/SSL/redirect handling.
+
+    Uses curl to download, which inherits the system's proxy configuration,
+    SSL trust store, and handles redirects. An Accept header requests RDF
+    formats so vocabulary servers return machine-readable content.
+
+    For file:// URIs, rdflib is used directly (no curl needed).
+    """
+    g = Graph()
+
+    if url.startswith("file://"):
+        g.parse(url)
+        return g
+
+    with tempfile.NamedTemporaryFile(suffix=".rdf", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        result = subprocess.run(
+            [
+                "curl", "-fsSL",
+                "-H", f"Accept: {_RDF_ACCEPT}",
+                "-o", str(tmp_path),
+                "-w", "%{content_type}",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+        content_type = result.stdout.strip()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        tmp_path.unlink(missing_ok=True)
+        msg = f"curl failed for {url}"
+        raise RuntimeError(msg) from e
+
+    try:
+        fmt = None
+        if "turtle" in content_type:
+            fmt = "turtle"
+        elif "rdf+xml" in content_type or "/xml" in content_type:
+            fmt = "xml"
+        elif "json" in content_type:
+            fmt = "json-ld"
+        elif "n-triples" in content_type:
+            fmt = "nt"
+        elif "n3" in content_type:
+            fmt = "n3"
+
+        g.parse(tmp_path, format=fmt, publicID=url)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    return g
 
 
 def _collect_import_urls(filepath: Path) -> set[str]:
@@ -82,8 +152,7 @@ def resolve_imports(
 
         logger.info("Downloading: %s", url)
         try:
-            g = Graph()
-            g.parse(url)
+            g = _fetch_rdf(url)
         except Exception:
             logger.warning("Failed to download: %s", url)
             continue
