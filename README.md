@@ -151,7 +151,7 @@ ds_combined = project.merge()
 ds_full = project.infer()
 ```
 
-`merge()` and `infer()` return a `rdflib.Dataset` containing the merged and inferred data, including named graphs for provenance.
+`merge()` and `infer()` return a `rdflib.Dataset` containing the merged and inferred data, optionally including named graphs for provenance.
 
 A helper method, `reduce()` is also provided which returns a `rdflib.Graph` by stripping quads down to triples (i.e. dropping all named graph ids) which is commonly done to simplify downstream processing.
 
@@ -259,7 +259,7 @@ The limit on parent directories to search is:
 
 ### Project Creation
 
-If a project is not provided by the user or discovered from the folder structure, a new project sepecification will be created automatically by scanning the current folder for RDF files. If some RDF files are found, subsidiary files such as SPARQL queries for inference are also sought and a new project specification is created. This new spec will be saved to the current folder.
+If a project is not provided by the user or discovered from the folder structure, a new project specification will be created automatically by scanning the current folder for RDF files. If some RDF files are found, subsidiary files such as SPARQL queries for inference are also sought and a new project specification is created. This new spec will be saved to the current folder.
 
 The user can also specifically request the creation of a new project file with the `create` command.
 
