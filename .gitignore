@@ -17,8 +17,7 @@ typings/**/*.pyi
 *.code-workspace
 
 # Project-specific ignores
-example_projects/*/derived/*
 example_projects/eg0-basic/pythinfer.yaml
 pythinfer.bak*.yaml
 demo-*.mov
-derived/*
+derived/
