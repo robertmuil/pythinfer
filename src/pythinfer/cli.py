@@ -1,4 +1,5 @@
 """pythinfer CLI entry point."""
+from click import echo
 
 import logging
 import sys
@@ -317,7 +318,17 @@ def query(
             for prefix, namespace in ds.namespace_manager.namespaces():
                 result.graph.bind(prefix, namespace)
             typer.echo(result.graph.serialize(format="turtle"))
+    elif result.type in ("ASK"):
+        if not sys.stdout.isatty():
+            typer.echo(str(result.askAnswer))
+        else:
+            typer.secho(
+                str(result.askAnswer),
+                fg=typer.colors.GREEN if result.askAnswer else typer.colors.RED,
+                bold=True
+            )
     else:
+        echo_warning(f"Unknown query result type: {result.type}")
         result_bytes = result.serialize() # pyright: ignore[reportUnknownMemberType]
         if not result_bytes:
             echo_important("Query returned no result.", bold=True)
