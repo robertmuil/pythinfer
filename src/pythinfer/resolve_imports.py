@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
+import yaml
 from rdflib import OWL, Graph
 
 from pythinfer.project import ProjectSpec
@@ -95,5 +96,14 @@ def resolve_imports(
         # Check downloaded content for further imports (closure)
         further_imports = {str(obj) for obj in g.objects(predicate=OWL.imports)}
         pending |= further_imports - set(resolved)
+
+    # Persist URL-to-file mapping
+    if resolved:
+        mapping_file = download_dir / "url-mapping.yaml"
+        mapping = {url: str(path) for url, path in sorted(resolved.items())}
+        download_dir.mkdir(parents=True, exist_ok=True)
+        with mapping_file.open("w") as f:
+            yaml.dump(mapping, f)
+        logger.info("Saved URL mapping to %s", mapping_file)
 
     return resolved

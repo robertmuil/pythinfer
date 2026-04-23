@@ -46,6 +46,8 @@ pythinfer resolve-imports --download-dir /path/to/cache
 
 4. **Update project** -- The local file paths are appended to the `reference` key in the project YAML file. The update is done by modifying only the `reference` key, preserving any other keys in the file (in case the project file is a superset config shared with other tools).
 
+5. **Save mapping** -- A `url-mapping.yaml` file is written to the download directory, mapping each import URL to its local file path. This is updated on every run.
+
 ## File naming
 
 Downloaded files are named by sanitizing the source URL:

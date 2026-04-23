@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 from rdflib import OWL, Graph, Namespace, URIRef
 
 from pythinfer.project import ProjectSpec
@@ -75,6 +76,12 @@ ex:a a ex:Thing .
         assert import_url in result
         assert result[import_url].exists()
         assert result[import_url].parent == download_dir
+
+        # Check URL mapping file is created
+        mapping_file = download_dir / "url-mapping.yaml"
+        assert mapping_file.exists()
+        mapping = yaml.safe_load(mapping_file.read_text())
+        assert import_url in mapping
 
     def test_resolves_import_closure(self, tmp_path: Path) -> None:
         """Imports from imported files are also resolved (closure)."""
