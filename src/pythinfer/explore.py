@@ -3,6 +3,7 @@
 Compute intersection, differences, and browse interactively.
 """
 import curses
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -112,6 +113,50 @@ def build_interactive_views(
     return formatted
 
 
+def _prompt_search(stdscr: curses.window) -> str:
+    """Prompt the user for a search pattern at the bottom of the screen."""
+    height, width = stdscr.getmaxyx()
+    prompt = "/"
+    stdscr.addstr(height - 1, 0, prompt, curses.A_BOLD)
+    stdscr.clrtoeol()
+    stdscr.refresh()
+    curses.curs_set(1)
+    curses.echo()
+
+    buf: list[str] = []
+    while True:
+        ch = stdscr.getch()
+        if ch in (curses.KEY_ENTER, ord("\n"), ord("\r")):
+            break
+        if ch == 27:  # Escape
+            buf.clear()
+            break
+        if ch in (curses.KEY_BACKSPACE, 127, ord("\b")):
+            if buf:
+                buf.pop()
+        elif 0 <= ch < 256:  # noqa: PLR2004
+            buf.append(chr(ch))
+        # Redraw input
+        text = "".join(buf)
+        stdscr.move(height - 1, 0)
+        stdscr.clrtoeol()
+        stdscr.addnstr(height - 1, 0, f"/{text}", width - 1, curses.A_BOLD)
+        stdscr.refresh()
+
+    curses.noecho()
+    curses.curs_set(0)
+    return "".join(buf)
+
+
+def _filter_lines(
+    lines: list[str], pattern: re.Pattern[str] | None,
+) -> list[str]:
+    """Return lines matching the compiled regex, or all lines if no pattern."""
+    if pattern is None:
+        return lines
+    return [line for line in lines if pattern.search(line)]
+
+
 def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) -> None:
     """Curses-based interactive triple browser."""
     curses.use_default_colors()
@@ -120,18 +165,28 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
 
     current = "both"
     scroll = 0
+    search_pattern: re.Pattern[str] | None = None
 
     while True:
         stdscr.clear()
         height, width = stdscr.getmaxyx()
 
-        title, lines = views[current]
+        title, all_lines = views[current]
+        lines = _filter_lines(all_lines, search_pattern)
 
         # Header
         header = f" {title} "
+        if search_pattern is not None:
+            header += (
+                f" [/{search_pattern.pattern}/ "
+                f"{len(lines)}/{len(all_lines)} matched]"
+            )
         stdscr.addstr(0, 0, header[:width - 1], curses.A_REVERSE)
 
-        nav = "  ↑ both  ↓ union  ← left-only  → right-only  q quit  j/k scroll"
+        nav = (
+            "  ↑ both  ↓ union  ← left-only  → right-only"
+            "  / search  Esc clear  q quit  j/k scroll"
+        )
         if len(nav) < width:
             stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
 
@@ -140,7 +195,8 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
         content_height = height - content_start - 1
 
         if not lines:
-            stdscr.addstr(content_start, 2, "(no triples)")
+            msg = "(no matches)" if search_pattern else "(no triples)"
+            stdscr.addstr(content_start, 2, msg)
         else:
             # Clamp scroll
             max_scroll = max(0, len(lines) - content_height)
@@ -153,16 +209,35 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
 
             # Scroll indicator
             if len(lines) > content_height:
-                pos_info = f" [{scroll + 1}-{min(scroll + content_height, len(lines))}/{len(lines)}] "
+                end = min(scroll + content_height, len(lines))
+                pos_info = f" [{scroll + 1}-{end}/{len(lines)}] "
                 if len(pos_info) < width:
-                    stdscr.addstr(height - 1, 0, pos_info[:width - 1], curses.A_DIM)
+                    stdscr.addstr(
+                        height - 1, 0,
+                        pos_info[:width - 1], curses.A_DIM,
+                    )
 
         stdscr.refresh()
 
         key = stdscr.getch()
         if key == ord("q") or key == ord("Q"):
             break
-        if key == curses.KEY_UP:
+        if key == ord("/"):
+            text = _prompt_search(stdscr)
+            if text:
+                try:
+                    # Smart-case: case-insensitive unless pattern has uppercase
+                    flags = 0 if text != text.lower() else re.IGNORECASE
+                    search_pattern = re.compile(text, flags)
+                except re.error:
+                    search_pattern = None
+            else:
+                search_pattern = None
+            scroll = 0
+        elif key == 27:  # Escape — clear search
+            search_pattern = None
+            scroll = 0
+        elif key == curses.KEY_UP:
             current = "both"
             scroll = 0
         elif key == curses.KEY_DOWN:
