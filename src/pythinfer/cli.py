@@ -1,4 +1,5 @@
 """pythinfer CLI entry point."""
+import curses
 import logging
 import sys
 from collections.abc import Sequence
@@ -452,8 +453,6 @@ def compare(
         interactive_mode: Launch interactive TUI (default: auto-detect TTY).
 
     """
-    import curses
-
     for p in (left, right):
         if not p.exists():
             echo_warning(f"Error: file not found: {p}")
@@ -469,7 +468,9 @@ def compare(
     echo_neutral(f"  Only in right:          {len(result.only_right)}")
     echo_neutral(f"  Union (all):            {len(result.union)}")
 
-    use_interactive = interactive_mode if interactive_mode is not None else sys.stdout.isatty()
+    use_interactive = (
+        interactive_mode if interactive_mode is not None else sys.stdout.isatty()
+    )
     if use_interactive:
         views = build_interactive_views(result)
         curses.wrapper(lambda stdscr: interactive(stdscr, views))
