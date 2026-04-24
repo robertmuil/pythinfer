@@ -162,3 +162,7 @@ So, it would be valuable to mark them as being redundant such that they can easi
 This could be done with an annotation property, or by making all redundant classes subclass of a special class like `meta:RedundantClass` and properties subproperty of a special property like `meta:RedundantProperty`
 
 If single-use properties are used, then the source of the redundancy can be captured - otherwise RDF reification would need to be used.
+
+### Resolving Imports
+
+The `projects-model.ttl` imports several external vocabularies, so the `pythinfer resolve-imports` command can be tested here.
