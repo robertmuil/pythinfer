@@ -15,10 +15,11 @@ from rich import print as rich_print
 from rich.table import Table
 
 from pythinfer.api import Project
+from pythinfer.explore import build_interactive_views, compare_graphs, interactive
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
-from pythinfer.resolve_imports import resolve_imports as _resolve_imports
 from pythinfer.rdflibplus import DatasetView, graph_lengths
+from pythinfer.resolve_imports import resolve_imports as _resolve_imports
 
 ProjectOption = Annotated[
     Path | None,
@@ -423,6 +424,55 @@ def query(
     )
 
     return result
+
+
+@app.command()
+def compare(
+    left: Path,
+    right: Path,
+    *,
+    interactive_mode: Annotated[
+        bool | None,
+        typer.Option(
+            "--interactive/--no-interactive",
+            "-i/-I",
+            help="Launch interactive TUI browser (default: yes when stdout is a TTY).",
+        ),
+    ] = None,
+) -> None:
+    """Compare two RDF files, showing intersection and differences.
+
+    Loads both files, computes triples only in LEFT, only in RIGHT,
+    their intersection, and union. Prints a summary, then optionally
+    launches an interactive curses browser.
+
+    Args:
+        left: Path to first RDF file.
+        right: Path to second RDF file.
+        interactive_mode: Launch interactive TUI (default: auto-detect TTY).
+
+    """
+    import curses
+
+    for p in (left, right):
+        if not p.exists():
+            echo_warning(f"Error: file not found: {p}")
+            raise typer.Exit(code=1)
+
+    result = compare_graphs(left, right)
+
+    echo_neutral(f"Left:  {result.left_path}  ({result.left_count} triples)")
+    echo_neutral(f"Right: {result.right_path}  ({result.right_count} triples)")
+    echo_neutral("")
+    echo_neutral(f"  Intersection (both):    {len(result.both)}")
+    echo_neutral(f"  Only in left:           {len(result.only_left)}")
+    echo_neutral(f"  Only in right:          {len(result.only_right)}")
+    echo_neutral(f"  Union (all):            {len(result.union)}")
+
+    use_interactive = interactive_mode if interactive_mode is not None else sys.stdout.isatty()
+    if use_interactive:
+        views = build_interactive_views(result)
+        curses.wrapper(lambda stdscr: interactive(stdscr, views))
 
 
 if __name__ == "__main__":
