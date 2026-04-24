@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import yaml
 from rdflib import Dataset, Graph, IdentifiedNode, URIRef
 from rdflib.namespace import NamespaceManager
 from rdflib.query import Result
@@ -177,8 +178,6 @@ def resolve_imports(
                        (default: imports/ next to the project file).
 
     """
-    import yaml
-
     project = Project.load(_project_path_var.get())
     resolved = _resolve_imports(project, download_dir=download_dir)
 
@@ -193,7 +192,12 @@ def resolve_imports(
     project_dir = project.path_self.parent
 
     # Find which key the YAML already uses for references (may be an alias)
-    _reference_aliases = ("reference", "external-vocabs", "external_vocabs", "paths_vocab_ext")
+    _reference_aliases = (
+        "reference",
+        "external-vocabs",
+        "external_vocabs",
+        "paths_vocab_ext",
+    )
     ref_key = next((k for k in _reference_aliases if k in raw), "reference")
 
     existing_refs = [str(r) for r in raw.get(ref_key, [])]
