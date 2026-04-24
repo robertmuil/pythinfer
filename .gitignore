@@ -22,3 +22,5 @@ example_projects/eg0-basic/pythinfer.yaml
 pythinfer.bak*.yaml
 demo-*.mov
 derived/
+url-mapping.yaml
+example_projects/eg2-projects/imports/*.ttl
