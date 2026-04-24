@@ -113,6 +113,16 @@ def build_interactive_views(
     return formatted
 
 
+def build_explore_views(
+    graph: Graph,
+    label: str = "Graph",
+) -> dict[str, tuple[str, list[str]]]:
+    """Build a single-view dict for exploring one graph in the TUI."""
+    return {
+        "both": (f"{label}: {len(graph)} triples", format_triples(graph)),
+    }
+
+
 def _prompt_search(stdscr: curses.window) -> str:
     """Prompt the user for a search pattern at the bottom of the screen."""
     height, width = stdscr.getmaxyx()
@@ -183,10 +193,18 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
             )
         stdscr.addstr(0, 0, header[:width - 1], curses.A_REVERSE)
 
-        nav = (
-            "  ↑ both  ↓ union  ← left-only  → right-only"
-            "  / search  Esc clear  q quit  j/k scroll"
-        )
+        nav_parts: list[str] = []
+        view_keys = views.keys()
+        if "both" in view_keys:
+            nav_parts.append("↑ both")
+        if "union" in view_keys:
+            nav_parts.append("↓ union")
+        if "left" in view_keys:
+            nav_parts.append("← left-only")
+        if "right" in view_keys:
+            nav_parts.append("→ right-only")
+        nav_parts.extend(["/ search", "Esc clear", "q quit", "j/k scroll"])
+        nav = "  " + "  ".join(nav_parts)
         if len(nav) < width:
             stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
 
@@ -238,16 +256,20 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
             search_pattern = None
             scroll = 0
         elif key == curses.KEY_UP:
-            current = "both"
-            scroll = 0
+            if "both" in views:
+                current = "both"
+                scroll = 0
         elif key == curses.KEY_DOWN:
-            current = "union"
-            scroll = 0
+            if "union" in views:
+                current = "union"
+                scroll = 0
         elif key == curses.KEY_LEFT:
-            current = "left"
-            scroll = 0
+            if "left" in views:
+                current = "left"
+                scroll = 0
         elif key == curses.KEY_RIGHT:
-            current = "right"
+            if "right" in views:
+                current = "right"
             scroll = 0
         elif key == ord("j") or key == curses.KEY_NPAGE:
             scroll += max(1, content_height // 2)

@@ -9,14 +9,20 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rdflib import Dataset, IdentifiedNode, URIRef
+from rdflib import Dataset, Graph, IdentifiedNode, URIRef
 from rdflib.namespace import NamespaceManager
 from rdflib.query import Result
 from rich import print as rich_print
 from rich.table import Table
 
 from pythinfer.api import Project
-from pythinfer.explore import build_interactive_views, compare_graphs, interactive
+from pythinfer.explore import (
+    build_explore_views,
+    build_interactive_views,
+    compare_graphs,
+    interactive,
+    load_graph,
+)
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
 from pythinfer.rdflibplus import DatasetView, graph_lengths
@@ -425,6 +431,49 @@ def query(
     )
 
     return result
+
+
+@app.command()
+def explore(
+    file: Annotated[
+        Path | None,
+        typer.Argument(
+            help="Path to an RDF file to explore. "
+            "If omitted, runs inference and explores the result.",
+        ),
+    ] = None,
+    *,
+    no_cache: bool = False,
+) -> None:
+    """Interactively browse triples in an RDF file.
+
+    If no file is given, loads the project's inferred dataset
+    and explores all its triples.
+
+    Args:
+        file: Path to an RDF file (optional; defaults to inferred output).
+        no_cache: Skip cache and re-run inference (only when no file given).
+
+    """
+    if file is not None:
+        if not file.exists():
+            echo_warning(f"Error: file not found: {file}")
+            raise typer.Exit(code=1)
+        graph = load_graph(file)
+        label = file.name
+        echo_neutral(f"{label}: {len(graph)} triples")
+    else:
+        ds, _ = infer(no_cache=no_cache)
+
+        graph = Graph()
+        for s, p, o, _g in ds.quads((None, None, None, None)):
+            graph.add((s, p, o))
+        for prefix, ns in ds.namespaces():
+            graph.bind(prefix, ns, override=False)
+        label = "Inferred dataset"
+
+    views = build_explore_views(graph, label=label)
+    curses.wrapper(lambda stdscr: interactive(stdscr, views))
 
 
 @app.command()
