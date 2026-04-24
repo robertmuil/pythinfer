@@ -167,10 +167,44 @@ def _filter_lines(
     return [line for line in lines if pattern.search(line)]
 
 
+def _addstr_highlighted(
+    stdscr: curses.window,
+    row: int,
+    col: int,
+    text: str,
+    max_len: int,
+    pattern: re.Pattern[str] | None,
+    attr: int,
+) -> None:
+    """Write text to the screen, highlighting regex matches with attr."""
+    text = text[:max_len]
+    if pattern is None:
+        stdscr.addnstr(row, col, text, max_len)
+        return
+    pos = 0
+    cur_col = col
+    for m in pattern.finditer(text):
+        # Text before match
+        if m.start() > pos:
+            segment = text[pos:m.start()]
+            stdscr.addstr(row, cur_col, segment)
+            cur_col += len(segment)
+        # Matched text
+        matched = m.group()
+        stdscr.addstr(row, cur_col, matched, attr)
+        cur_col += len(matched)
+        pos = m.end()
+    # Remaining text after last match
+    if pos < len(text):
+        stdscr.addstr(row, cur_col, text[pos:])
+
+
 def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) -> None:
     """Curses-based interactive triple browser."""
     curses.use_default_colors()
     curses.curs_set(0)
+    curses.init_pair(1, curses.COLOR_GREEN, -1)
+    highlight_attr = curses.color_pair(1) | curses.A_BOLD
     stdscr.clear()
 
     current = "both"
@@ -223,7 +257,10 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
             for i, line in enumerate(lines[scroll : scroll + content_height]):
                 row = content_start + i
                 if row < height - 1:
-                    stdscr.addnstr(row, 1, line, width - 2)
+                    _addstr_highlighted(
+                        stdscr, row, 1, line, width - 2,
+                        search_pattern, highlight_attr,
+                    )
 
             # Scroll indicator
             if len(lines) > content_height:
