@@ -4,11 +4,14 @@ Compute intersection, differences, and browse interactively.
 """
 import curses
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from rdflib import Graph, Node
 from rdflib.namespace import NamespaceManager
+
+_KEY_ESCAPE = 27
 
 
 @dataclass
@@ -123,10 +126,12 @@ def build_explore_views(
     }
 
 
-def _prompt_search(stdscr: curses.window) -> str:
-    """Prompt the user for a search pattern at the bottom of the screen."""
+def _prompt_input(stdscr: curses.window, prompt: str) -> str:
+    """Prompt the user for text input at the bottom of the screen.
+
+    Returns the entered text, or empty string if cancelled with Escape.
+    """
     height, width = stdscr.getmaxyx()
-    prompt = "/"
     stdscr.addstr(height - 1, 0, prompt, curses.A_BOLD)
     stdscr.clrtoeol()
     stdscr.refresh()
@@ -138,7 +143,7 @@ def _prompt_search(stdscr: curses.window) -> str:
         ch = stdscr.getch()
         if ch in (curses.KEY_ENTER, ord("\n"), ord("\r")):
             break
-        if ch == 27:  # Escape
+        if ch == _KEY_ESCAPE:
             buf.clear()
             break
         if ch in (curses.KEY_BACKSPACE, 127, ord("\b")):
@@ -150,12 +155,17 @@ def _prompt_search(stdscr: curses.window) -> str:
         text = "".join(buf)
         stdscr.move(height - 1, 0)
         stdscr.clrtoeol()
-        stdscr.addnstr(height - 1, 0, f"/{text}", width - 1, curses.A_BOLD)
+        stdscr.addnstr(height - 1, 0, f"{prompt}{text}", width - 1, curses.A_BOLD)
         stdscr.refresh()
 
     curses.noecho()
     curses.curs_set(0)
     return "".join(buf)
+
+
+def _prompt_search(stdscr: curses.window) -> str:
+    """Prompt the user for a search pattern at the bottom of the screen."""
+    return _prompt_input(stdscr, "/")
 
 
 def _filter_lines(
@@ -199,21 +209,198 @@ def _addstr_highlighted(
         stdscr.addstr(row, cur_col, text[pos:])
 
 
-def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) -> None:
-    """Curses-based interactive triple browser."""
+def _unbind_namespace(graph: Graph, prefix: str) -> bool:
+    """Remove a namespace binding from a graph's store.
+
+    Uses Memory store internals since rdflib has no public unbind API.
+    Returns True if the binding was removed.
+    """
+    store = graph.store
+    try:
+        ns_dict: dict[str, object] = getattr(store, "_Memory__namespace")  # noqa: B009
+        pfx_dict: dict[object, str] = getattr(store, "_Memory__prefix")  # noqa: B009
+    except AttributeError:
+        return False
+    uri = ns_dict.pop(prefix, None)
+    if uri is not None:
+        pfx_dict.pop(uri, None)
+        graph.namespace_manager.reset()
+        return True
+    return False
+
+
+def _render_namespace_view(  # noqa: PLR0913
+    stdscr: curses.window,
+    height: int,
+    width: int,
+    namespaces: list[tuple[str, str]],
+    cursor: int,
+    scroll: int,
+    cursor_attr: int,
+) -> None:
+    """Render the namespace listing with cursor highlight."""
+    header = f" Namespaces: {len(namespaces)} bindings "
+    stdscr.addstr(0, 0, header[:width - 1], curses.A_REVERSE)
+
+    nav = "  a add  e edit  d delete  n/Esc back  j/k scroll  q quit"
+    if len(nav) < width:
+        stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
+
+    content_start = 3
+    content_height = height - content_start - 1
+
+    if not namespaces:
+        stdscr.addstr(content_start, 2, "(no namespace bindings)")
+        return
+
+    max_prefix = max(len(p) for p, _ in namespaces)
+
+    for i, (prefix, uri) in enumerate(
+        namespaces[scroll : scroll + content_height],
+    ):
+        row = content_start + i
+        idx = scroll + i
+        if row < height - 1:
+            line = f"  {prefix:<{max_prefix}}  \u2192  {uri}"
+            attr = cursor_attr if idx == cursor else 0
+            stdscr.addnstr(row, 0, line[:width - 1], width - 1, attr)
+
+    if len(namespaces) > content_height:
+        end = min(scroll + content_height, len(namespaces))
+        pos_info = f" [{scroll + 1}-{end}/{len(namespaces)}] "
+        if len(pos_info) < width:
+            stdscr.addstr(height - 1, 0, pos_info[:width - 1], curses.A_DIM)
+
+
+def interactive(
+    stdscr: curses.window,
+    views: dict[str, tuple[str, list[str]]],
+    graphs: dict[str, Graph] | None = None,
+) -> None:
+    """Curses-based interactive triple browser.
+
+    When *graphs* is provided (mapping view-key → Graph), the ``n`` key
+    opens a namespace editor that lets the user add, edit, and delete
+    prefix bindings.  Changes are reflected immediately in the triple
+    display.
+    """
     curses.use_default_colors()
     curses.curs_set(0)
     curses.init_pair(1, curses.COLOR_GREEN, -1)
+    curses.init_pair(2, curses.COLOR_YELLOW, -1)
     highlight_attr = curses.color_pair(1) | curses.A_BOLD
+    cursor_attr = curses.color_pair(2) | curses.A_BOLD
     stdscr.clear()
 
     current = "both"
     scroll = 0
     search_pattern: re.Pattern[str] | None = None
 
+    # Namespace mode state
+    ns_mode = False
+    ns_cursor = 0
+    ns_scroll = 0
+
+    def _get_namespaces() -> list[tuple[str, str]]:
+        if graphs is None:
+            return []
+        graph = next(iter(graphs.values()))
+        return sorted(
+            ((str(p), str(ns)) for p, ns in graph.namespace_manager.namespaces()),
+            key=lambda x: x[0],
+        )
+
+    def _rebuild_views() -> None:
+        """Regenerate formatted triple lines from graphs after namespace edits."""
+        if graphs is None:
+            return
+        for key, graph in graphs.items():
+            if key in views:
+                old_title = views[key][0]
+                views[key] = (old_title, format_triples(graph))
+
+    def _apply_to_all_graphs(
+        fn: Callable[[Graph], object],
+    ) -> None:
+        if graphs is None:
+            return
+        for graph in graphs.values():
+            fn(graph)
+
     while True:
         stdscr.clear()
         height, width = stdscr.getmaxyx()
+
+        if ns_mode:
+            namespaces = _get_namespaces()
+            content_height = height - 4
+
+            # Clamp cursor
+            if namespaces:
+                ns_cursor = max(0, min(ns_cursor, len(namespaces) - 1))
+                # Auto-scroll to keep cursor visible
+                if ns_cursor < ns_scroll:
+                    ns_scroll = ns_cursor
+                elif ns_cursor >= ns_scroll + content_height:
+                    ns_scroll = ns_cursor - content_height + 1
+                max_ns_scroll = max(0, len(namespaces) - content_height)
+                ns_scroll = max(0, min(ns_scroll, max_ns_scroll))
+
+            _render_namespace_view(
+                stdscr, height, width,
+                namespaces, ns_cursor, ns_scroll, cursor_attr,
+            )
+            stdscr.refresh()
+            key = stdscr.getch()
+
+            if key == ord("n") or key == _KEY_ESCAPE:  # back to triples
+                ns_mode = False
+            elif key == ord("q") or key == ord("Q"):
+                break
+            elif key == ord("j") or key == curses.KEY_DOWN:
+                ns_cursor += 1
+            elif key == ord("k") or key == curses.KEY_UP:
+                ns_cursor = max(0, ns_cursor - 1)
+            elif key == curses.KEY_NPAGE:
+                ns_cursor += max(1, (height - 4) // 2)
+            elif key == curses.KEY_PPAGE:
+                ns_cursor -= max(1, (height - 4) // 2)
+                ns_cursor = max(0, ns_cursor)
+            elif key == ord("a"):
+                prefix = _prompt_input(stdscr, "Prefix: ")
+                if prefix:
+                    uri = _prompt_input(stdscr, "URI: ")
+                    if uri:
+                        _apply_to_all_graphs(
+                            lambda g, p=prefix, u=uri: g.bind(p, u, override=True),
+                        )
+                        _rebuild_views()
+            elif key == ord("e") and namespaces:
+                old_prefix, old_uri = namespaces[ns_cursor]
+                new_prefix = _prompt_input(stdscr, f"Prefix [{old_prefix}]: ")
+                new_uri = _prompt_input(stdscr, f"URI [{old_uri}]: ")
+                final_prefix = new_prefix or old_prefix
+                final_uri = new_uri or old_uri
+                if final_prefix != old_prefix or final_uri != old_uri:
+                    if final_prefix != old_prefix:
+                        _apply_to_all_graphs(
+                            lambda g, p=old_prefix: _unbind_namespace(g, p),
+                        )
+                    _apply_to_all_graphs(
+                        lambda g, p=final_prefix, u=final_uri: g.bind(
+                            p, u, override=True,
+                        ),
+                    )
+                    _rebuild_views()
+            elif key == ord("d") and namespaces:
+                prefix, _uri = namespaces[ns_cursor]
+                _apply_to_all_graphs(
+                    lambda g, p=prefix: _unbind_namespace(g, p),
+                )
+                _rebuild_views()
+                if ns_cursor >= len(_get_namespaces()):
+                    ns_cursor = max(0, len(_get_namespaces()) - 1)
+            continue
 
         title, all_lines = views[current]
         lines = _filter_lines(all_lines, search_pattern)
@@ -237,6 +424,8 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
             nav_parts.append("← left-only")
         if "right" in view_keys:
             nav_parts.append("→ right-only")
+        if graphs is not None:
+            nav_parts.append("n namespaces")
         nav_parts.extend(["/ search", "Esc clear", "q quit", "j/k scroll"])
         nav = "  " + "  ".join(nav_parts)
         if len(nav) < width:
@@ -277,7 +466,11 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
         key = stdscr.getch()
         if key == ord("q") or key == ord("Q"):
             break
-        if key == ord("/"):
+        if key == ord("n") and graphs is not None:
+            ns_mode = True
+            ns_cursor = 0
+            ns_scroll = 0
+        elif key == ord("/"):
             text = _prompt_search(stdscr)
             if text:
                 try:
@@ -289,7 +482,7 @@ def interactive(stdscr: curses.window, views: dict[str, tuple[str, list[str]]]) 
             else:
                 search_pattern = None
             scroll = 0
-        elif key == 27:  # Escape — clear search
+        elif key == _KEY_ESCAPE:  # Escape — clear search
             search_pattern = None
             scroll = 0
         elif key == curses.KEY_UP:

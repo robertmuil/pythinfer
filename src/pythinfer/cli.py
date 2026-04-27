@@ -477,7 +477,8 @@ def explore(
         label = "Inferred dataset"
 
     views = build_explore_views(graph, label=label)
-    curses.wrapper(lambda stdscr: interactive(stdscr, views))
+    graphs = {"both": graph}
+    curses.wrapper(lambda stdscr: interactive(stdscr, views, graphs))
 
 
 @app.command()
@@ -526,7 +527,13 @@ def compare(
     )
     if use_interactive:
         views = build_interactive_views(result)
-        curses.wrapper(lambda stdscr: interactive(stdscr, views))
+        graphs = {
+            "left": result.only_left,
+            "right": result.only_right,
+            "both": result.both,
+            "union": result.union,
+        }
+        curses.wrapper(lambda stdscr: interactive(stdscr, views, graphs))
 
 
 if __name__ == "__main__":
