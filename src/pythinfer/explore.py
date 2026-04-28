@@ -1,17 +1,20 @@
-"""Provide functionality to explore and compare two RDF graphs.
+"""Provide functionality to explore a graph and compare two graphs.
 
-Compute intersection, differences, and browse interactively.
+Provides TUI for easy filtering and browsing.
+
+For comparisons, compute intersection, differences, and browse interactively.
 """
 import curses
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from rdflib import Graph, Node
 from rdflib.namespace import NamespaceManager
 
 _KEY_ESCAPE = 27
+_DEFAULT_FILTERS_FILE = ".current.filters"
 
 
 @dataclass
@@ -92,7 +95,7 @@ def compare_graphs(left_path: str | Path, right_path: str | Path) -> CompareResu
     )
 
 
-def build_interactive_views(
+def build_comparison_views(
     result: CompareResult,
 ) -> dict[str, tuple[str, list[str]]]:
     """Build the formatted views dict used by the interactive TUI."""
@@ -163,21 +166,103 @@ def _prompt_input(stdscr: curses.window, prompt: str) -> str:
     return "".join(buf)
 
 
-def _prompt_search(stdscr: curses.window) -> str:
-    """Prompt the user for a search pattern at the bottom of the screen."""
-    return _prompt_input(stdscr, "/")
+@dataclass
+class _Filter:
+    """A single regex filter."""
+
+    pattern: re.Pattern[str]
+    source_text: str  # original user input, for display
 
 
-def _filter_lines(
-    lines: list[str], pattern: re.Pattern[str] | None,
-) -> list[str]:
-    """Return lines matching the compiled regex, or all lines if no pattern."""
-    if pattern is None:
-        return lines
-    return [line for line in lines if pattern.search(line)]
+@dataclass
+class _FilterState:
+    """Manages an ordered list of active filters."""
+
+    filters: list[_Filter] = field(default_factory=list)
+
+    @property
+    def active(self) -> bool:
+        return len(self.filters) > 0
+
+    @property
+    def multi(self) -> bool:
+        return len(self.filters) > 1
+
+    def apply(self, lines: list[str]) -> list[str]:
+        """Apply all filters in order, returning matched lines."""
+        result = lines
+        for f in self.filters:
+            result = [line for line in result if f.pattern.search(line)]
+        return result
+
+    def combined_pattern(self) -> re.Pattern[str] | None:
+        """Build a combined pattern for highlighting all filter matches."""
+        if not self.filters:
+            return None
+        combined = "|".join(
+            f"(?:{f.pattern.pattern})" for f in self.filters
+        )
+        # Use the flags of the first filter as a reasonable default
+        return re.compile(combined, self.filters[0].pattern.flags)
+
+    def summary(self, total: int, matched: int) -> str:
+        """Format a summary string for the header."""
+        if not self.filters:
+            return ""
+        parts = "/".join(f.source_text for f in self.filters)
+        return f" [/{parts}/ {matched}/{total} matched]"
+
+    def set_single(self, filt: _Filter) -> None:
+        """Replace all filters with a single one."""
+        self.filters = [filt]
+
+    def add(self, filt: _Filter) -> None:
+        """Append a filter to the list."""
+        self.filters.append(filt)
+
+    def clear(self) -> None:
+        self.filters.clear()
+
+    def remove(self, index: int) -> None:
+        if 0 <= index < len(self.filters):
+            self.filters.pop(index)
+
+    def swap(self, i: int, j: int) -> None:
+        """Swap two filters by index."""
+        if 0 <= i < len(self.filters) and 0 <= j < len(self.filters):
+            self.filters[i], self.filters[j] = (
+                self.filters[j],
+                self.filters[i],
+            )
+
+    def save(self, path: Path) -> None:
+        """Save filter patterns to a text file, one per line."""
+        path.write_text(
+            "\n".join(f.source_text for f in self.filters) + "\n",
+        )
+
+    def load(self, path: Path) -> None:
+        """Load filter patterns from a text file, one per line."""
+        self.clear()
+        for raw_line in path.read_text().splitlines():
+            text = raw_line.strip()
+            if text:
+                filt = _compile_filter(text)
+                if filt is not None:
+                    self.filters.append(filt)
 
 
-def _addstr_highlighted(
+def _compile_filter(text: str) -> _Filter | None:
+    """Compile user text into a Filter, or None on invalid regex."""
+    try:
+        # Smart-case: case-insensitive unless pattern has uppercase
+        flags = 0 if text != text.lower() else re.IGNORECASE
+        return _Filter(pattern=re.compile(text, flags), source_text=text)
+    except re.error:
+        return None
+
+
+def _addstr_highlighted(  # noqa: PLR0913
     stdscr: curses.window,
     row: int,
     col: int,
@@ -207,6 +292,74 @@ def _addstr_highlighted(
     # Remaining text after last match
     if pos < len(text):
         stdscr.addstr(row, cur_col, text[pos:])
+
+
+def _render_filter_manager(  # noqa: PLR0913
+    stdscr: curses.window,
+    height: int,
+    width: int,
+    filters: _FilterState,
+    cursor: int,
+    cursor_attr: int,
+) -> None:
+    """Render the filter list manager view."""
+    header = f" Active Filters: {len(filters.filters)} "
+    stdscr.addstr(0, 0, header[:width - 1], curses.A_REVERSE)
+
+    nav = "  / +filter  d delete  J/K move  S save  L load  Esc/f back  q quit"
+    if len(nav) < width:
+        stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
+
+    content_start = 3
+    for i, f in enumerate(filters.filters):
+        row = content_start + i
+        if row >= height - 1:
+            break
+        line = f"  {i + 1}. /{f.source_text}/"
+        attr = cursor_attr if i == cursor else 0
+        stdscr.addnstr(row, 0, line[:width - 1], width - 1, attr)
+
+
+def _list_filter_files(directory: Path) -> list[Path]:
+    """Return sorted .filters files in the given directory."""
+    if not directory.is_dir():
+        return []
+    return sorted(directory.glob("*.filters"))
+
+
+def _render_file_picker(  # noqa: PLR0913
+    stdscr: curses.window,
+    height: int,
+    width: int,
+    files: list[Path],
+    cursor: int,
+    scroll: int,
+    cursor_attr: int,
+) -> None:
+    """Render a file picker view."""
+    header = f" Load Filters: {len(files)} file(s) "
+    stdscr.addstr(0, 0, header[:width - 1], curses.A_REVERSE)
+
+    nav = "  Enter select  Esc cancel  j/k scroll  q quit"
+    if len(nav) < width:
+        stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
+
+    content_start = 3
+    content_height = height - content_start - 1
+
+    if not files:
+        stdscr.addstr(content_start, 2, "(no .filters files found)")
+        return
+
+    for i, path in enumerate(
+        files[scroll : scroll + content_height],
+    ):
+        row = content_start + i
+        idx = scroll + i
+        if row < height - 1:
+            line = f"  {path.name}"
+            attr = cursor_attr if idx == cursor else 0
+            stdscr.addnstr(row, 0, line[:width - 1], width - 1, attr)
 
 
 def _unbind_namespace(graph: Graph, prefix: str) -> bool:
@@ -294,12 +447,37 @@ def interactive(
 
     current = "both"
     scroll = 0
-    search_pattern: re.Pattern[str] | None = None
+    filter_state = _FilterState()
 
     # Namespace mode state
     ns_mode = False
     ns_cursor = 0
     ns_scroll = 0
+
+    # Filter manager mode state
+    fm_mode = False
+    fm_cursor = 0
+
+    # File picker mode state
+    fp_mode = False
+    fp_cursor = 0
+    fp_scroll = 0
+    fp_files: list[Path] = []
+
+    # Directory for saving/loading filters (beside the project file or cwd)
+    filters_dir = Path.cwd()
+
+    # Auto-load default filters if the file exists
+    default_filters_path = filters_dir / _DEFAULT_FILTERS_FILE
+    if default_filters_path.is_file():
+        filter_state.load(default_filters_path)
+
+    def _auto_save_filters() -> None:
+        """Persist current filters to .current.filters automatically."""
+        if filter_state.active:
+            filter_state.save(default_filters_path)
+        elif default_filters_path.is_file():
+            default_filters_path.unlink()
 
     def _get_namespaces() -> list[tuple[str, str]]:
         if graphs is None:
@@ -372,13 +550,19 @@ def interactive(
                     uri = _prompt_input(stdscr, "URI: ")
                     if uri:
                         _apply_to_all_graphs(
-                            lambda g, p=prefix, u=uri: g.bind(p, u, override=True),
+                            lambda g, p=prefix, u=uri: g.bind(
+                                p, u, override=True,
+                            ),
                         )
                         _rebuild_views()
             elif key == ord("e") and namespaces:
                 old_prefix, old_uri = namespaces[ns_cursor]
-                new_prefix = _prompt_input(stdscr, f"Prefix [{old_prefix}]: ")
-                new_uri = _prompt_input(stdscr, f"URI [{old_uri}]: ")
+                new_prefix = _prompt_input(
+                    stdscr, f"Prefix [{old_prefix}]: ",
+                )
+                new_uri = _prompt_input(
+                    stdscr, f"URI [{old_uri}]: ",
+                )
                 final_prefix = new_prefix or old_prefix
                 final_uri = new_uri or old_uri
                 if final_prefix != old_prefix or final_uri != old_uri:
@@ -402,16 +586,101 @@ def interactive(
                     ns_cursor = max(0, len(_get_namespaces()) - 1)
             continue
 
+        if fm_mode:
+            _render_filter_manager(
+                stdscr, height, width,
+                filter_state, fm_cursor, cursor_attr,
+            )
+            stdscr.refresh()
+            key = stdscr.getch()
+
+            if key == ord("f") or key == _KEY_ESCAPE:
+                fm_mode = False
+            elif key == ord("q") or key == ord("Q"):
+                break
+            elif key == ord("/"):
+                text = _prompt_input(stdscr, "/")
+                if text:
+                    filt = _compile_filter(text)
+                    if filt is not None:
+                        filter_state.add(filt)
+                        _auto_save_filters()
+            elif key == ord("j") or key == curses.KEY_DOWN:
+                fm_cursor = min(
+                    fm_cursor + 1, len(filter_state.filters) - 1,
+                )
+            elif key == ord("k") or key == curses.KEY_UP:
+                fm_cursor = max(0, fm_cursor - 1)
+            elif key == ord("d") and filter_state.filters:
+                filter_state.remove(fm_cursor)
+                if fm_cursor >= len(filter_state.filters):
+                    fm_cursor = max(0, len(filter_state.filters) - 1)
+                _auto_save_filters()
+                scroll = 0
+            elif key == ord("J") and filter_state.filters:
+                if fm_cursor < len(filter_state.filters) - 1:
+                    filter_state.swap(fm_cursor, fm_cursor + 1)
+                    fm_cursor += 1
+                    _auto_save_filters()
+            elif key == ord("K") and filter_state.filters and fm_cursor > 0:
+                filter_state.swap(fm_cursor, fm_cursor - 1)
+                fm_cursor -= 1
+                _auto_save_filters()
+            elif key == ord("S") and filter_state.active:
+                name = _prompt_input(stdscr, "Save as (.filters): ")
+                if name:
+                    if not name.endswith(".filters"):
+                        name += ".filters"
+                    filter_state.save(filters_dir / name)
+            elif key == ord("L"):
+                fp_files = _list_filter_files(filters_dir)
+                fp_mode = True
+                fp_cursor = 0
+                fp_scroll = 0
+                fm_mode = False
+            continue
+
+        if fp_mode:
+            content_height = height - 4
+            if fp_files:
+                fp_cursor = max(0, min(fp_cursor, len(fp_files) - 1))
+                if fp_cursor < fp_scroll:
+                    fp_scroll = fp_cursor
+                elif fp_cursor >= fp_scroll + content_height:
+                    fp_scroll = fp_cursor - content_height + 1
+
+            _render_file_picker(
+                stdscr, height, width,
+                fp_files, fp_cursor, fp_scroll, cursor_attr,
+            )
+            stdscr.refresh()
+            key = stdscr.getch()
+
+            if key == _KEY_ESCAPE:
+                fp_mode = False
+            elif key == ord("q") or key == ord("Q"):
+                break
+            elif key == ord("j") or key == curses.KEY_DOWN:
+                fp_cursor += 1
+            elif key == ord("k") or key == curses.KEY_UP:
+                fp_cursor = max(0, fp_cursor - 1)
+            elif (
+                key in (curses.KEY_ENTER, ord("\n"), ord("\r"))
+                and fp_files
+            ):
+                filter_state.load(fp_files[fp_cursor])
+                _auto_save_filters()
+                fp_mode = False
+                scroll = 0
+            continue
+
         title, all_lines = views[current]
-        lines = _filter_lines(all_lines, search_pattern)
+        lines = filter_state.apply(all_lines) if filter_state.active else all_lines
+        highlight_pattern = filter_state.combined_pattern()
 
         # Header
         header = f" {title} "
-        if search_pattern is not None:
-            header += (
-                f" [/{search_pattern.pattern}/ "
-                f"{len(lines)}/{len(all_lines)} matched]"
-            )
+        header += filter_state.summary(len(all_lines), len(lines))
         stdscr.addstr(0, 0, header[:width - 1], curses.A_REVERSE)
 
         nav_parts: list[str] = []
@@ -426,7 +695,8 @@ def interactive(
             nav_parts.append("→ right-only")
         if graphs is not None:
             nav_parts.append("n namespaces")
-        nav_parts.extend(["/ search", "Esc clear", "q quit", "j/k scroll"])
+        nav_parts.append("/ +filter  f filters  c clear")
+        nav_parts.extend(["q quit", "j/k scroll"])
         nav = "  " + "  ".join(nav_parts)
         if len(nav) < width:
             stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
@@ -436,7 +706,7 @@ def interactive(
         content_height = height - content_start - 1
 
         if not lines:
-            msg = "(no matches)" if search_pattern else "(no triples)"
+            msg = "(no matches)" if filter_state.active else "(no triples)"
             stdscr.addstr(content_start, 2, msg)
         else:
             # Clamp scroll
@@ -448,7 +718,7 @@ def interactive(
                 if row < height - 1:
                     _addstr_highlighted(
                         stdscr, row, 1, line, width - 2,
-                        search_pattern, highlight_attr,
+                        highlight_pattern, highlight_attr,
                     )
 
             # Scroll indicator
@@ -471,19 +741,23 @@ def interactive(
             ns_cursor = 0
             ns_scroll = 0
         elif key == ord("/"):
-            text = _prompt_search(stdscr)
+            text = _prompt_input(stdscr, "/")
             if text:
-                try:
-                    # Smart-case: case-insensitive unless pattern has uppercase
-                    flags = 0 if text != text.lower() else re.IGNORECASE
-                    search_pattern = re.compile(text, flags)
-                except re.error:
-                    search_pattern = None
+                filt = _compile_filter(text)
+                if filt is not None:
+                    filter_state.add(filt)
+                    _auto_save_filters()
             else:
-                search_pattern = None
+                # Empty / clears all filters
+                filter_state.clear()
+                _auto_save_filters()
             scroll = 0
-        elif key == _KEY_ESCAPE:  # Escape — clear search
-            search_pattern = None
+        elif key == ord("f"):
+            fm_mode = True
+            fm_cursor = 0
+        elif key == ord("c") or key == _KEY_ESCAPE:
+            filter_state.clear()
+            _auto_save_filters()
             scroll = 0
         elif key == curses.KEY_UP:
             if "both" in views:

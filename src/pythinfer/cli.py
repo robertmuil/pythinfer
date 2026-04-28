@@ -18,8 +18,8 @@ from rich.table import Table
 
 from pythinfer.api import Project
 from pythinfer.explore import (
+    build_comparison_views,
     build_explore_views,
-    build_interactive_views,
     compare_graphs,
     interactive,
     load_graph,
@@ -526,7 +526,7 @@ def compare(
         interactive_mode if interactive_mode is not None else sys.stdout.isatty()
     )
     if use_interactive:
-        views = build_interactive_views(result)
+        views = build_comparison_views(result)
         graphs = {
             "left": result.only_left,
             "right": result.only_right,
