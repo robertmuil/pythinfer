@@ -696,7 +696,7 @@ def interactive(
         if graphs is not None:
             nav_parts.append("n namespaces")
         nav_parts.append("/ +filter  f filters  c clear")
-        nav_parts.extend(["q quit", "j/k scroll"])
+        nav_parts.extend(["q quit", "j/k scroll  J/K page"])
         nav = "  " + "  ".join(nav_parts)
         if len(nav) < width:
             stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
@@ -775,7 +775,11 @@ def interactive(
             if "right" in views:
                 current = "right"
             scroll = 0
-        elif key == ord("j") or key == curses.KEY_NPAGE:
+        elif key == ord("j"):
+            scroll += 1
+        elif key == ord("k"):
+            scroll -= 1
+        elif key == ord("J") or key == curses.KEY_NPAGE:
             scroll += max(1, content_height // 2)
-        elif key == ord("k") or key == curses.KEY_PPAGE:
+        elif key == ord("K") or key == curses.KEY_PPAGE:
             scroll -= max(1, content_height // 2)

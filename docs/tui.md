@@ -23,8 +23,10 @@ Triples are displayed one per line in `subject  predicate  object .` format, sho
 
 | Key | Action |
 | --- | ------ |
-| `j` / `PageDown` | Scroll down |
-| `k` / `PageUp` | Scroll up |
+| `j` | Scroll down one line |
+| `k` | Scroll up one line |
+| `PageDown` | Scroll down half a page |
+| `PageUp` | Scroll up half a page |
 | `/` | Add a filter (enter regex, smart-case). Empty input clears all filters. |
 | `c` | Clear all filters |
 | `Esc` | Clear all filters |
@@ -50,6 +52,8 @@ Filters are regex patterns applied in sequence — each filter narrows the outpu
 - **Smart-case**: patterns are case-insensitive unless they contain an uppercase letter.
 - **Persistence**: filters are automatically saved to `.current.filters` in the working directory and restored on next launch.
 - Pressing `/` with empty input clears all filters.
+
+Note that complex regex filters are likely better expressed as SPARQL queries, so if the filters list gets complex or is taking a long time to filter, it may be worth switching to SPARQL for more efficient querying.
 
 ## Filter Manager (`f`)
 

@@ -478,7 +478,6 @@ The `example_projects` folder contains contrived examples, but this has also bee
    1. e.g. `<urn:pythinfer:inferences:owl>` which is easy to remember and specify on command-line.
 1. filters!
     - add option to specify s(subject), p(predicate), o(object) in the search, and then the search will only match against that part of the triple, allowing for more focused filtering
-    - note that complex regex filters likely are better expressed as SPARQL queries, so if the filters start getting complex or taking a long time to execute, a suggestion can be made to switch to SPARQL
 1. add TUI for queries
    1. allow easy loading of existing SPARQL query files
    2. automatically add a LIMIT to the query if not already present, to prevent accidental execution of very expensive queries
