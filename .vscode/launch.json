@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "pythinfer explore",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "src/pythinfer/cli.py",
+            "console": "integratedTerminal",
+            "args": "explore"
+        },
+        {
             "name": "pythinfer eg1-ancestors query",
             "type": "debugpy",
             "request": "launch",
