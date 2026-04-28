@@ -24,3 +24,4 @@ demo-*.mov
 derived/
 url-mapping.yaml
 example_projects/eg2-projects/imports/*.ttl
+.current.filters
