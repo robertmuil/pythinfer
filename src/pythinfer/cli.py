@@ -26,6 +26,7 @@ from pythinfer.explore import (
 )
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
+from pythinfer.query_tui import interactive_query
 from pythinfer.rdflibplus import DatasetView, graph_lengths
 from pythinfer.resolve_imports import resolve_imports as _resolve_imports
 
@@ -391,7 +392,13 @@ def _display_query_result(
 
 @app.command()
 def query(
-    query: str,
+    query: Annotated[
+        str | None,
+        typer.Argument(
+            help="Path to a SPARQL query file, or a query string. "
+            "If omitted, launches an interactive TUI.",
+        ),
+    ] = None,
     graph: list[str] | None = None,
     *,
     no_cache: bool = False,
@@ -404,8 +411,11 @@ def query(
             "If not set, uses a rich table for terminals and csv otherwise.",
         ),
     ] = None,
-) -> Result:
+) -> Result | None:
     """Perform a query, from given path, against the latest inferred file.
+
+    When called without a query argument, launches an interactive TUI
+    for loading, editing, saving, and executing SPARQL queries.
 
     Args:
         query: path to the query file to execute, or the query string itself
@@ -414,12 +424,6 @@ def query(
         output_format: serialization format for SELECT results (csv, json, xml, txt)
 
     """
-    if Path(query).is_file():
-        with Path(query).open() as f:
-            query_contents = f.read()
-    else:
-        query_contents = str(query)
-
     ds, _ = infer(no_cache=no_cache)
 
     view = ds
@@ -427,6 +431,21 @@ def query(
         view = DatasetView(ds, [URIRef(g) for g in graph])
         gid_n3s = [gid.n3() for gid in view.included_graph_ids]
         echo_neutral(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
+
+    if query is None:
+        # Launch interactive TUI
+        project = Project.load(_project_path_var.get())
+        project_dir = project.path_self.parent
+        curses.wrapper(
+            lambda stdscr: interactive_query(stdscr, view, len(view), project_dir),
+        )
+        return None
+
+    if Path(query).is_file():
+        with Path(query).open() as f:
+            query_contents = f.read()
+    else:
+        query_contents = str(query)
 
     result = view.query(query_contents)
 
