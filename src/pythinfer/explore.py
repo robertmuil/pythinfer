@@ -4,6 +4,7 @@ Provides TUI for easy filtering and browsing.
 
 For comparisons, compute intersection, differences, and browse interactively.
 """
+import contextlib
 import curses
 import re
 from collections.abc import Callable
@@ -129,19 +130,23 @@ def build_explore_views(
     }
 
 
-def _prompt_input(stdscr: curses.window, prompt: str) -> str:
+def _prompt_input(stdscr: curses.window, prompt: str, default: str = "") -> str:
     """Prompt the user for text input at the bottom of the screen.
 
     Returns the entered text, or empty string if cancelled with Escape.
+    If *default* is given it pre-populates the input buffer.
     """
     height, width = stdscr.getmaxyx()
-    stdscr.addstr(height - 1, 0, prompt, curses.A_BOLD)
+    buf: list[str] = list(default)
+    # Initial draw with default value
+    stdscr.move(height - 1, 0)
     stdscr.clrtoeol()
+    text = "".join(buf)
+    stdscr.addnstr(height - 1, 0, f"{prompt}{text}", width - 1, curses.A_BOLD)
     stdscr.refresh()
     curses.curs_set(1)
     curses.echo()
 
-    buf: list[str] = []
     while True:
         ch = stdscr.getch()
         if ch in (curses.KEY_ENTER, ord("\n"), ord("\r")):
@@ -172,6 +177,7 @@ class _Filter:
 
     pattern: re.Pattern[str]
     source_text: str  # original user input, for display
+    field: str | None = None  # None=whole line, "s"/"p"/"o" for specific field
 
 
 @dataclass
@@ -192,18 +198,44 @@ class _FilterState:
         """Apply all filters in order, returning matched lines."""
         result = lines
         for f in self.filters:
-            result = [line for line in result if f.pattern.search(line)]
+            result = [line for line in result if _filter_matches(f, line)]
         return result
 
     def combined_pattern(self) -> re.Pattern[str] | None:
-        """Build a combined pattern for highlighting all filter matches."""
-        if not self.filters:
+        """Build a combined pattern for highlighting whole-line filter matches.
+
+        Only includes filters without a field prefix.  Field-scoped
+        filters are handled separately by ``field_patterns``.
+        """
+        whole = [f for f in self.filters if f.field is None]
+        if not whole:
             return None
-        combined = "|".join(
-            f"(?:{f.pattern.pattern})" for f in self.filters
-        )
-        # Use the flags of the first filter as a reasonable default
-        return re.compile(combined, self.filters[0].pattern.flags)
+        combined = "|".join(f"(?:{f.pattern.pattern})" for f in whole)
+        all_icase = all(f.pattern.flags & re.IGNORECASE for f in whole)
+        flags = re.IGNORECASE if all_icase else 0
+        try:
+            return re.compile(combined, flags)
+        except re.error:
+            return None
+
+    def field_patterns(self) -> dict[str, re.Pattern[str]]:
+        """Return per-field compiled patterns for field-scoped filters.
+
+        Returns a dict mapping field key (``"s"``, ``"p"``, ``"o"``) to
+        a combined regex for all filters targeting that field.
+        """
+        by_field: dict[str, list[_Filter]] = {}
+        for f in self.filters:
+            if f.field is not None:
+                by_field.setdefault(f.field, []).append(f)
+        result: dict[str, re.Pattern[str]] = {}
+        for fld, filts in by_field.items():
+            combined = "|".join(f"(?:{f.pattern.pattern})" for f in filts)
+            all_icase = all(f.pattern.flags & re.IGNORECASE for f in filts)
+            flags = re.IGNORECASE if all_icase else 0
+            with contextlib.suppress(re.error):
+                result[fld] = re.compile(combined, flags)
+        return result
 
     def summary(self, total: int, matched: int) -> str:
         """Format a summary string for the header."""
@@ -252,17 +284,55 @@ class _FilterState:
                     self.filters.append(filt)
 
 
+_FIELD_PREFIXES = {"s=": "s", "p=": "p", "o=": "o"}
+
+
 def _compile_filter(text: str) -> _Filter | None:
-    """Compile user text into a Filter, or None on invalid regex."""
+    """Compile user text into a Filter, or None on invalid regex.
+
+    Supports field prefixes: ``s=``, ``p=``, ``o=`` to restrict the
+    match to subject, predicate, or object respectively.
+    """
+    field: str | None = None
+    raw = text
+    for prefix, fld in _FIELD_PREFIXES.items():
+        if raw.startswith(prefix):
+            field = fld
+            raw = raw[len(prefix):]
+            break
+    if not raw:
+        return None
     try:
         # Smart-case: case-insensitive unless pattern has uppercase
-        flags = 0 if text != text.lower() else re.IGNORECASE
-        return _Filter(pattern=re.compile(text, flags), source_text=text)
+        flags = 0 if raw != raw.lower() else re.IGNORECASE
+        return _Filter(
+            pattern=re.compile(raw, flags),
+            source_text=text,
+            field=field,
+        )
     except re.error:
         return None
 
 
-def _addstr_highlighted(  # noqa: PLR0913
+_FIELD_INDEX = {"s": 0, "p": 1, "o": 2}
+
+
+def _filter_matches(filt: _Filter, line: str) -> bool:
+    """Return True if *line* matches the filter.
+
+    For field-specific filters the line is split on double-space to
+    extract subject / predicate / object.
+    """
+    if filt.field is None:
+        return filt.pattern.search(line) is not None
+    parts = line.split("  ")
+    idx = _FIELD_INDEX[filt.field]
+    if idx < len(parts):
+        return filt.pattern.search(parts[idx]) is not None
+    return False
+
+
+def _addstr_highlighted(  # noqa: PLR0913, C901
     stdscr: curses.window,
     row: int,
     col: int,
@@ -270,28 +340,61 @@ def _addstr_highlighted(  # noqa: PLR0913
     max_len: int,
     pattern: re.Pattern[str] | None,
     attr: int,
+    field_patterns: dict[str, re.Pattern[str]] | None = None,
 ) -> None:
-    """Write text to the screen, highlighting regex matches with attr."""
+    """Write text to the screen, highlighting regex matches with attr.
+
+    *pattern* highlights anywhere in the line.  *field_patterns* maps
+    ``"s"``/``"p"``/``"o"`` to patterns that should only highlight
+    within the corresponding double-space-delimited field.
+    """
     text = text[:max_len]
-    if pattern is None:
+    if pattern is None and not field_patterns:
         stdscr.addnstr(row, col, text, max_len)
         return
-    pos = 0
+
+    # Build a per-character highlight mask
+    hl = [False] * len(text)
+
+    # Whole-line pattern
+    if pattern is not None:
+        for m in pattern.finditer(text):
+            for j in range(m.start(), m.end()):
+                hl[j] = True
+
+    # Field-scoped patterns
+    if field_patterns:
+        sep = "  "
+        parts = text.split(sep)
+        field_keys = ("s", "p", "o")
+        offset = 0
+        for fi, part in enumerate(parts):
+            if fi < len(field_keys):
+                fkey = field_keys[fi]
+                fp = field_patterns.get(fkey)
+                if fp is not None:
+                    for m in fp.finditer(part):
+                        for j in range(offset + m.start(), offset + m.end()):
+                            if j < len(hl):
+                                hl[j] = True
+            offset += len(part) + len(sep)
+
+    # Render with highlight mask
     cur_col = col
-    for m in pattern.finditer(text):
-        # Text before match
-        if m.start() > pos:
-            segment = text[pos:m.start()]
+    i = 0
+    while i < len(text):
+        # Find run of same highlight state
+        is_hl = hl[i]
+        j = i
+        while j < len(text) and hl[j] == is_hl:
+            j += 1
+        segment = text[i:j]
+        if is_hl:
+            stdscr.addstr(row, cur_col, segment, attr)
+        else:
             stdscr.addstr(row, cur_col, segment)
-            cur_col += len(segment)
-        # Matched text
-        matched = m.group()
-        stdscr.addstr(row, cur_col, matched, attr)
-        cur_col += len(matched)
-        pos = m.end()
-    # Remaining text after last match
-    if pos < len(text):
-        stdscr.addstr(row, cur_col, text[pos:])
+        cur_col += len(segment)
+        i = j
 
 
 def _render_filter_manager(  # noqa: PLR0913
@@ -306,7 +409,10 @@ def _render_filter_manager(  # noqa: PLR0913
     header = f" Active Filters: {len(filters.filters)} "
     stdscr.addstr(0, 0, header[:width - 1], curses.A_REVERSE)
 
-    nav = "  / +filter  d delete  J/K move  S save  L load  Esc/f back  q quit"
+    nav = (
+        "  / +filter  e edit  d delete  J/K move"
+        "  S save  L load  Enter/Esc/f back  q quit"
+    )
     if len(nav) < width:
         stdscr.addstr(1, 0, nav[:width - 1], curses.A_DIM)
 
@@ -594,10 +700,21 @@ def interactive(
             stdscr.refresh()
             key = stdscr.getch()
 
-            if key == ord("f") or key == _KEY_ESCAPE:
+            if key == ord("f") or key == _KEY_ESCAPE or key in (
+                curses.KEY_ENTER, ord("\n"), ord("\r"),
+            ):
                 fm_mode = False
             elif key == ord("q") or key == ord("Q"):
                 break
+            elif key == ord("e") and filter_state.filters:
+                old = filter_state.filters[fm_cursor]
+                text = _prompt_input(stdscr, "Edit: ", old.source_text)
+                if text:
+                    filt = _compile_filter(text)
+                    if filt is not None:
+                        filter_state.filters[fm_cursor] = filt
+                        _auto_save_filters()
+                        scroll = 0
             elif key == ord("/"):
                 text = _prompt_input(stdscr, "/")
                 if text:
@@ -677,6 +794,7 @@ def interactive(
         title, all_lines = views[current]
         lines = filter_state.apply(all_lines) if filter_state.active else all_lines
         highlight_pattern = filter_state.combined_pattern()
+        highlight_fields = filter_state.field_patterns()
 
         # Header
         header = f" {title} "
@@ -719,6 +837,7 @@ def interactive(
                     _addstr_highlighted(
                         stdscr, row, 1, line, width - 2,
                         highlight_pattern, highlight_attr,
+                        highlight_fields or None,
                     )
 
             # Scroll indicator
