@@ -28,6 +28,12 @@ keywords = ["RDF", "OWL", "SPARQL", "Inference", "Semantic Web", "Linked Data"]
 [project.scripts]
 pythinfer = "pythinfer.cli:app"
 
+[project.optional-dependencies]
+tui = [
+    "prompt-toolkit>=3.0.52",
+    "pygments>=2.20.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -61,3 +67,6 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["src/pythinfer"]
 branch = true
+
+[tool.pyright]
+extraPaths = [".venv/lib/python3.12/site-packages"]

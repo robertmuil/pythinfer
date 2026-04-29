@@ -26,7 +26,6 @@ from pythinfer.explore import (
 )
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
-from pythinfer.query_tui import interactive_query
 from pythinfer.rdflibplus import DatasetView, graph_lengths
 from pythinfer.resolve_imports import resolve_imports as _resolve_imports
 
@@ -436,9 +435,18 @@ def query(
         # Launch interactive TUI
         project = Project.load(_project_path_var.get())
         project_dir = project.path_self.parent
-        curses.wrapper(
-            lambda stdscr: interactive_query(stdscr, view, len(view), project_dir),
-        )
+        try:
+            from pythinfer.query_tui_pt import interactive_query_pt
+
+            interactive_query_pt(view, len(view), project_dir)
+        except ImportError:
+            from pythinfer.query_tui import interactive_query
+
+            curses.wrapper(
+                lambda stdscr: interactive_query(
+                    stdscr, view, len(view), project_dir,
+                ),
+            )
         return None
 
     if Path(query).is_file():
