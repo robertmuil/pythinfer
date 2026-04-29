@@ -75,7 +75,7 @@ def _format_select_result(
     headers = [str(v) for v in result.vars]
     rows: list[list[str]] = []
     for binding in result.bindings:
-        row = []
+        row: list[str] = []
         for var in result.vars:
             val = binding.get(var)
             row.append(val.n3(namespace_manager) if val is not None else "")
@@ -89,12 +89,14 @@ def _format_select_result(
 
     # Build lines
     sep = " | "
-    header_line = sep.join(h.ljust(w) for h, w in zip(headers, col_widths))
+    header_line = sep.join(
+        h.ljust(w) for h, w in zip(headers, col_widths, strict=False)
+    )
 
     frozen = [header_line]
     data: list[str] = []
     for row in rows:
-        data.append(sep.join(c.ljust(w) for c, w in zip(row, col_widths)))
+        data.append(sep.join(c.ljust(w) for c, w in zip(row, col_widths, strict=False)))
     data.append(f"({len(rows)} row{'s' if len(rows) != 1 else ''})")
     return frozen, data
 
