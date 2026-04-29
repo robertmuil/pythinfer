@@ -368,7 +368,7 @@ def interactive_query(
 
         # Split remaining height
         usable = height - 2  # top bar + bottom status
-        editor_height = max(usable * 2 // 3, 5)
+        editor_height = max(usable // 2, 5)
         results_height = usable - editor_height - 1  # -1 for results header
 
         editor_top = 1
