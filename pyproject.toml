@@ -28,6 +28,16 @@ keywords = ["RDF", "OWL", "SPARQL", "Inference", "Semantic Web", "Linked Data"]
 [project.scripts]
 pythinfer = "pythinfer.cli:app"
 
+[project.optional-dependencies]
+tui-pt = [
+    "prompt-toolkit>=3.0.52",
+]
+tui-textual = [
+    "textual>=6.12.0",
+    "textual-textarea>=0.17.2",
+    "tree-sitter-sparql>=0.1.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -61,3 +71,18 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["src/pythinfer"]
 branch = true
+omit = [
+    "src/pythinfer/tui/query_tui.py",
+    "src/pythinfer/tui/query_tui_pt.py",
+    "src/pythinfer/tui/query_tui_textual.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "# pragma: no cover",
+    "def interactive\\(",       # curses TUI entry point
+    "curses\\.wrapper\\(",      # curses launcher calls
+]
+
+[tool.pyright]
+extraPaths = [".venv/lib/python3.12/site-packages"]

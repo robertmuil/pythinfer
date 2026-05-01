@@ -1,4 +1,5 @@
 """pythinfer CLI entry point."""
+import curses
 import logging
 import sys
 from collections.abc import Sequence
@@ -8,17 +9,26 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rdflib import Dataset, IdentifiedNode, URIRef
+import yaml
+from rdflib import Dataset, Graph, IdentifiedNode, URIRef
 from rdflib.namespace import NamespaceManager
 from rdflib.query import Result
 from rich import print as rich_print
 from rich.table import Table
 
 from pythinfer.api import Project
+from pythinfer.explore import (
+    build_comparison_views,
+    build_explore_views,
+    compare_graphs,
+    interactive,
+    load_graph,
+)
 from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
-from pythinfer.resolve_imports import resolve_imports as _resolve_imports
 from pythinfer.rdflibplus import DatasetView, graph_lengths
+from pythinfer.resolve_imports import resolve_imports as _resolve_imports
+from pythinfer.tui import TuiBackend, launch_query_tui
 
 ProjectOption = Annotated[
     Path | None,
@@ -169,8 +179,6 @@ def resolve_imports(
                        (default: imports/ next to the project file).
 
     """
-    import yaml
-
     project = Project.load(_project_path_var.get())
     resolved = _resolve_imports(project, download_dir=download_dir)
 
@@ -185,7 +193,12 @@ def resolve_imports(
     project_dir = project.path_self.parent
 
     # Find which key the YAML already uses for references (may be an alias)
-    _reference_aliases = ("reference", "external-vocabs", "external_vocabs", "paths_vocab_ext")
+    _reference_aliases = (
+        "reference",
+        "external-vocabs",
+        "external_vocabs",
+        "paths_vocab_ext",
+    )
     ref_key = next((k for k in _reference_aliases if k in raw), "reference")
 
     existing_refs = [str(r) for r in raw.get(ref_key, [])]
@@ -379,10 +392,24 @@ def _display_query_result(
 
 @app.command()
 def query(
-    query: str,
+    query: Annotated[
+        str | None,
+        typer.Argument(
+            help="Path to a SPARQL query file, or a query string. "
+            "If omitted, launches an interactive TUI.",
+        ),
+    ] = None,
     graph: list[str] | None = None,
     *,
     no_cache: bool = False,
+    tui: Annotated[
+        TuiBackend,
+        typer.Option(
+            "--tui",
+            help="TUI backend to use for interactive mode "
+            "(auto tries textual, then prompt-toolkit, then curses).",
+        ),
+    ] = TuiBackend.auto,
     output_format: Annotated[
         str | None,
         typer.Option(
@@ -392,8 +419,11 @@ def query(
             "If not set, uses a rich table for terminals and csv otherwise.",
         ),
     ] = None,
-) -> Result:
+) -> Result | None:
     """Perform a query, from given path, against the latest inferred file.
+
+    When called without a query argument, launches an interactive TUI
+    for loading, editing, saving, and executing SPARQL queries.
 
     Args:
         query: path to the query file to execute, or the query string itself
@@ -402,12 +432,6 @@ def query(
         output_format: serialization format for SELECT results (csv, json, xml, txt)
 
     """
-    if Path(query).is_file():
-        with Path(query).open() as f:
-            query_contents = f.read()
-    else:
-        query_contents = str(query)
-
     ds, _ = infer(no_cache=no_cache)
 
     view = ds
@@ -416,6 +440,19 @@ def query(
         gid_n3s = [gid.n3() for gid in view.included_graph_ids]
         echo_neutral(f"querying only {len(graph)} graphs: {'; '.join(gid_n3s)}")
 
+    if query is None:
+        # Launch interactive TUI
+        project = Project.load(_project_path_var.get())
+        project_dir = project.path_self.parent
+        launch_query_tui(view, len(view), project_dir, backend=tui)
+        return None
+
+    if Path(query).is_file():
+        with Path(query).open() as f:
+            query_contents = f.read()
+    else:
+        query_contents = str(query)
+
     result = view.query(query_contents)
 
     _display_query_result(
@@ -423,6 +460,105 @@ def query(
     )
 
     return result
+
+
+@app.command()
+def explore(
+    file: Annotated[
+        Path | None,
+        typer.Argument(
+            help="Path to an RDF file to explore. "
+            "If omitted, runs inference and explores the result.",
+        ),
+    ] = None,
+    *,
+    no_cache: bool = False,
+) -> None:
+    """Interactively browse triples in an RDF file.
+
+    If no file is given, loads the project's inferred dataset
+    and explores all its triples.
+
+    Args:
+        file: Path to an RDF file (optional; defaults to inferred output).
+        no_cache: Skip cache and re-run inference (only when no file given).
+
+    """
+    if file is not None:
+        if not file.exists():
+            echo_warning(f"Error: file not found: {file}")
+            raise typer.Exit(code=1)
+        graph = load_graph(file)
+        label = file.name
+        echo_neutral(f"{label}: {len(graph)} triples")
+    else:
+        ds, _ = infer(no_cache=no_cache)
+
+        graph = Graph()
+        for s, p, o, _g in ds.quads((None, None, None, None)):
+            graph.add((s, p, o))
+        for prefix, ns in ds.namespaces():
+            graph.bind(prefix, ns, override=False)
+        label = "Inferred dataset"
+
+    views = build_explore_views(graph, label=label)
+    graphs = {"both": graph}
+    curses.wrapper(lambda stdscr: interactive(stdscr, views, graphs))
+
+
+@app.command()
+def compare(
+    left: Path,
+    right: Path,
+    *,
+    interactive_mode: Annotated[
+        bool | None,
+        typer.Option(
+            "--interactive/--no-interactive",
+            "-i/-I",
+            help="Launch interactive TUI browser (default: yes when stdout is a TTY).",
+        ),
+    ] = None,
+) -> None:
+    """Compare two RDF files, showing intersection and differences.
+
+    Loads both files, computes triples only in LEFT, only in RIGHT,
+    their intersection, and union. Prints a summary, then optionally
+    launches an interactive curses browser.
+
+    Args:
+        left: Path to first RDF file.
+        right: Path to second RDF file.
+        interactive_mode: Launch interactive TUI (default: auto-detect TTY).
+
+    """
+    for p in (left, right):
+        if not p.exists():
+            echo_warning(f"Error: file not found: {p}")
+            raise typer.Exit(code=1)
+
+    result = compare_graphs(left, right)
+
+    echo_neutral(f"Left:  {result.left_path}  ({result.left_count} triples)")
+    echo_neutral(f"Right: {result.right_path}  ({result.right_count} triples)")
+    echo_neutral("")
+    echo_neutral(f"  Intersection (both):    {len(result.both)}")
+    echo_neutral(f"  Only in left:           {len(result.only_left)}")
+    echo_neutral(f"  Only in right:          {len(result.only_right)}")
+    echo_neutral(f"  Union (all):            {len(result.union)}")
+
+    use_interactive = (
+        interactive_mode if interactive_mode is not None else sys.stdout.isatty()
+    )
+    if use_interactive:
+        views = build_comparison_views(result)
+        graphs = {
+            "left": result.only_left,
+            "right": result.only_right,
+            "both": result.both,
+            "union": result.union,
+        }
+        curses.wrapper(lambda stdscr: interactive(stdscr, views, graphs))
 
 
 if __name__ == "__main__":
