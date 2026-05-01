@@ -123,4 +123,157 @@ Changes take effect immediately — the triple display is re-rendered with updat
 
 ## Query Editor
 
-...
+The `query` command, when run without a query argument, launches an interactive TUI for writing, loading, saving, and executing SPARQL queries against the project's inferred dataset.
+
+### Launching
+
+```bash
+# Launch with auto-detected backend (Textual → prompt-toolkit → curses)
+pythinfer query
+
+# Force a specific backend
+pythinfer query --tui textual
+pythinfer query --tui prompt-toolkit
+pythinfer query --tui curses
+
+# Query specific graphs
+pythinfer query --graph "http://example.org/my-graph"
+```
+
+### Backends
+
+Three backends are available, each requiring different dependencies. By default (`--tui auto`), the best available backend is selected automatically.
+
+| Backend | Dependency | Features |
+| ------- | ---------- | -------- |
+| **Textual** | `textual`, `textual-textarea`, `tree-sitter-sparql` | Mouse support, syntax highlighting, undo/redo, horizontal scrolling in results |
+| **prompt-toolkit** | `prompt-toolkit`, `pygments` | Vim keybindings, syntax highlighting, SPARQL autocompletion, mouse support |
+| **curses** | *(stdlib — always available)* | No extra dependencies, line numbers in editor |
+
+Install optional backends via the extras:
+
+```bash
+uv pip install pythinfer[tui-textual]   # Textual backend
+uv pip install pythinfer[tui-pt]        # prompt-toolkit backend
+```
+
+If an explicitly requested backend is not installed, the command fails with an `ImportError` rather than silently falling back.
+
+### Layout
+
+All three backends share the same split-pane layout:
+
+- **Top**: status bar showing the current filename and available shortcuts
+- **Upper pane**: SPARQL query editor, pre-populated with a default `SELECT ?s ?p ?o` query
+- **Lower pane**: query results (table for SELECT, Turtle text for CONSTRUCT/DESCRIBE, boolean for ASK)
+
+Press `Tab` to switch focus between the editor and results panes.
+
+### Common Keybindings
+
+These keybindings work across all backends (with minor variations noted):
+
+| Key | Action |
+| --- | ------ |
+| `Ctrl-E` | Execute the current query |
+| `Ctrl-L` | Load a `.rq` file from the project directory |
+| `Ctrl-S` | Save the current query to a file |
+| `Tab` | Switch focus between editor and results panes |
+| `Ctrl-C` | Quit (curses and prompt-toolkit) |
+| `Ctrl-Q` | Quit (Textual) |
+
+### Result Display
+
+All SPARQL query types are supported:
+
+- **SELECT**: results are displayed as a table with column headers. In the curses and prompt-toolkit backends, column headers are frozen at the top of the results pane while data rows scroll beneath. In Textual, results use a `DataTable` widget with horizontal scrolling.
+- **CONSTRUCT / DESCRIBE**: results are serialized as Turtle text, with namespace prefixes inherited from the dataset.
+- **ASK**: displays `True` or `False`.
+
+Errors are caught and displayed inline in the results pane.
+
+### File Management
+
+#### Loading
+
+The load function (`Ctrl-L`) recursively scans the project directory for `*.rq` files and presents a file picker:
+
+- **curses**: a full-screen picker navigated with `j`/`k` and `Enter`
+- **prompt-toolkit**: a radio-list dialog
+- **Textual**: a modal option list
+
+#### Saving
+
+The save function (`Ctrl-S`) prompts for a filename (defaulting to the current file's name, or `query.rq` for unsaved queries). The file is written to the project directory.
+
+### Backend-specific Details
+
+#### Textual Backend
+
+The Textual backend provides the richest experience:
+
+- **Syntax highlighting**: SPARQL keywords, variables, prefixes, literals, and numbers are highlighted using a Tree-sitter grammar.
+- **Editor features**: full VS Code-like editing via `textual-textarea` — undo/redo, selection, clipboard support.
+- **Results table**: SELECT results use Textual's `DataTable` widget with horizontal scrolling, so column clipping is not applied.
+- **Mouse support**: click to position cursor, click pane headers to switch focus.
+- **Pane cycling**: `F6` moves focus to the next pane.
+
+| Key | Action |
+| --- | ------ |
+| `Ctrl-E` | Execute query |
+| `Ctrl-L` | Load `.rq` file |
+| `Ctrl-Q` | Quit |
+| `F6` | Cycle focus to next pane |
+
+#### prompt-toolkit Backend
+
+The prompt-toolkit backend provides vim-style editing and autocompletion:
+
+- **Vim keybindings**: the editor uses vi editing mode by default.
+- **Syntax highlighting**: SPARQL highlighting via Pygments' `SparqlLexer`.
+- **Autocompletion**: completes SPARQL keywords (case-insensitive) and namespace prefixes from the dataset. A completions menu appears automatically.
+- **Frozen headers**: SELECT column headers and a divider line are pinned above the scrollable results.
+- **Mouse support**: enabled by default.
+
+| Key | Action |
+| --- | ------ |
+| `Ctrl-E` | Execute query |
+| `Ctrl-L` | Load `.rq` file |
+| `Ctrl-S` | Save query |
+| `Tab` | Switch focus to next pane |
+| `Shift-Tab` | Switch focus to previous pane |
+| `Ctrl-C` | Quit |
+| `q` (in vi normal mode) | Quit |
+
+#### curses Backend
+
+The curses backend requires no additional dependencies:
+
+- **Line numbers**: the editor gutter displays line numbers.
+- **Frozen headers**: SELECT column headers are pinned above the scrollable results data.
+- **Scroll position**: a position indicator `[1-20/100]` appears at the bottom of the results pane.
+- **Status bar**: shows cursor position (`Ln 3, Col 7`) at the bottom of the screen.
+
+##### Editor Pane Keybindings
+
+| Key | Action |
+| --- | ------ |
+| `Ctrl-E` | Execute query |
+| `Enter` | Insert newline |
+| `Backspace` | Delete character (or join lines) |
+| `Delete` | Delete forward (or join with next line) |
+| `←` `→` `↑` `↓` | Move cursor |
+| `Home` | Move to start of line |
+| `End` | Move to end of line |
+| `PageUp` / `PageDown` | Scroll editor by one page |
+
+##### Results Pane Keybindings
+
+| Key | Action |
+| --- | ------ |
+| `j` / `↓` | Scroll down one line |
+| `k` / `↑` | Scroll up one line |
+| `J` / `PageDown` | Scroll down half a page |
+| `K` / `PageUp` | Scroll up half a page |
+| `L` | Load `.rq` file |
+| `S` | Save query |

@@ -97,19 +97,49 @@ Results persisted as `derived/<project_file_stem>/1-inferred.trig` and `derived/
 
 ### `pythinfer query`
 
-A simple helper command should allow easily specifying a query, or queries, and these should be executed against the latest full inferred graph.
+Execute a SPARQL query against the latest inferred graph, or launch an interactive query editor TUI.
 
-In principle, the tool could also take care of dependency management so that any change in an input file is automatically re-merged and inferred before a query...
+```bash
+# Execute a query string
+pythinfer query "SELECT * WHERE { ?s ?p ?o } LIMIT 10"
+
+# Execute a query from a file
+pythinfer query select_who_knows_whom.rq
+
+# Launch interactive TUI (auto-selects best available backend)
+pythinfer query
+
+# Force a specific TUI backend
+pythinfer query --tui curses
+pythinfer query --tui prompt-toolkit
+pythinfer query --tui textual
+```
+
+When called without a query argument, launches an interactive TUI with a SPARQL editor and results pane. Three backends are available — Textual (richest), prompt-toolkit (vim keybindings + autocompletion), and curses (no extra dependencies). By default the best available backend is auto-detected.
+
+See [docs/tui.md](docs/tui.md) for full documentation of the query editor TUI.
 
 ### `pythinfer explore`
 
 Interactively browse triples in an RDF file or the project's inferred dataset. Opens a curses-based TUI with regex filtering, namespace editing, and more.
 
+```bash
+# Browse the project's inferred dataset
+pythinfer explore
+
+# Browse a single RDF file
+pythinfer explore data.ttl
+```
+
 ### `pythinfer compare`
 
 Compare two RDF files side-by-side, showing their intersection, differences, and union in the same interactive TUI.
 
-See [docs/tui.md](docs/tui.md) for full documentation of the TUI keybindings and features.
+```bash
+pythinfer compare left.ttl right.ttl
+```
+
+See [docs/tui.md](docs/tui.md) for full documentation of the interactive browser keybindings and features.
 
 ## Python API
 
