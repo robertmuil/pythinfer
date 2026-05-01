@@ -29,9 +29,13 @@ keywords = ["RDF", "OWL", "SPARQL", "Inference", "Semantic Web", "Linked Data"]
 pythinfer = "pythinfer.cli:app"
 
 [project.optional-dependencies]
-tui = [
+tui-pt = [
     "prompt-toolkit>=3.0.52",
-    "pygments>=2.20.0",
+]
+tui-textual = [
+    "textual>=6.12.0",
+    "textual-textarea>=0.17.2",
+    "tree-sitter-sparql>=0.1.0",
 ]
 
 [build-system]

@@ -28,6 +28,7 @@ from pythinfer.infer import load_cache, run_inference_backend
 from pythinfer.merge import merge_graphs
 from pythinfer.rdflibplus import DatasetView, graph_lengths
 from pythinfer.resolve_imports import resolve_imports as _resolve_imports
+from pythinfer.tui import TuiBackend, launch_query_tui
 
 ProjectOption = Annotated[
     Path | None,
@@ -401,6 +402,14 @@ def query(
     graph: list[str] | None = None,
     *,
     no_cache: bool = False,
+    tui: Annotated[
+        TuiBackend,
+        typer.Option(
+            "--tui",
+            help="TUI backend to use for interactive mode "
+            "(auto tries textual, then prompt-toolkit, then curses).",
+        ),
+    ] = TuiBackend.auto,
     output_format: Annotated[
         str | None,
         typer.Option(
@@ -435,31 +444,7 @@ def query(
         # Launch interactive TUI
         project = Project.load(_project_path_var.get())
         project_dir = project.path_self.parent
-        try:
-            from pythinfer.tui.query_tui_textual import interactive_query_textual
-
-            logger.info("successfully imported Textual for TUI")
-
-            interactive_query_textual(view, len(view), project_dir)
-        except ImportError:
-            logger.exception( "Textual not available, falling back to simpler TUI")
-            try:
-                from pythinfer.tui.query_tui_pt import interactive_query_pt
-
-                logger.info("successfully imported prompt-toolkit for TUI")
-
-                interactive_query_pt(view, len(view), project_dir)
-            except ImportError:
-                logger.exception(
-                    "prompt-toolkit not available, falling back to simpler TUI"
-                )
-                from pythinfer.tui.query_tui import interactive_query
-
-                curses.wrapper(
-                    lambda stdscr: interactive_query(
-                        stdscr, view, len(view), project_dir,
-                    ),
-                )
+        launch_query_tui(view, len(view), project_dir, backend=tui)
         return None
 
     if Path(query).is_file():
