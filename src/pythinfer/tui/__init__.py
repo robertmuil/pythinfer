@@ -19,7 +19,7 @@ class TuiBackend(enum.StrEnum):
     curses = "curses"
 
 
-def launch_query_tui(
+def launch_query_tui(  # pragma: no cover
     ds: Dataset,
     num_triples: int,
     project_dir: Path,

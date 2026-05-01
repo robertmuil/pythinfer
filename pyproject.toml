@@ -71,6 +71,18 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["src/pythinfer"]
 branch = true
+omit = [
+    "src/pythinfer/tui/query_tui.py",
+    "src/pythinfer/tui/query_tui_pt.py",
+    "src/pythinfer/tui/query_tui_textual.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "# pragma: no cover",
+    "def interactive\\(",       # curses TUI entry point
+    "curses\\.wrapper\\(",      # curses launcher calls
+]
 
 [tool.pyright]
 extraPaths = [".venv/lib/python3.12/site-packages"]

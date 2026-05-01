@@ -171,7 +171,7 @@ def build_explore_views(
     }
 
 
-def _prompt_input(stdscr: curses.window, prompt: str, default: str = "") -> str:
+def _prompt_input(stdscr: curses.window, prompt: str, default: str = "") -> str:  # pragma: no cover
     """Prompt the user for text input at the bottom of the screen.
 
     Returns the entered text, or empty string if cancelled with Escape.
@@ -373,7 +373,7 @@ def _filter_matches(filt: _Filter, line: str) -> bool:
     return False
 
 
-def _addstr_highlighted(  # noqa: PLR0913, C901
+def _addstr_highlighted(  # noqa: PLR0913, C901  # pragma: no cover
     stdscr: curses.window,
     row: int,
     col: int,
@@ -438,7 +438,7 @@ def _addstr_highlighted(  # noqa: PLR0913, C901
         i = j
 
 
-def _render_filter_manager(  # noqa: PLR0913
+def _render_filter_manager(  # noqa: PLR0913  # pragma: no cover
     stdscr: curses.window,
     height: int,
     width: int,
@@ -474,7 +474,7 @@ def _list_filter_files(directory: Path) -> list[Path]:
     return sorted(directory.glob("*.filters"))
 
 
-def _render_file_picker(  # noqa: PLR0913
+def _render_file_picker(  # noqa: PLR0913  # pragma: no cover
     stdscr: curses.window,
     height: int,
     width: int,
@@ -529,7 +529,7 @@ def _unbind_namespace(graph: Graph, prefix: str) -> bool:
     return False
 
 
-def _render_namespace_view(  # noqa: PLR0913
+def _render_namespace_view(  # noqa: PLR0913  # pragma: no cover
     stdscr: curses.window,
     height: int,
     width: int,
