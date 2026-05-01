@@ -436,17 +436,30 @@ def query(
         project = Project.load(_project_path_var.get())
         project_dir = project.path_self.parent
         try:
-            from pythinfer.query_tui_pt import interactive_query_pt
+            from pythinfer.tui.query_tui_textual import interactive_query_textual
 
-            interactive_query_pt(view, len(view), project_dir)
+            logger.info("successfully imported Textual for TUI")
+
+            interactive_query_textual(view, len(view), project_dir)
         except ImportError:
-            from pythinfer.query_tui import interactive_query
+            logger.exception( "Textual not available, falling back to simpler TUI")
+            try:
+                from pythinfer.tui.query_tui_pt import interactive_query_pt
 
-            curses.wrapper(
-                lambda stdscr: interactive_query(
-                    stdscr, view, len(view), project_dir,
-                ),
-            )
+                logger.info("successfully imported prompt-toolkit for TUI")
+
+                interactive_query_pt(view, len(view), project_dir)
+            except ImportError:
+                logger.exception(
+                    "prompt-toolkit not available, falling back to simpler TUI"
+                )
+                from pythinfer.tui.query_tui import interactive_query
+
+                curses.wrapper(
+                    lambda stdscr: interactive_query(
+                        stdscr, view, len(view), project_dir,
+                    ),
+                )
         return None
 
     if Path(query).is_file():

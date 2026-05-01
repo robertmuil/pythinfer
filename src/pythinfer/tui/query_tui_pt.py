@@ -6,6 +6,7 @@ is not installed.
 """
 
 from __future__ import annotations
+import shutil
 from prompt_toolkit.enums import EditingMode
 
 from pathlib import Path
@@ -34,6 +35,8 @@ from pygments.lexers import (
 from rdflib import Dataset
 from rdflib.namespace import NamespaceManager
 from rdflib.query import Result
+
+from pythinfer.tui.columns import clip_middle, distribute_column_widths
 
 _DEFAULT_QUERY = """\
 SELECT ?s ?p ?o
@@ -180,10 +183,11 @@ class SparqlCompleter(Completer):
 
 def _format_result(
     result: Result, namespace_manager: NamespaceManager,
+    available_width: int = 0,
 ) -> tuple[str, str]:
     """Format a query result as (frozen_header, scrollable_data)."""
     if result.type == "SELECT":
-        return _format_select(result, namespace_manager)
+        return _format_select(result, namespace_manager, available_width)
     if result.type in ("CONSTRUCT", "DESCRIBE"):
         return "", _format_construct(result, namespace_manager)
     if result.type == "ASK":
@@ -193,6 +197,7 @@ def _format_result(
 
 def _format_select(
     result: Result, namespace_manager: NamespaceManager,
+    available_width: int = 0,
 ) -> tuple[str, str]:
     if not result.vars:
         return "", "(no variables in result)"
@@ -212,10 +217,22 @@ def _format_select(
             col_widths[i] = max(col_widths[i], len(cell))
 
     sep = " | "
-    header_line = sep.join(h.ljust(w) for h, w in zip(headers, col_widths))
+    sep_width = len(sep)
+
+    # Apply equitable distribution if available_width is specified
+    if available_width > 0:
+        col_widths = distribute_column_widths(
+            col_widths, available_width, separator_width=sep_width,
+        )
+
+    header_line = sep.join(
+        clip_middle(h, w).ljust(w) for h, w in zip(headers, col_widths)
+    )
     divider = "-+-".join("-" * w for w in col_widths)
     data_lines = [
-        sep.join(c.ljust(w) for c, w in zip(row, col_widths))
+        sep.join(
+            clip_middle(c, w).ljust(w) for c, w in zip(row, col_widths)
+        )
         for row in rows
     ]
     count = f"({len(rows)} row{'s' if len(rows) != 1 else ''})"
@@ -376,6 +393,7 @@ def interactive_query_pt(
             result = ds.query(query_text)
             frozen, data = _format_result(
                 result, ds.namespace_manager,
+                available_width=shutil.get_terminal_size().columns,
             )
             _set_result(frozen, data)
         except Exception as e:  # noqa: BLE001

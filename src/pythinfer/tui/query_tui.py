@@ -12,6 +12,8 @@ from rdflib import Dataset
 from rdflib.namespace import NamespaceManager
 from rdflib.query import Result
 
+from pythinfer.tui.columns import clip_middle, distribute_column_widths
+
 _KEY_ESCAPE = 27
 
 _DEFAULT_QUERY = textwrap.dedent("""\
@@ -67,6 +69,7 @@ def _prompt_input(stdscr: curses.window, prompt: str, default: str = "") -> str:
 
 def _format_select_result(
     result: Result, namespace_manager: NamespaceManager,
+    available_width: int = 0,
 ) -> tuple[list[str], list[str]]:
     """Format a SELECT result as (frozen_header_lines, scrollable_data_lines)."""
     if not result.vars:
@@ -87,16 +90,26 @@ def _format_select_result(
         for i, cell in enumerate(row):
             col_widths[i] = max(col_widths[i], len(cell))
 
-    # Build lines
     sep = " | "
+    sep_width = len(sep)
+
+    # Apply equitable distribution if available_width is specified
+    if available_width > 0:
+        col_widths = distribute_column_widths(
+            col_widths, available_width, separator_width=sep_width,
+        )
+
+    # Build lines
     header_line = sep.join(
-        h.ljust(w) for h, w in zip(headers, col_widths, strict=False)
+        clip_middle(h, w).ljust(w) for h, w in zip(headers, col_widths, strict=False)
     )
 
     frozen = [header_line]
     data: list[str] = []
     for row in rows:
-        data.append(sep.join(c.ljust(w) for c, w in zip(row, col_widths, strict=False)))
+        data.append(sep.join(
+            clip_middle(c, w).ljust(w) for c, w in zip(row, col_widths, strict=False)
+        ))
     data.append(f"({len(rows)} row{'s' if len(rows) != 1 else ''})")
     return frozen, data
 
@@ -118,10 +131,11 @@ def _format_ask_result(result: Result) -> list[str]:
 
 def _format_result(
     result: Result, namespace_manager: NamespaceManager,
+    available_width: int = 0,
 ) -> tuple[list[str], list[str]]:
     """Format any query result as (frozen_header_lines, scrollable_lines)."""
     if result.type == "SELECT":
-        return _format_select_result(result, namespace_manager)
+        return _format_select_result(result, namespace_manager, available_width)
     if result.type in ("CONSTRUCT", "DESCRIBE"):
         return [], _format_construct_result(result, namespace_manager)
     if result.type == "ASK":
@@ -302,6 +316,7 @@ def interactive_query(
             result = ds.query(query_text)
             result_frozen, result_lines = _format_result(
                 result, ds.namespace_manager,
+                available_width=stdscr.getmaxyx()[1] - 2,
             )
             result_status = f"{result.type} — {num_triples} triples queried"
             result_scroll = 0
@@ -397,7 +412,7 @@ def interactive_query(
 
         # Bottom status
         pos_info = f" Ln {cursor_row + 1}, Col {cursor_col + 1} "
-        if height > 2:
+        if height > 2:  # noqa: PLR2004 - logical not magical number
             stdscr.addnstr(height - 1, 0, pos_info, width - 1, curses.A_DIM)
 
         # Position cursor in editor if focused
@@ -433,10 +448,7 @@ def interactive_query(
 
         # Ctrl-S: save
         if key == 19:
-            if current_file:
-                default_name = current_file.name
-            else:
-                default_name = "query.rq"
+            default_name = current_file.name if current_file else "query.rq"
             name = _prompt_input(stdscr, "Save as: ", default_name)
             if name:
                 path = project_dir / name
@@ -544,10 +556,7 @@ def interactive_query(
                 fp_scroll = 0
             # S: save (also works from results pane)
             elif key == ord("S"):
-                if current_file:
-                    default_name = current_file.name
-                else:
-                    default_name = "query.rq"
+                default_name = current_file.name if current_file else "query.rq"
                 name = _prompt_input(stdscr, "Save as: ", default_name)
                 if name:
                     path = project_dir / name

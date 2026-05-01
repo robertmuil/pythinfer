@@ -14,6 +14,8 @@ from pathlib import Path
 from rdflib import Graph, Node
 from rdflib.namespace import NamespaceManager
 
+from pythinfer.tui.columns import clip_middle, distribute_column_widths
+
 _KEY_ESCAPE = 27
 _DEFAULT_FILTERS_FILE = ".current.filters"
 
@@ -58,6 +60,45 @@ def _shorten(term: Node, nm: NamespaceManager) -> str:
         return str(term)
     else:
         return f"{prefix}:{local}"
+
+
+_TRIPLE_SEP = "  "
+
+
+def _compute_triple_col_widths(
+    lines: list[str], available: int,
+) -> list[int] | None:
+    """Compute equitable column widths for triple lines.
+
+    Returns ``None`` if all columns fit naturally or if lines don't
+    have the expected 3-field structure.
+    """
+    if not lines:
+        return None
+    natural = [0, 0, 0]
+    for line in lines:
+        parts = line.split(_TRIPLE_SEP, maxsplit=2)
+        if len(parts) != 3:  # noqa: PLR2004
+            return None
+        for i, part in enumerate(parts):
+            natural[i] = max(natural[i], len(part))
+    total_natural = sum(natural) + len(_TRIPLE_SEP) * 2
+    if total_natural <= available:
+        return None
+    return distribute_column_widths(
+        natural, available, separator_width=len(_TRIPLE_SEP),
+    )
+
+
+def _clip_triple_line(line: str, col_widths: list[int]) -> str:
+    """Clip a triple line's fields to the given column widths."""
+    parts = line.split(_TRIPLE_SEP, maxsplit=2)
+    if len(parts) != 3:  # noqa: PLR2004
+        return line
+    clipped = [
+        clip_middle(part, w) for part, w in zip(parts, col_widths, strict=False)
+    ]
+    return _TRIPLE_SEP.join(clipped)
 
 
 def _bind_namespaces(target: Graph, *sources: Graph) -> None:
@@ -831,11 +872,19 @@ def interactive(
             max_scroll = max(0, len(lines) - content_height)
             scroll = max(0, min(scroll, max_scroll))
 
+            # Compute equitable column widths for triple lines
+            col_widths = _compute_triple_col_widths(lines, width - 2)
+
             for i, line in enumerate(lines[scroll : scroll + content_height]):
                 row = content_start + i
                 if row < height - 1:
+                    display_line = (
+                        _clip_triple_line(line, col_widths)
+                        if col_widths is not None
+                        else line
+                    )
                     _addstr_highlighted(
-                        stdscr, row, 1, line, width - 2,
+                        stdscr, row, 1, display_line, width - 2,
                         highlight_pattern, highlight_attr,
                         highlight_fields or None,
                     )

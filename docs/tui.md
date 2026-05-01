@@ -1,8 +1,38 @@
-# TUI — Interactive Triple Browser
+# TUI
+
+Text user interfaces (TUIs) are included in `pythinfer` for interactive exploration of RDF data.
+
+To provide maximum compatibility, `curses` is used to provide the basic functionality. If a user has `prompt_toolkit` installed, it will be used to enhance the user experience with features like better input handling and file pickers, and if `Textual` is installed, it will be used for even further improvements like mouse handling.
+
+## Common Features
+
+### Column Widths
+
+Wherever columns are presented with dynamic content (for instance in the the results pane of the query editor), their widths are determined according to the following principles:
+
+1. **Equitable Distribution**: Every column can use up to a fair share of available space, where fair share is simply the window width divided by the number of columns.
+1. **Only use necessary space**: if a column doesn't need its fair share, it only uses what is required for the longest value in that column, and the remaining space is redistributed among the other columns.
+1. **Minimum Width**: Each column has a minimum width of 3 characters to ensure readability.
+
+#### Overflow Handling
+
+When a column's content exceeds its allocated width, the content is **clipped in the middle** — the beginning and end of the value are preserved and the middle is replaced with `..`. For example, `http://example.org/very/long/uri` at width 12 becomes `http:..g/uri` and `eg:VeryBigClass` at width 10 becomes `eg:..Class`. This keeps both the prefix and the local name visible, which is typically the most useful information.
+
+#### Scope
+
+- **Triple browser** (`explore`, `compare`): column widths are recalculated on every render, so resizing the terminal immediately adjusts the layout.
+- **Query editor** (curses and prompt_toolkit): column widths are calculated once when the query is executed. Resize the terminal and re-execute the query to reformat.
+- **Textual query editor**: uses Textual's built-in `DataTable` widget which provides horizontal scrolling, so no clipping is applied.
+
+### Namespace Editing
+
+TODO: document cross-interface
+
+## Interactive Triple Browser
 
 The `explore` and `compare` commands launch an interactive curses-based TUI for browsing RDF triples.
 
-## Launching
+### Launching
 
 ```bash
 # Browse the project's inferred dataset
@@ -15,11 +45,11 @@ pythinfer explore data.ttl
 pythinfer compare left.ttl right.ttl
 ```
 
-## Main View
+### Main View
 
 Triples are displayed one per line in `subject  predicate  object .` format, shortened using namespace prefixes.
 
-### Keybindings
+#### Keybindings
 
 | Key | Action |
 | --- | ------ |
@@ -34,7 +64,7 @@ Triples are displayed one per line in `subject  predicate  object .` format, sho
 | `n` | Open namespace editor |
 | `q` / `Q` | Quit |
 
-### Compare-only keys
+#### Compare-only keys
 
 When using `compare`, arrow keys switch between views:
 
@@ -45,7 +75,7 @@ When using `compare`, arrow keys switch between views:
 | `←` | Only in left file |
 | `→` | Only in right file |
 
-## Filters
+### Filters
 
 Filters are regex patterns applied in sequence — each filter narrows the output of the previous one. Matches are highlighted in the triple display.
 
@@ -56,7 +86,7 @@ Filters are regex patterns applied in sequence — each filter narrows the outpu
 
 Note that complex regex filters are likely better expressed as SPARQL queries, so if the filters list gets complex or is taking a long time to filter, it may be worth switching to SPARQL for more efficient querying.
 
-## Filter Manager (`f`)
+### Filter Manager (`f`)
 
 | Key | Action |
 | --- | ------ |
@@ -70,12 +100,12 @@ Note that complex regex filters are likely better expressed as SPARQL queries, s
 | `Enter` / `f` / `Esc` | Return to main view |
 | `q` | Quit |
 
-### Saving and Loading
+#### Saving and Loading
 
 - `S` prompts for a filename (`.filters` extension added automatically).
 - `L` opens a file picker listing all `*.filters` files in the working directory.
 
-## Namespace Editor (`n`)
+### Namespace Editor (`n`)
 
 View and edit the prefix→URI bindings used to shorten URIs in the display.
 
@@ -90,3 +120,7 @@ View and edit the prefix→URI bindings used to shorten URIs in the display.
 | `q` | Quit |
 
 Changes take effect immediately — the triple display is re-rendered with updated prefix shortenings.
+
+## Query Editor
+
+...
