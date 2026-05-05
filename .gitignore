@@ -25,3 +25,6 @@ derived/
 url-mapping.yaml
 example_projects/eg2-projects/imports/*.ttl
 .current.filters
+
+# Misc - dont maintain root pythinfer.yaml, but useful for testing and development
+pythinfer.yaml

@@ -1,6 +1,6 @@
 [project]
 name = "pythinfer"
-version = "0.7.1"
+version = "0.8.1"
 description = "CLI to merge multiple RDF files, perform inference (OWL or SPARQL), and query the result."
 readme = "README.md"
 authors = [{ name = "Robert Muil", email = "robertmuil@gmail.com" }]
