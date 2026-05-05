@@ -10,7 +10,7 @@ dependencies = [
     "pydantic>=2.12.4",
     "pyyaml>=6.0.3",
     "rdflib>=7.4.0",
-    "typer>=0.20.0",
+    "typer>=0.25.1",
 ]
 license = "Apache-2.0"
 classifiers = [
