@@ -206,14 +206,14 @@ wheels = [
 
 [[package]]
 name = "owlrl"
-version = "7.1.4"
+version = "7.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "rdflib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/fc/ce12482d096d65fff01af58f555a6f25e9dbf416fad5d99f91eaab0e11ca/owlrl-7.1.4.tar.gz", hash = "sha256:60bd4067e346b9111f0a2924565afe97ac6595b98b2bbe953928b5113971daf7", size = 44420, upload-time = "2025-07-29T00:17:27.608Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/fc/ca6c905411af11d36848ba28398c5e335c33dd70b9bc95039cb861b41424/owlrl-7.6.1.tar.gz", hash = "sha256:b1e920cd5017044b17c1791e18ff5b51bd48b03755b2aa22896827ef3820a7d8", size = 48460, upload-time = "2026-07-05T05:19:45.564Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/78/f857ff1a7207e967dc5e8414bbcc15e0aa5cf45f693b1d2ebe2afb3eb1ce/owlrl-7.1.4-py3-none-any.whl", hash = "sha256:e78b46020169783345636da93a467d318f18700c483184dd15e885850cf64775", size = 51981, upload-time = "2025-07-29T00:17:26.229Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/67/5f5029c8db03b23746851444763a3da87859b63e0333ad43ef563bcd52fe/owlrl-7.6.1-py3-none-any.whl", hash = "sha256:5030eb136da9fdf4fc9dfcac95325d1039e2b3ed8aa352d4f302b66c0e475a6c", size = 55721, upload-time = "2026-07-05T05:19:43.252Z" },
 ]
 
 [[package]]
