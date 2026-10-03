@@ -189,7 +189,7 @@ class Project(ProjectSpec):
         if backend is not None:
             self.owl_backend = backend
 
-        run_inference_backend(
+        all_external_ids = run_inference_backend(
             ds,
             external_graph_ids,
             self,
@@ -197,6 +197,10 @@ class Project(ProjectSpec):
             include_unwanted_triples=include_unwanted_triples,
             extra_export_formats=extra_export_formats,
         )
+
+        # Match the cached Dataset, which excludes external graphs
+        for gid in all_external_ids:
+            ds.remove_graph(gid)
 
         if not include_provenance:
             ds.remove_graph(self.provenance_gid)

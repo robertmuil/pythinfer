@@ -307,7 +307,11 @@ def infer(
     echo_success(f"Inference complete. {len(ds)} total triples in dataset")
     echo_dataset_lengths(ds, all_external_ids)
 
-    return ds, all_external_ids
+    # Match the cached Dataset, which excludes external graphs
+    for gid in all_external_ids:
+        ds.remove_graph(gid)
+
+    return ds, []
 
 
 def _display_select_result(
